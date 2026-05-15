@@ -1,0 +1,143 @@
+import { useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import {
+  LayoutDashboard, Users, CalendarDays, Calendar, Trophy,
+  BarChart3, Settings, LogOut, Zap, Shield, Baby, Dumbbell,
+  Megaphone, HandHeart, Globe, X, Menu,
+} from 'lucide-react'
+import { useAuth } from '../../contexts/AuthContext'
+
+const COACH_NAV = [
+  { name: 'Dashboard',     href: '/dashboard',     icon: LayoutDashboard },
+  { name: 'Athletes',      href: '/athletes',       icon: Users },
+  { name: 'Squads',        href: '/squad',          icon: CalendarDays },
+  { name: 'Calendar',      href: '/calendar',       icon: Calendar },
+  { name: 'Announcements', href: '/announcements',  icon: Megaphone },
+  { name: 'Volunteering',  href: '/volunteering',   icon: HandHeart },
+  { name: 'Milestones',    href: '/milestones',     icon: Trophy },
+  { name: 'Analytics',     href: '/analytics',      icon: BarChart3 },
+  { name: 'Settings',      href: '/settings',       icon: Settings },
+]
+const ADMIN_NAV    = COACH_NAV
+const PARENT_NAV   = [
+  { name: 'My Child',      href: '/parent',        icon: Baby },
+  { name: 'Announcements', href: '/announcements', icon: Megaphone },
+  { name: 'Calendar',      href: '/calendar',      icon: Calendar },
+  { name: 'Volunteering',  href: '/volunteering',  icon: HandHeart },
+  { name: 'Settings',      href: '/settings',      icon: Settings },
+]
+const ATHLETE_NAV  = [
+  { name: 'My Dashboard',  href: '/athlete',       icon: Dumbbell },
+  { name: 'Announcements', href: '/announcements', icon: Megaphone },
+  { name: 'Calendar',      href: '/calendar',      icon: Calendar },
+  { name: 'Settings',      href: '/settings',      icon: Settings },
+]
+const SITE_ADMIN_NAV = [
+  { name: 'Site Admin',    href: '/site-admin',    icon: Shield },
+  { name: 'Dashboard',     href: '/dashboard',     icon: LayoutDashboard },
+  { name: 'Settings',      href: '/settings',      icon: Settings },
+]
+
+function getNav(role) {
+  if (role === 'site_admin') return SITE_ADMIN_NAV
+  if (role === 'club_admin') return ADMIN_NAV
+  if (role === 'parent')     return PARENT_NAV
+  if (role === 'athlete')    return ATHLETE_NAV
+  return COACH_NAV
+}
+
+function initials(name = '') {
+  return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'
+}
+
+export default function Sidebar() {
+  const { user, logout } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [open, setOpen] = useState(false)
+  const nav = getNav(user?.role)
+
+  function handleLogout() {
+    logout()
+    navigate('/')
+  }
+
+  const content = (
+    <div className="flex h-full flex-col">
+      <div className="flex h-16 items-center justify-between border-b border-slate-200 px-4">
+        <Link to="/dashboard" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 shadow-sm">
+            <Zap className="h-4 w-4 text-white" />
+          </div>
+          <span className="text-base font-bold text-slate-900">PathwayHQ</span>
+        </Link>
+        <button onClick={() => setOpen(false)} className="lg:hidden rounded-lg p-1.5 text-slate-400 hover:bg-slate-100">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+        {nav.map(item => {
+          const active = location.pathname === item.href ||
+            (item.href !== '/dashboard' && item.href !== '/athlete' && item.href !== '/parent' && item.href !== '/site-admin' && location.pathname.startsWith(item.href))
+          return (
+            <Link key={item.name} to={item.href} onClick={() => setOpen(false)}
+              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
+                active ? 'bg-emerald-50 text-emerald-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}>
+              <item.icon className={`h-4 w-4 shrink-0 ${active ? 'text-emerald-600' : 'text-slate-400'}`} />
+              {item.name}
+              {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-500" />}
+            </Link>
+          )
+        })}
+      </nav>
+
+      <div className="px-3 pb-2">
+        <Link to="/" target="_blank"
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-xs text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors">
+          <Globe className="h-3.5 w-3.5" /> View public site
+        </Link>
+      </div>
+
+      <div className="border-t border-slate-200 p-3 space-y-1">
+        <div className="flex items-center gap-3 px-2 py-2">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">
+            {initials(user?.full_name)}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-slate-800 truncate">{user?.full_name || 'User'}</p>
+            <p className="text-[10px] text-slate-400 capitalize">{user?.role?.replace('_', ' ')}</p>
+          </div>
+        </div>
+        <button onClick={handleLogout}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors">
+          <LogOut className="h-4 w-4 text-slate-400" /> Sign out
+        </button>
+      </div>
+    </div>
+  )
+
+  return (
+    <>
+      {/* Desktop */}
+      <aside className="hidden lg:flex h-screen w-60 flex-col border-r border-slate-200 bg-white shrink-0">
+        {content}
+      </aside>
+
+      {/* Mobile toggle */}
+      <button onClick={() => setOpen(true)}
+        className="lg:hidden fixed top-3 left-3 z-30 rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+        <Menu className="h-4 w-4 text-slate-600" />
+      </button>
+
+      {/* Mobile overlay */}
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setOpen(false)} />
+          <aside className="fixed inset-y-0 left-0 z-50 w-60 bg-white shadow-xl lg:hidden">{content}</aside>
+        </>
+      )}
+    </>
+  )
+}

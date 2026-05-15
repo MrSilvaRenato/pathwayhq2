@@ -1,0 +1,78 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { ToastProvider } from './contexts/ToastContext'
+
+// Marketing
+import Home        from './pages/marketing/Home'
+import Clubs       from './pages/marketing/Clubs'
+import ClubProfile from './pages/marketing/ClubProfile'
+import Brisbane    from './pages/marketing/Brisbane2032'
+
+// Auth
+import Login  from './pages/auth/Login'
+import Signup from './pages/auth/Signup'
+
+// App layout + pages
+import AppLayout     from './components/layout/AppLayout'
+import Dashboard     from './pages/app/Dashboard'
+import Athletes      from './pages/app/Athletes'
+import AthleteDetail from './pages/app/AthleteDetail'
+import Squads        from './pages/app/Squads'
+import Calendar      from './pages/app/Calendar'
+import Announcements from './pages/app/Announcements'
+import Volunteering  from './pages/app/Volunteering'
+import Milestones    from './pages/app/Milestones'
+import Analytics     from './pages/app/Analytics'
+import Settings      from './pages/app/Settings'
+
+function PrivateRoute({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><div className="w-8 h-8 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" /></div>
+  if (!user) return <Navigate to="/login" replace />
+  return children
+}
+
+function PublicOnlyRoute({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return null
+  if (user) return <Navigate to="/dashboard" replace />
+  return children
+}
+
+export default function App() {
+  return (
+    <ToastProvider>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Marketing */}
+          <Route path="/"              element={<Home />} />
+          <Route path="/clubs"         element={<Clubs />} />
+          <Route path="/club/:slug"    element={<ClubProfile />} />
+          <Route path="/brisbane-2032" element={<Brisbane />} />
+
+          {/* Auth */}
+          <Route path="/login"  element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
+          <Route path="/signup" element={<PublicOnlyRoute><Signup /></PublicOnlyRoute>} />
+
+          {/* App */}
+          <Route path="/" element={<PrivateRoute><AppLayout /></PrivateRoute>}>
+            <Route path="dashboard"     element={<Dashboard />} />
+            <Route path="athletes"      element={<Athletes />} />
+            <Route path="athletes/:id"  element={<AthleteDetail />} />
+            <Route path="squad"         element={<Squads />} />
+            <Route path="calendar"      element={<Calendar />} />
+            <Route path="announcements" element={<Announcements />} />
+            <Route path="volunteering"  element={<Volunteering />} />
+            <Route path="milestones"    element={<Milestones />} />
+            <Route path="analytics"     element={<Analytics />} />
+            <Route path="settings"      element={<Settings />} />
+          </Route>
+
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
+    </ToastProvider>
+  )
+}
