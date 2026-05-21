@@ -1,113 +1,539 @@
-import { useState, useEffect, useMemo } from 'react'
-import { Plus, X, Trophy, Search } from 'lucide-react'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { Plus, X, Trophy, Search, ChevronDown, Loader2 } from 'lucide-react'
 import api from '../../lib/api'
 import { FTEM_PHASES } from '../../lib/constants'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../contexts/ToastContext'
+
+// ─── helpers ────────────────────────────────────────────────────────────────
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function monthKey(dateStr) {
+  const d = new Date(dateStr)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+function monthLabel(key) {
+  const [year, month] = key.split('-')
+  return new Date(Number(year), Number(month) - 1, 1)
+    .toLocaleDateString('en-AU', { month: 'long', year: 'numeric' })
+}
+
+function fmtDate(dateStr) {
+  return new Date(dateStr).toLocaleDateString('en-AU', {
+    day: 'numeric', month: 'short', year: 'numeric',
+  })
+}
+
+function athleteCount(items) {
+  return new Set(items.map(m => m.athlete_id).filter(Boolean)).size
+}
+
+// Abbreviated FTEM code: F1 → F1, T2 → T2, E1 → E1, M → M
+function ftemAbbr(phase) {
+  return phase
+}
+
+// ─── sub-components ──────────────────────────────────────────────────────────
+
+function FtemBadge({ phase, abbreviated = false }) {
+  const meta = FTEM_PHASES[phase]
+  if (!meta) return null
+  return (
+    <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold ${meta.color}`}>
+      {abbreviated ? ftemAbbr(phase) : phase}
+    </span>
+  )
+}
+
+function MilestoneCard({ m, isAdmin, onDelete }) {
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  return (
+    <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-4 md:px-5">
+      <div className="flex items-start gap-3 md:gap-4">
+        {/* FTEM badge */}
+        <div className="pt-0.5 shrink-0">
+          <span className="hidden sm:inline">
+            <FtemBadge phase={m.ftem_phase} />
+          </span>
+          <span className="sm:hidden">
+            <FtemBadge phase={m.ftem_phase} abbreviated />
+          </span>
+        </div>
+
+        {/* Center text */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <h2 className="font-bold text-slate-900 leading-snug truncate">{m.title}</h2>
+            {m.is_claimed && (
+              <span className="shrink-0 h-2 w-2 rounded-full bg-emerald-400" title="Athlete has linked account" />
+            )}
+          </div>
+          <p className="text-sm text-slate-500 mt-0.5">
+            {m.first_name} {m.last_name}
+          </p>
+          {m.description && (
+            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">{m.description}</p>
+          )}
+        </div>
+
+        {/* Right: date + badges + delete */}
+        <div className="shrink-0 flex flex-col items-end gap-1.5">
+          <p className="text-xs text-slate-400 whitespace-nowrap">{fmtDate(m.achieved_at)}</p>
+          {m.is_shared_with_parent && (
+            <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs font-semibold text-emerald-600 whitespace-nowrap hidden sm:inline">
+              Shared
+            </span>
+          )}
+          {isAdmin && !confirmDelete && (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="h-8 w-8 flex items-center justify-center text-slate-300 hover:text-red-400 hover:bg-red-50 rounded-lg transition-colors"
+              title="Delete milestone"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Inline delete confirm */}
+      {isAdmin && confirmDelete && (
+        <div className="mt-3 flex items-center gap-2 bg-red-50 rounded-xl px-3 py-2 border border-red-100">
+          <span className="text-xs font-semibold text-red-700 flex-1">Delete this milestone?</span>
+          <button
+            onClick={() => setConfirmDelete(false)}
+            className="h-9 px-3 rounded-lg text-xs font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-colors"
+          >
+            No
+          </button>
+          <button
+            onClick={() => onDelete(m.id)}
+            className="h-9 px-3 rounded-lg text-xs font-bold text-white bg-red-500 hover:bg-red-400 transition-colors"
+          >
+            Yes, delete
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function MonthGroup({ monthKey: key, milestones, isAdmin, onDelete }) {
+  return (
+    <div>
+      <div className="flex items-center gap-3 mb-3 sticky top-0 bg-slate-50 md:bg-transparent py-2 z-10">
+        <div className="w-1 h-5 rounded-full bg-amber-400 shrink-0" />
+        <h3 className="text-sm font-bold text-slate-600 uppercase tracking-wider">
+          {monthLabel(key)}
+        </h3>
+        <span className="text-xs text-slate-400">({milestones.length})</span>
+      </div>
+      <div className="flex flex-col gap-3 pl-0 md:pl-4">
+        {milestones.map(m => (
+          <MilestoneCard key={m.id} m={m} isAdmin={isAdmin} onDelete={onDelete} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─── Add Milestone Modal / Bottom Sheet ──────────────────────────────────────
+
+const BLANK_FORM = {
+  athlete_id: '', title: '', description: '',
+  ftem_phase: 'F1', achieved_at: todayISO(), is_shared_with_parent: false,
+}
+
+function AddMilestoneModal({ athletes, onClose, onSaved }) {
+  const toast = useToast()
+  const [form, setForm] = useState({ ...BLANK_FORM })
+  const [saving, setSaving] = useState(false)
+
+  const selectedAthlete = useMemo(
+    () => athletes.find(a => String(a.id) === String(form.athlete_id)) ?? null,
+    [athletes, form.athlete_id],
+  )
+
+  function handleAthleteChange(e) {
+    const id = e.target.value
+    const athlete = athletes.find(a => String(a.id) === String(id)) ?? null
+    setForm(p => ({
+      ...p,
+      athlete_id: id,
+      ftem_phase: athlete?.ftem_phase ?? p.ftem_phase,
+    }))
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      await api.post('/milestones', form)
+      toast.success('Milestone added!')
+      onSaved()
+    } catch {
+      toast.error('Failed to save milestone.')
+      setSaving(false)
+    }
+  }
+
+  const inputCls =
+    'w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white min-h-[44px]'
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col justify-end md:items-center md:justify-center bg-black/40 backdrop-blur-sm">
+      <div className="w-full md:max-w-md md:rounded-2xl bg-white md:shadow-2xl rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-100 shrink-0">
+          <h2 className="text-lg font-black text-slate-900">Add milestone</h2>
+          <button
+            onClick={onClose}
+            className="h-11 w-11 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto flex-1 px-6 py-4">
+          <form onSubmit={handleSubmit} className="space-y-3" id="add-milestone-form">
+            <div>
+              <label className="text-xs font-semibold text-slate-500 mb-1 block">Athlete</label>
+              <select
+                required
+                value={form.athlete_id}
+                onChange={handleAthleteChange}
+                className={inputCls}
+              >
+                <option value="">Select athlete…</option>
+                {athletes.map(a => (
+                  <option key={a.id} value={a.id}>
+                    {a.first_name} {a.last_name}{a.squad_names ? ` — ${a.squad_names}` : ''}
+                  </option>
+                ))}
+              </select>
+              {selectedAthlete?.ftem_phase && (
+                <p className="mt-1 text-xs text-slate-400">
+                  Current phase:{' '}
+                  <span className="font-semibold text-slate-600">
+                    {selectedAthlete.ftem_phase} — {FTEM_PHASES[selectedAthlete.ftem_phase]?.label ?? selectedAthlete.ftem_phase}
+                  </span>
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-500 mb-1 block">Title</label>
+              <input
+                required
+                value={form.title}
+                onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
+                className={inputCls}
+                placeholder="e.g. First hat-trick"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-slate-500 mb-1 block">FTEM Phase</label>
+                <select
+                  value={form.ftem_phase}
+                  onChange={e => setForm(p => ({ ...p, ftem_phase: e.target.value }))}
+                  className={inputCls}
+                >
+                  {Object.entries(FTEM_PHASES).map(([k, v]) => (
+                    <option key={k} value={k}>{k} — {v.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 mb-1 block">Date achieved</label>
+                <input
+                  type="date"
+                  required
+                  value={form.achieved_at}
+                  onChange={e => setForm(p => ({ ...p, achieved_at: e.target.value }))}
+                  className={inputCls}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-500 mb-1 block">Description (optional)</label>
+              <textarea
+                value={form.description}
+                onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+                rows={2}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                placeholder="Add context or notes…"
+              />
+            </div>
+
+            <label className="flex items-center gap-3 text-sm text-slate-600 cursor-pointer select-none min-h-[44px]">
+              <input
+                type="checkbox"
+                checked={form.is_shared_with_parent}
+                onChange={e => setForm(p => ({ ...p, is_shared_with_parent: e.target.checked }))}
+                className="rounded accent-emerald-500 h-4 w-4"
+              />
+              Share with parent
+            </label>
+          </form>
+        </div>
+
+        <div className="px-6 pb-6 pt-3 border-t border-slate-100 shrink-0 flex gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 min-h-[44px]"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="add-milestone-form"
+            disabled={saving}
+            className="flex-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 py-3 text-sm font-bold text-white disabled:opacity-50 transition-colors min-h-[44px]"
+          >
+            {saving ? 'Saving…' : 'Add milestone'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Main page ───────────────────────────────────────────────────────────────
 
 export default function Milestones() {
   const { isAdmin } = useAuth()
-  const [items,    setItems]    = useState([])
+  const toast = useToast()
+
+  const [items, setItems]       = useState([])
   const [athletes, setAthletes] = useState([])
-  const [q, setQ]               = useState('')
+  const [loading, setLoading]   = useState(true)
   const [showModal, setShowModal] = useState(false)
-  const [form, setForm] = useState({ athlete_id:'', title:'', description:'', ftem_phase:'F1', achieved_at:'', is_shared_with_parent:false })
-  const [saving, setSaving] = useState(false)
+
+  const [q, setQ]                         = useState('')
+  const [filterAthlete, setFilterAthlete] = useState('')
+  const [filterPhase, setFilterPhase]     = useState('')
+
+  async function fetchMilestones() {
+    try {
+      const { data } = await api.get('/milestones')
+      setItems(data)
+    } catch {
+      toast.error('Failed to load milestones.')
+    }
+  }
 
   useEffect(() => {
-    api.get('/milestones').then(r => setItems(r.data))
-    api.get('/athletes').then(r => setAthletes(r.data))
-  }, [])
+    async function init() {
+      setLoading(true)
+      await fetchMilestones()
+      if (isAdmin) {
+        try {
+          const { data } = await api.get('/athletes')
+          setAthletes(data)
+        } catch {
+          // non-fatal
+        }
+      }
+      setLoading(false)
+    }
+    init()
+  }, [isAdmin])
 
   const filtered = useMemo(() => {
     const ql = q.toLowerCase()
-    return q ? items.filter(m => `${m.first_name} ${m.last_name} ${m.title}`.toLowerCase().includes(ql)) : items
-  }, [items, q])
+    return items.filter(m => {
+      if (q && !`${m.first_name ?? ''} ${m.last_name ?? ''} ${m.title}`.toLowerCase().includes(ql)) return false
+      if (filterAthlete && String(m.athlete_id) !== String(filterAthlete)) return false
+      if (filterPhase && m.ftem_phase !== filterPhase) return false
+      return true
+    })
+  }, [items, q, filterAthlete, filterPhase])
 
-  async function handleAdd(e) {
-    e.preventDefault(); setSaving(true)
-    await api.post('/milestones', form)
-    const { data } = await api.get('/milestones')
-    setItems(data); setShowModal(false); setSaving(false)
-    setForm({ athlete_id:'', title:'', description:'', ftem_phase:'F1', achieved_at:'', is_shared_with_parent:false })
+  const hasFilters = q || filterAthlete || filterPhase
+
+  function clearFilters() {
+    setQ(''); setFilterAthlete(''); setFilterPhase('')
   }
 
-  const inputCls = "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+  const grouped = useMemo(() => {
+    const map = new Map()
+    for (const m of filtered) {
+      if (!m.achieved_at) continue
+      const key = monthKey(m.achieved_at)
+      if (!map.has(key)) map.set(key, [])
+      map.get(key).push(m)
+    }
+    return [...map.entries()]
+  }, [filtered])
+
+  async function handleDelete(id) {
+    try {
+      await api.delete(`/milestones/${id}`)
+      setItems(p => p.filter(x => x.id !== id))
+      toast.success('Milestone deleted.')
+    } catch {
+      toast.error('Failed to delete milestone.')
+    }
+  }
+
+  async function handleSaved() {
+    setShowModal(false)
+    await fetchMilestones()
+  }
+
+  const totalAthletesCount = athleteCount(items)
+  const subtitle = items.length === 0
+    ? 'No milestones yet'
+    : `${items.length} milestone${items.length !== 1 ? 's' : ''} across ${totalAthletesCount} athlete${totalAthletesCount !== 1 ? 's' : ''}`
+
+  const selectCls =
+    'h-11 rounded-lg border border-slate-200 bg-white pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 appearance-none cursor-pointer'
 
   return (
-    <div className="p-6 lg:p-8 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div><h1 className="text-2xl font-black text-slate-900">Milestones</h1><p className="text-sm text-slate-500 mt-0.5">{items.length} recorded</p></div>
+    <div className="pb-24 md:pb-8">
+      {/* Header */}
+      <div className="flex items-start justify-between px-4 pt-4 pb-2 md:px-8 md:pt-8">
+        <div>
+          <h1 className="text-2xl font-black text-slate-900">Milestones</h1>
+          <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>
+        </div>
+        {/* Desktop add button */}
         {isAdmin && (
-          <button onClick={() => setShowModal(true)} className="flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 px-4 py-2.5 text-sm font-bold text-white transition-colors shadow-lg shadow-emerald-500/20">
+          <button
+            onClick={() => setShowModal(true)}
+            className="hidden md:flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 px-4 py-2.5 text-sm font-bold text-white transition-colors shadow-lg shadow-emerald-500/20 shrink-0"
+          >
             <Plus className="h-4 w-4" /> Add milestone
           </button>
         )}
       </div>
 
-      <div className="relative mb-6 max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-        <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search milestones…"
-          className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+      <div className="px-4 md:px-8 max-w-3xl mx-auto">
+        {/* ── Filters — horizontal scroll on mobile ── */}
+        <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-1 -mx-4 px-4 md:mx-0 md:px-0 md:flex-wrap scrollbar-none">
+          {/* Search */}
+          <div className="relative shrink-0">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+            <input
+              value={q}
+              onChange={e => setQ(e.target.value)}
+              placeholder="Search…"
+              className="h-11 w-44 md:w-56 rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+
+          {/* Athlete filter */}
+          {isAdmin && (
+            <div className="relative shrink-0">
+              <select
+                value={filterAthlete}
+                onChange={e => setFilterAthlete(e.target.value)}
+                className={selectCls}
+              >
+                <option value="">All athletes</option>
+                {athletes.map(a => (
+                  <option key={a.id} value={a.id}>{a.first_name} {a.last_name}</option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            </div>
+          )}
+
+          {/* Phase filter */}
+          <div className="relative shrink-0">
+            <select
+              value={filterPhase}
+              onChange={e => setFilterPhase(e.target.value)}
+              className={selectCls}
+            >
+              <option value="">All phases</option>
+              {Object.entries(FTEM_PHASES).map(([k, v]) => (
+                <option key={k} value={k}>{k} — {v.label}</option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+          </div>
+
+          {/* Clear */}
+          {hasFilters && (
+            <button
+              onClick={clearFilters}
+              className="shrink-0 flex items-center gap-1.5 h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              <X className="h-3.5 w-3.5" /> Clear
+            </button>
+          )}
+        </div>
+
+        {/* Body */}
+        {loading ? (
+          <div className="flex items-center justify-center py-24">
+            <Loader2 className="h-8 w-8 animate-spin text-slate-300" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-20 rounded-2xl border border-dashed border-slate-200">
+            <Trophy className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+            {isAdmin ? (
+              <>
+                <p className="font-bold text-slate-400 mb-1">
+                  {hasFilters ? 'No milestones match your filters' : 'No milestones yet'}
+                </p>
+                {!hasFilters && (
+                  <button
+                    onClick={() => setShowModal(true)}
+                    className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-600 hover:text-emerald-500 min-h-[44px]"
+                  >
+                    <Plus className="h-4 w-4" /> Record your first milestone
+                  </button>
+                )}
+              </>
+            ) : (
+              <p className="font-bold text-slate-400">
+                No milestones recorded yet — keep training!
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-8">
+            {grouped.map(([key, milestones]) => (
+              <MonthGroup
+                key={key}
+                monthKey={key}
+                milestones={milestones}
+                isAdmin={isAdmin}
+                onDelete={handleDelete}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {filtered.length === 0 ? (
-        <div className="text-center py-20 rounded-2xl border border-dashed border-slate-200">
-          <Trophy className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-          <p className="font-bold text-slate-400">No milestones yet</p>
-        </div>
-      ) : (
-        <div className="grid sm:grid-cols-2 gap-4">
-          {filtered.map(m => (
-            <div key={m.id} className="rounded-2xl border border-amber-100 bg-amber-50 p-5">
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${FTEM_PHASES[m.ftem_phase]?.color ?? ''}`}>{m.ftem_phase}</span>
-                {isAdmin && <button onClick={async () => { await api.delete(`/milestones/${m.id}`); setItems(p => p.filter(x => x.id !== m.id)) }} className="text-slate-300 hover:text-red-400"><X className="h-3.5 w-3.5" /></button>}
-              </div>
-              <h2 className="font-bold text-slate-900">{m.title}</h2>
-              <p className="text-sm text-slate-600 mt-0.5">{m.first_name} {m.last_name}</p>
-              {m.description && <p className="text-xs text-slate-500 mt-2">{m.description}</p>}
-              <p className="text-xs text-slate-400 mt-3">{new Date(m.achieved_at).toLocaleDateString('en-AU', { day:'numeric',month:'short',year:'numeric' })}</p>
-              {m.is_shared_with_parent ? <span className="mt-2 inline-block text-xs text-emerald-600 font-semibold">Shared with parent</span> : null}
-            </div>
-          ))}
-        </div>
+      {/* Mobile FAB */}
+      {isAdmin && (
+        <button
+          onClick={() => setShowModal(true)}
+          className="md:hidden fixed bottom-20 right-4 z-20 h-14 w-14 rounded-full bg-emerald-500 hover:bg-emerald-400 shadow-lg shadow-emerald-500/30 flex items-center justify-center transition-colors"
+          aria-label="Add milestone"
+        >
+          <Plus className="h-6 w-6 text-white" />
+        </button>
       )}
 
+      {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl p-6">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-black text-slate-900">Add milestone</h2>
-              <button onClick={() => setShowModal(false)}><X className="h-5 w-5 text-slate-400" /></button>
-            </div>
-            <form onSubmit={handleAdd} className="space-y-3">
-              <div><label className="text-xs font-semibold text-slate-500 mb-1 block">Athlete</label>
-                <select required value={form.athlete_id} onChange={e=>setForm(p=>({...p,athlete_id:e.target.value}))} className={inputCls}>
-                  <option value="">Select athlete…</option>
-                  {athletes.map(a => <option key={a.id} value={a.id}>{a.first_name} {a.last_name}</option>)}
-                </select>
-              </div>
-              <div><label className="text-xs font-semibold text-slate-500 mb-1 block">Title</label><input required value={form.title} onChange={e=>setForm(p=>({...p,title:e.target.value}))} className={inputCls} /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-xs font-semibold text-slate-500 mb-1 block">FTEM Phase</label>
-                  <select value={form.ftem_phase} onChange={e=>setForm(p=>({...p,ftem_phase:e.target.value}))} className={inputCls}>
-                    {Object.keys(FTEM_PHASES).map(k => <option key={k} value={k}>{k}</option>)}
-                  </select>
-                </div>
-                <div><label className="text-xs font-semibold text-slate-500 mb-1 block">Date achieved</label><input type="date" required value={form.achieved_at} onChange={e=>setForm(p=>({...p,achieved_at:e.target.value}))} className={inputCls} /></div>
-              </div>
-              <div><label className="text-xs font-semibold text-slate-500 mb-1 block">Description</label><textarea value={form.description} onChange={e=>setForm(p=>({...p,description:e.target.value}))} rows={2} className={inputCls} /></div>
-              <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
-                <input type="checkbox" checked={form.is_shared_with_parent} onChange={e=>setForm(p=>({...p,is_shared_with_parent:e.target.checked}))} className="rounded accent-emerald-500" />
-                Share with parent
-              </label>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowModal(false)} className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">Cancel</button>
-                <button type="submit" disabled={saving} className="flex-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 py-2.5 text-sm font-bold text-white disabled:opacity-50">{saving ? 'Saving…' : 'Add'}</button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <AddMilestoneModal
+          athletes={athletes}
+          onClose={() => setShowModal(false)}
+          onSaved={handleSaved}
+        />
       )}
     </div>
   )

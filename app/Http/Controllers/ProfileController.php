@@ -16,6 +16,7 @@ class ProfileController extends Controller
             'id'               => $user->id,
             'email'            => $user->email,
             'full_name'        => $user->full_name,
+            'phone'            => $user->phone,
             'role'             => $user->role,
             'club_id'          => $user->club_id,
             'club_name'        => $club?->name,
@@ -35,11 +36,13 @@ class ProfileController extends Controller
     {
         $data = $request->validate([
             'full_name' => 'required|string',
+            'phone'     => 'nullable|string|max:20',
             'password'  => 'nullable|min:6',
         ]);
 
         $user = $request->user();
         $user->full_name = $data['full_name'];
+        $user->phone     = $data['phone'] ?? $user->phone;
 
         if (!empty($data['password'])) {
             $user->password_hash = Hash::make($data['password']);

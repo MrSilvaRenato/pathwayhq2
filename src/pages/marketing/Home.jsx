@@ -83,12 +83,20 @@ export default function Home() {
       </nav>
 
       {/* Hero */}
-      <section className="relative overflow-hidden border-b border-white/5">
+      <section className="relative overflow-hidden border-b border-white/5 min-h-[600px] lg:min-h-[720px]">
+        {/* Athlete background image */}
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute inset-0 opacity-[0.03]"
-            style={{ backgroundImage: 'repeating-linear-gradient(45deg,white 0px,white 1px,transparent 1px,transparent 60px)' }} />
-          <div className="absolute top-0 left-0 h-[500px] w-[700px] rounded-full bg-emerald-600/15 blur-[120px]" />
-          <div className="absolute top-0 right-0 h-[300px] w-[400px] rounded-full bg-blue-600/10 blur-[80px]" />
+          <img
+            src="/hero-athlete.png"
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover object-center opacity-30"
+          />
+          {/* Left-to-right gradient so text stays readable */}
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/80 to-slate-950/30" />
+          {/* Bottom fade */}
+          <div className="absolute bottom-0 inset-x-0 h-32 bg-gradient-to-t from-slate-950 to-transparent" />
+          {/* Emerald glow accent */}
+          <div className="absolute top-0 left-0 h-[500px] w-[700px] rounded-full bg-emerald-600/10 blur-[120px]" />
         </div>
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 py-16 lg:py-28">
           <div className="grid lg:grid-cols-2 gap-12 items-center">

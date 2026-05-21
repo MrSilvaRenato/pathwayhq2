@@ -1,14 +1,16 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Zap, Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { SPORTS, STATES } from '../../lib/constants'
 
-const OLYMPIC = SPORTS.filter(s => s.in2032)
+const ALL_SPORTS = SPORTS
 
 export default function Signup() {
-  const { register } = useAuth()
-  const navigate     = useNavigate()
+  const { register }   = useAuth()
+  const navigate       = useNavigate()
+  const [searchParams] = useSearchParams()
+  const claimToken     = searchParams.get('claim')
   const [form, setForm]     = useState({ full_name: '', email: '', password: '', club_name: '', sport: 'soccer', city: '', state: 'QLD' })
   const [error, setError]   = useState('')
   const [loading, setLoading] = useState(false)
@@ -32,7 +34,7 @@ export default function Signup() {
     setError('')
     try {
       await register(form)
-      navigate('/dashboard')
+      navigate(claimToken ? `/claim/${claimToken}` : '/dashboard')
     } catch (err) {
       setError(err.response?.data?.message ?? err.response?.data?.error ?? 'Registration failed. Please try again.')
     } finally {
@@ -133,7 +135,7 @@ export default function Signup() {
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-2">Primary sport</label>
                   <select value={form.sport} onChange={set('sport')} className={inputCls + ' bg-slate-900 cursor-pointer'}>
-                    {OLYMPIC.map(s => <option key={s.value} value={s.value}>{s.emoji} {s.label}</option>)}
+                    {ALL_SPORTS.map(s => <option key={s.value} value={s.value}>{s.emoji} {s.label}</option>)}
                   </select>
                 </div>
                 <div className="grid grid-cols-2 gap-3">

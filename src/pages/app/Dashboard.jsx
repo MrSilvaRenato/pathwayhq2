@@ -1,112 +1,590 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Users, Trophy, Calendar, ArrowRight, Zap } from 'lucide-react'
+import {
+  Users, Trophy, Calendar, ArrowRight, Zap, Dumbbell,
+  MapPin, Megaphone, CheckCircle2, XCircle, HandHeart,
+  TrendingUp, Clock,
+} from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import api from '../../lib/api'
-import { FTEM_PHASES } from '../../lib/constants'
+import { FTEM_PHASES, SPORTS } from '../../lib/constants'
 
-export default function Dashboard() {
-  const { user } = useAuth()
-  const [athletes,   setAthletes]   = useState([])
-  const [milestones, setMilestones] = useState([])
-  const [events,     setEvents]     = useState([])
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function fmtDay(dt)  { return new Date(dt).toLocaleDateString('en-AU', { day: 'numeric' }) }
+function fmtMon(dt)  { return new Date(dt).toLocaleDateString('en-AU', { month: 'short' }).toUpperCase() }
+function fmtTime(dt) { return new Date(dt).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: true }) }
+function fmtFull(dt) { return new Date(dt).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }) }
+
+// Shared empty state
+function Empty({ msg }) {
+  return <p className="text-xs text-slate-400 text-center py-4">{msg}</p>
+}
+
+// ─── CLUB ADMIN / COACH DASHBOARD ────────────────────────────────────────────
+function ClubDashboard({ user }) {
+  const [athletes,      setAthletes]      = useState([])
+  const [milestones,    setMilestones]    = useState([])
+  const [events,        setEvents]        = useState([])
+  const [announcements, setAnnouncements] = useState([])
+  const [volunteering,  setVolunteering]  = useState([])
+  const [loading,       setLoading]       = useState(true)
 
   useEffect(() => {
-    api.get('/athletes').then(r => setAthletes(r.data))
-    api.get('/milestones').then(r => setMilestones(r.data.slice(0, 5)))
-    api.get('/events').then(r => setEvents(r.data.slice(0, 5)))
+    Promise.all([
+      api.get('/athletes').catch(() => ({ data: [] })),
+      api.get('/milestones').catch(() => ({ data: [] })),
+      api.get('/events').catch(() => ({ data: [] })),
+      api.get('/announcements').catch(() => ({ data: [] })),
+      api.get('/volunteering').catch(() => ({ data: [] })),
+    ]).then(([a, m, e, ann, v]) => {
+      setAthletes(a.data ?? [])
+      setMilestones((m.data ?? []).slice(0, 4))
+      const now = new Date()
+      setEvents((e.data ?? []).filter(ev => new Date(ev.start_time) >= now).slice(0, 5))
+      setAnnouncements((ann.data ?? []).slice(0, 3))
+      setVolunteering((v.data ?? []).filter(v => !v.date || new Date(v.date) >= now).slice(0, 3))
+    }).finally(() => setLoading(false))
   }, [])
 
-  const hour = new Date().getHours()
-  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+  const active    = athletes.filter(a => a.is_active).length
+  const pending   = athletes.filter(a => a.invite_status === 'pending').length
+  const ftemDist  = athletes.reduce((acc, a) => { acc[a.ftem_phase] = (acc[a.ftem_phase] || 0) + 1; return acc }, {})
+  const volNeeded = volunteering.filter(v => !v.spots || v.signed_up < v.spots).length
 
-  const ftemDist = athletes.reduce((acc, a) => { acc[a.ftem_phase] = (acc[a.ftem_phase] || 0) + 1; return acc }, {})
-  const active   = athletes.filter(a => a.is_active).length
+  if (loading) return <DashSkeleton />
+
+  const stats = [
+    { label: 'Athletes',   value: athletes.length, sub: `${active} active`,    icon: Users,     color: 'text-blue-600 bg-blue-50',      href: '/athletes' },
+    { label: 'Pending',    value: pending,          sub: 'awaiting invite',     icon: Clock,     color: 'text-amber-600 bg-amber-50',    href: '/athletes' },
+    { label: 'Sessions',   value: events.length,    sub: 'coming up',           icon: Calendar,  color: 'text-purple-600 bg-purple-50',  href: '/calendar' },
+    { label: 'Milestones', value: milestones.length,sub: 'recent',              icon: Trophy,    color: 'text-amber-600 bg-amber-50',    href: '/milestones' },
+    { label: 'Volunteer',  value: volNeeded,        sub: 'spots open',          icon: HandHeart, color: 'text-emerald-600 bg-emerald-50', href: '/volunteering' },
+  ]
 
   return (
-    <div className="p-6 lg:p-8 max-w-6xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-2xl font-black text-slate-900">{greeting}, {user?.full_name?.split(' ')[0]} 👋</h1>
-        <p className="text-slate-500 mt-1 text-sm">Here's what's happening with your club today.</p>
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+
+      {/* ── Row 1: stat pills — horizontal scroll on mobile ─────── */}
+      <div className="col-span-full overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 md:contents">
+        <div className="flex gap-3 pb-2 md:pb-0 md:contents" style={{ minWidth: 'max-content' }}>
+          {stats.map(s => (
+            <Link key={s.label} to={s.href}
+              className="flex shrink-0 w-40 md:w-auto md:col-span-2 items-center gap-3 rounded-2xl border border-slate-100 bg-white hover:shadow-md hover:border-slate-200 transition-all px-4 py-3.5 group">
+              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${s.color}`}>
+                <s.icon className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-2xl font-black text-slate-900 leading-none">{s.value}</div>
+                <div className="text-[11px] text-slate-400 mt-0.5 whitespace-nowrap">{s.label} · {s.sub}</div>
+              </div>
+            </Link>
+          ))}
+          {/* extra col filler on xl so 5 pills span correctly */}
+          <div className="hidden xl:block xl:col-span-2" />
+        </div>
       </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {[
-          { label: 'Total athletes', value: athletes.length, icon: Users,    color: 'bg-blue-50 text-blue-600',    href: '/athletes' },
-          { label: 'Active',         value: active,          icon: Zap,      color: 'bg-emerald-50 text-emerald-600', href: '/athletes' },
-          { label: 'Milestones',     value: milestones.length,icon: Trophy,  color: 'bg-amber-50 text-amber-600',  href: '/milestones' },
-          { label: 'Events',         value: events.length,   icon: Calendar, color: 'bg-purple-50 text-purple-600', href: '/calendar' },
-        ].map(s => (
-          <Link key={s.label} to={s.href} className="rounded-2xl border border-slate-100 bg-white hover:shadow-md transition-all p-5">
-            <div className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${s.color} mb-3`}>
-              <s.icon className="h-5 w-5" />
-            </div>
-            <div className="text-3xl font-black text-slate-900">{s.value}</div>
-            <div className="text-sm text-slate-500 mt-0.5">{s.label}</div>
+      {/* ── Row 2: Upcoming sessions (big) + FTEM dist ───────── */}
+
+      {/* Upcoming sessions — hero */}
+      <div className="col-span-full md:col-span-7 rounded-2xl border border-slate-100 bg-white p-4 md:p-5 flex flex-col">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-bold text-slate-900 flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-purple-500" /> Upcoming Sessions
+          </h2>
+          <Link to="/calendar" className="text-xs text-emerald-600 hover:text-emerald-700 font-semibold flex items-center gap-1">
+            Full calendar <ArrowRight className="h-3 w-3" />
           </Link>
-        ))}
-      </div>
-
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* FTEM breakdown */}
-        <div className="rounded-2xl border border-slate-100 bg-white p-6">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="font-bold text-slate-900">FTEM Distribution</h2>
-            <Link to="/analytics" className="text-xs text-emerald-600 hover:text-emerald-700 font-semibold flex items-center gap-1">
-              Analytics <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
-          {athletes.length === 0 ? (
-            <div className="text-center py-8 text-slate-400 text-sm">
-              No athletes yet. <Link to="/athletes" className="text-emerald-600 underline">Add your first athlete</Link>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {Object.keys(FTEM_PHASES).map(phase => {
-                const count = ftemDist[phase] ?? 0
-                if (!count) return null
-                const pct = Math.round((count / athletes.length) * 100)
-                return (
-                  <div key={phase} className="flex items-center gap-3">
-                    <span className={`inline-flex w-10 justify-center rounded-full px-1.5 py-0.5 text-xs font-bold ${FTEM_PHASES[phase].color}`}>{phase}</span>
-                    <div className="flex-1 rounded-full bg-slate-100 h-2">
-                      <div className="h-2 rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
-                    </div>
-                    <span className="text-sm font-semibold text-slate-700 w-8 text-right">{count}</span>
-                  </div>
-                )
-              })}
-            </div>
-          )}
         </div>
-
-        {/* Recent milestones */}
-        <div className="rounded-2xl border border-slate-100 bg-white p-6">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="font-bold text-slate-900">Recent Milestones</h2>
-            <Link to="/milestones" className="text-xs text-emerald-600 hover:text-emerald-700 font-semibold flex items-center gap-1">
-              View all <ArrowRight className="h-3 w-3" />
-            </Link>
+        {events.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center py-6 text-slate-300">
+            <Calendar className="h-10 w-10 mb-2" />
+            <p className="text-sm text-slate-400">No upcoming sessions</p>
+            <Link to="/calendar" className="mt-2 text-xs text-emerald-600 underline">Schedule one</Link>
           </div>
-          {milestones.length === 0 ? (
-            <div className="text-center py-8 text-slate-400 text-sm">No milestones recorded yet.</div>
-          ) : (
-            <div className="space-y-3">
-              {milestones.map(m => (
-                <div key={m.id} className="flex items-start gap-3 rounded-xl bg-amber-50 border border-amber-100 p-3">
-                  <Trophy className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-800 truncate">{m.title}</p>
-                    <p className="text-xs text-slate-500">{m.first_name} {m.last_name} · {new Date(m.achieved_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</p>
-                  </div>
-                  <span className={`shrink-0 inline-flex rounded-full px-2 py-0.5 text-xs font-bold ${FTEM_PHASES[m.ftem_phase]?.color ?? ''}`}>{m.ftem_phase}</span>
+        ) : (
+          <div className="space-y-2 flex-1">
+            {events.map((e, i) => (
+              <div key={e.id} className={`flex items-center gap-3 rounded-xl p-3 transition-colors ${i === 0 ? 'bg-purple-50 border border-purple-100' : 'border border-slate-50 hover:bg-slate-50'}`}>
+                <div className={`flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl ${i === 0 ? 'bg-purple-500' : 'bg-slate-100'}`}>
+                  <span className={`text-sm font-black leading-none ${i === 0 ? 'text-white' : 'text-slate-700'}`}>{fmtDay(e.start_time)}</span>
+                  <span className={`text-[10px] font-semibold ${i === 0 ? 'text-purple-200' : 'text-slate-400'}`}>{fmtMon(e.start_time)}</span>
                 </div>
-              ))}
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-semibold truncate ${i === 0 ? 'text-slate-900' : 'text-slate-700'}`}>{e.title}</p>
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <span className="text-xs text-slate-400 flex items-center gap-0.5">
+                      <Clock className="h-3 w-3" /> {fmtTime(e.start_time)}
+                    </span>
+                    {e.location && (
+                      <span className="text-xs text-slate-400 flex items-center gap-0.5">
+                        <MapPin className="h-3 w-3" /> {e.location}
+                      </span>
+                    )}
+                    {e.squad_name && (
+                      <span className="text-xs text-slate-400 flex items-center gap-0.5">
+                        <Users className="h-3 w-3" /> {e.squad_name}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {i === 0 && <span className="shrink-0 text-[10px] font-bold text-purple-600 bg-purple-100 rounded-full px-2 py-0.5">Next</span>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* FTEM distribution */}
+      <div className="col-span-full md:col-span-5 rounded-2xl border border-slate-100 bg-white p-4 md:p-5 flex flex-col">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-bold text-slate-900 flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-emerald-500" /> FTEM Spread
+          </h2>
+          <Link to="/analytics" className="text-xs text-emerald-600 hover:text-emerald-700 font-semibold flex items-center gap-1">
+            Analytics <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+        {athletes.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-slate-300">
+            <Users className="h-10 w-10 mb-2" />
+            <p className="text-sm text-slate-400">No athletes yet</p>
+            <Link to="/athletes" className="mt-2 text-xs text-emerald-600 underline">Add your first</Link>
+          </div>
+        ) : (
+          <div className="space-y-2.5 flex-1">
+            {Object.entries(FTEM_PHASES).map(([phase, meta]) => {
+              const count = ftemDist[phase] ?? 0
+              if (!count) return null
+              const pct = Math.round((count / athletes.length) * 100)
+              return (
+                <div key={phase} className="flex items-center gap-2.5">
+                  <span className={`inline-flex w-9 shrink-0 justify-center rounded-lg px-1 py-0.5 text-xs font-black ${meta.color}`}>{phase}</span>
+                  <div className="flex-1 rounded-full bg-slate-100 h-2 overflow-hidden">
+                    <div className="h-2 rounded-full bg-emerald-500 transition-all duration-500" style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="text-xs font-bold text-slate-600 w-5 text-right">{count}</span>
+                  <span className="text-[10px] text-slate-400 w-7 text-right">{pct}%</span>
+                </div>
+              )
+            })}
+            <div className="pt-2 border-t border-slate-50 flex items-center justify-between text-xs text-slate-400">
+              <span>{athletes.length} total athletes</span>
+              <span>{active} active</span>
             </div>
-          )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Row 3: Announcements + Milestones + Volunteering ─── */}
+
+      {/* Announcements */}
+      <div className="col-span-full md:col-span-5 rounded-2xl border border-slate-100 bg-white p-4 md:p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-bold text-slate-900 flex items-center gap-2">
+            <Megaphone className="h-4 w-4 text-blue-500" /> Announcements
+          </h2>
+          <Link to="/announcements" className="text-xs text-emerald-600 hover:text-emerald-700 font-semibold flex items-center gap-1">
+            Manage <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+        {announcements.length === 0 ? (
+          <Empty msg="No announcements yet" />
+        ) : (
+          <div className="space-y-2">
+            {announcements.map(a => (
+              <div key={a.id} className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
+                <p className="text-sm font-semibold text-slate-800 leading-snug">{a.title}</p>
+                {a.body && <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{a.body}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Recent milestones */}
+      <div className="col-span-full md:col-span-4 rounded-2xl border border-slate-100 bg-white p-4 md:p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-bold text-slate-900 flex items-center gap-2">
+            <Trophy className="h-4 w-4 text-amber-500" /> Recent Milestones
+          </h2>
+          <Link to="/milestones" className="text-xs text-emerald-600 hover:text-emerald-700 font-semibold flex items-center gap-1">
+            All <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+        {milestones.length === 0 ? (
+          <Empty msg="No milestones recorded yet" />
+        ) : (
+          <div className="space-y-2">
+            {milestones.map(m => (
+              <div key={m.id} className="flex items-center gap-2.5 rounded-xl bg-amber-50 border border-amber-100 px-3 py-2">
+                <Trophy className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-slate-800 truncate">{m.title}</p>
+                  <p className="text-[10px] text-slate-400">{fmtFull(m.achieved_at)}</p>
+                </div>
+                <span className={`shrink-0 text-[10px] font-bold rounded-full px-1.5 py-0.5 ${FTEM_PHASES[m.ftem_phase]?.color ?? ''}`}>
+                  {m.ftem_phase}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Volunteering */}
+      <div className="col-span-full md:col-span-3 rounded-2xl border border-slate-100 bg-white p-4 md:p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-bold text-slate-900 flex items-center gap-2">
+            <HandHeart className="h-4 w-4 text-emerald-500" /> Volunteering
+          </h2>
+          <Link to="/volunteering" className="text-xs text-emerald-600 hover:text-emerald-700 font-semibold flex items-center gap-1">
+            All <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+        {volunteering.length === 0 ? (
+          <Empty msg="No open opportunities" />
+        ) : (
+          <div className="space-y-2">
+            {volunteering.map(v => {
+              const spotsLeft = v.spots ? v.spots - (v.signed_up ?? 0) : null
+              return (
+                <div key={v.id} className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5">
+                  <p className="text-xs font-semibold text-slate-800 truncate">{v.title}</p>
+                  <div className="flex items-center justify-between mt-1">
+                    {v.date && <span className="text-[10px] text-slate-400">{fmtFull(v.date)}</span>}
+                    {spotsLeft !== null && (
+                      <span className={`text-[10px] font-bold rounded-full px-1.5 py-0.5 ${spotsLeft === 0 ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                        {spotsLeft === 0 ? 'Full' : `${spotsLeft} left`}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+    </div>
+  )
+}
+
+// ─── ATHLETE DASHBOARD ────────────────────────────────────────────────────────
+function AthleteDashboard({ user }) {
+  const [profile,       setProfile]      = useState(null)
+  const [milestones,    setMilestones]   = useState([])
+  const [events,        setEvents]       = useState([])
+  const [announcements, setAnnouncements]= useState([])
+  const [invites,       setInvites]      = useState([])
+  const [volunteering,  setVolunteering] = useState([])
+  const [loading,       setLoading]      = useState(true)
+  const [inviteAction,  setInviteAction] = useState({})
+
+  useEffect(() => {
+    Promise.all([
+      api.get('/athletes/me').catch(() => null),
+      api.get('/milestones').catch(() => ({ data: [] })),
+      api.get('/events').catch(() => ({ data: [] })),
+      api.get('/announcements').catch(() => ({ data: [] })),
+      api.get('/athletes/invites').catch(() => ({ data: [] })),
+      api.get('/volunteering').catch(() => ({ data: [] })),
+    ]).then(([p, m, e, a, inv, v]) => {
+      setProfile(p?.data ?? null)
+      setMilestones((m.data ?? []).slice(0, 4))
+      const now = new Date()
+      setEvents((e.data ?? []).filter(ev => new Date(ev.start_time) >= now).slice(0, 4))
+      setAnnouncements((a.data ?? []).slice(0, 4))
+      setInvites(inv.data ?? [])
+      setVolunteering((v.data ?? []).filter(v => !v.date || new Date(v.date) >= now).slice(0, 3))
+    }).finally(() => setLoading(false))
+  }, [])
+
+  async function handleAccept(id) {
+    setInviteAction(p => ({ ...p, [id]: 'accepting' }))
+    try {
+      await api.post(`/athletes/${id}/accept-invite`)
+      setInvites(p => p.filter(i => i.id !== id))
+      const [p, m, e, a] = await Promise.all([
+        api.get('/athletes/me').catch(() => null),
+        api.get('/milestones').catch(() => ({ data: [] })),
+        api.get('/events').catch(() => ({ data: [] })),
+        api.get('/announcements').catch(() => ({ data: [] })),
+      ])
+      setProfile(p?.data ?? null)
+      setMilestones((m.data ?? []).slice(0, 4))
+      const now = new Date()
+      setEvents((e.data ?? []).filter(ev => new Date(ev.start_time) >= now).slice(0, 4))
+      setAnnouncements((a.data ?? []).slice(0, 4))
+    } finally {
+      setInviteAction(p => { const n = { ...p }; delete n[id]; return n })
+    }
+  }
+
+  async function handleReject(id) {
+    setInviteAction(p => ({ ...p, [id]: 'rejecting' }))
+    try {
+      await api.delete(`/athletes/${id}/reject-invite`)
+      setInvites(p => p.filter(i => i.id !== id))
+    } finally {
+      setInviteAction(p => { const n = { ...p }; delete n[id]; return n })
+    }
+  }
+
+  if (loading) return <DashSkeleton />
+
+  const sport     = profile ? SPORTS.find(s => s.value === profile.sport) : null
+  const phase     = profile ? FTEM_PHASES[profile.ftem_phase] : null
+  const nextEvent = events[0] ?? null
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+
+      {/* ── Pending invites (full-width alert — very prominent on mobile) ── */}
+      {invites.map(inv => (
+        <div key={inv.id} className="col-span-full rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 shadow-sm shadow-amber-100">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 border border-amber-200 text-lg mt-0.5">🏟️</div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-slate-900 text-sm leading-snug">{inv.club_name} wants to add you as an athlete</p>
+              <p className="text-xs text-slate-500 mt-0.5">{inv.first_name} {inv.last_name} · FTEM {inv.ftem_phase}{inv.club_city ? ` · ${inv.club_city}` : ''}</p>
+              <div className="flex gap-2 mt-3">
+                <button onClick={() => handleAccept(inv.id)} disabled={!!inviteAction[inv.id]}
+                  className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 px-4 py-2.5 text-sm font-bold text-white transition-all disabled:opacity-50 min-h-[44px] flex-1 sm:flex-none sm:px-5">
+                  <CheckCircle2 className="h-4 w-4" />
+                  {inviteAction[inv.id] === 'accepting' ? 'Accepting…' : 'Accept invite'}
+                </button>
+                <button onClick={() => handleReject(inv.id)} disabled={!!inviteAction[inv.id]}
+                  className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 active:scale-95 px-4 py-2.5 text-sm font-semibold text-slate-600 transition-all disabled:opacity-50 min-h-[44px] flex-1 sm:flex-none">
+                  <XCircle className="h-4 w-4" />
+                  {inviteAction[inv.id] === 'rejecting' ? 'Declining…' : 'Decline'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+
+      {/* ── Profile card ─────────────────────────────────────── */}
+      <div className="col-span-full md:col-span-4 rounded-2xl border border-slate-100 bg-white p-4 md:p-5">
+        {profile ? (
+          <div className="flex items-center gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 border border-emerald-100 text-2xl">
+              {sport?.emoji ?? '🏅'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-black text-slate-900 text-base truncate">{profile.first_name} {profile.last_name}</p>
+              <p className="text-xs text-slate-500 mt-0.5">{sport?.label ?? '—'}{profile.squad_names ? ` · ${profile.squad_names}` : ''}</p>
+              {phase && (
+                <div className="mt-2 flex items-center gap-2">
+                  <span className={`inline-flex rounded-lg px-2.5 py-1 text-xs font-black border ${phase.color}`}>{profile.ftem_phase}</span>
+                  <span className="text-xs text-slate-400">{phase.label}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-2">
+            <Dumbbell className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+            <p className="text-sm font-semibold text-slate-500">No profile linked</p>
+            <p className="text-xs text-slate-400 mt-1">Ask your coach to add you</p>
+          </div>
+        )}
+      </div>
+
+      {/* ── Next session hero — stacked on mobile, split on desktop ── */}
+      <div className="col-span-full md:col-span-8">
+        {nextEvent ? (
+          <div className="rounded-2xl bg-gradient-to-br from-purple-600 to-purple-700 p-4 md:p-5 h-full text-white relative overflow-hidden">
+            {/* bg decoration */}
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white" />
+              <div className="absolute -right-4 bottom-0 h-24 w-24 rounded-full bg-white" />
+            </div>
+            <div className="relative">
+              {/* Mobile: stacked layout; md: side by side */}
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                <div className="flex-1">
+                  <p className="text-xs font-bold text-purple-200 uppercase tracking-wider mb-1">Next session</p>
+                  <h3 className="text-xl font-black leading-tight">{nextEvent.title}</h3>
+                  <div className="flex flex-wrap items-center gap-2 mt-3">
+                    <span className="flex items-center gap-1.5 text-sm text-purple-100">
+                      <Calendar className="h-4 w-4" />
+                      {fmtFull(nextEvent.start_time)} at {fmtTime(nextEvent.start_time)}
+                    </span>
+                    {nextEvent.location && (
+                      <span className="flex items-center gap-1.5 text-sm text-purple-100">
+                        <MapPin className="h-4 w-4" /> {nextEvent.location}
+                      </span>
+                    )}
+                  </div>
+                  {nextEvent.squad_name && (
+                    <span className="inline-flex items-center gap-1 mt-3 rounded-full bg-white/20 px-2.5 py-1 text-xs font-semibold text-white">
+                      <Users className="h-3 w-3" /> {nextEvent.squad_name}
+                    </span>
+                  )}
+                </div>
+                {/* Date badge — inline on mobile below title, right side on sm+ */}
+                <div className="shrink-0 self-start sm:self-center text-center bg-white/20 rounded-2xl px-4 py-3">
+                  <p className="text-3xl font-black leading-none">{fmtDay(nextEvent.start_time)}</p>
+                  <p className="text-sm font-bold text-purple-200 mt-0.5">{fmtMon(nextEvent.start_time)}</p>
+                </div>
+              </div>
+              {events.length > 1 && (
+                <div className="mt-4 pt-4 border-t border-white/20 flex items-center justify-between">
+                  <p className="text-xs text-purple-200">{events.length - 1} more upcoming</p>
+                  <Link to="/calendar" className="text-xs font-bold text-white flex items-center gap-1 hover:text-purple-200 transition-colors">
+                    View calendar <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-white h-full min-h-[120px] flex flex-col items-center justify-center p-6 text-center">
+            <Calendar className="h-10 w-10 text-slate-300 mb-2" />
+            <p className="font-semibold text-slate-400 text-sm">No upcoming sessions</p>
+          </div>
+        )}
+      </div>
+
+      {/* ── Announcements ────────────────────────────────────── */}
+      <div className="col-span-full md:col-span-4 rounded-2xl border border-slate-100 bg-white p-4 md:p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-bold text-slate-900 flex items-center gap-2 text-sm">
+            <Megaphone className="h-3.5 w-3.5 text-blue-500" /> Announcements
+          </h2>
+          <Link to="/announcements" className="text-xs text-emerald-600 hover:text-emerald-700 font-semibold flex items-center gap-1">
+            All <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+        {announcements.length === 0 ? (
+          <Empty msg="No announcements" />
+        ) : (
+          <div className="space-y-2">
+            {announcements.map(a => (
+              <div key={a.id} className="rounded-xl bg-blue-50 border border-blue-100 px-3 py-2.5">
+                <p className="text-xs font-semibold text-slate-800 leading-snug">{a.title}</p>
+                {a.body && <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-1">{a.body}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── My milestones ────────────────────────────────────── */}
+      <div className="col-span-full md:col-span-4 rounded-2xl border border-slate-100 bg-white p-4 md:p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-bold text-slate-900 flex items-center gap-2 text-sm">
+            <Trophy className="h-3.5 w-3.5 text-amber-500" /> My Milestones
+          </h2>
+          <Link to="/milestones" className="text-xs text-emerald-600 hover:text-emerald-700 font-semibold flex items-center gap-1">
+            All <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+        {milestones.length === 0 ? (
+          <Empty msg="No milestones yet — keep training!" />
+        ) : (
+          <div className="space-y-2">
+            {milestones.map(m => (
+              <div key={m.id} className="flex items-center gap-2.5 rounded-xl bg-amber-50 border border-amber-100 px-3 py-2">
+                <Trophy className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-slate-800 truncate">{m.title}</p>
+                  <p className="text-[10px] text-slate-400">{fmtFull(m.achieved_at)}</p>
+                </div>
+                <span className={`shrink-0 text-[10px] font-bold rounded-full px-1.5 py-0.5 ${FTEM_PHASES[m.ftem_phase]?.color ?? ''}`}>
+                  {m.ftem_phase}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Volunteering ─────────────────────────────────────── */}
+      <div className="col-span-full md:col-span-4 rounded-2xl border border-slate-100 bg-white p-4 md:p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-bold text-slate-900 flex items-center gap-2 text-sm">
+            <HandHeart className="h-3.5 w-3.5 text-emerald-500" /> Volunteer Spots
+          </h2>
+          <Link to="/volunteering" className="text-xs text-emerald-600 hover:text-emerald-700 font-semibold flex items-center gap-1">
+            All <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+        {volunteering.length === 0 ? (
+          <Empty msg="No open volunteer spots" />
+        ) : (
+          <div className="space-y-2">
+            {volunteering.map(v => {
+              const spotsLeft = v.spots ? v.spots - (v.signed_up ?? 0) : null
+              return (
+                <div key={v.id} className={`rounded-xl border px-3 py-2.5 ${v.i_signed_up ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-100'}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-semibold text-slate-800 truncate">{v.title}</p>
+                    {v.i_signed_up
+                      ? <span className="shrink-0 text-[10px] font-bold rounded-full px-1.5 py-0.5 bg-emerald-100 text-emerald-700">You're in</span>
+                      : spotsLeft !== null && <span className={`shrink-0 text-[10px] font-bold rounded-full px-1.5 py-0.5 ${spotsLeft === 0 ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>{spotsLeft === 0 ? 'Full' : `${spotsLeft} left`}</span>
+                    }
+                  </div>
+                  {v.date && <p className="text-[10px] text-slate-400 mt-0.5">{fmtFull(v.date)}</p>}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+    </div>
+  )
+}
+
+// ─── Skeleton loader ──────────────────────────────────────────────────────────
+function DashSkeleton() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 animate-pulse">
+      {[...Array(5)].map((_, i) => (
+        <div key={i} className="col-span-full sm:col-span-6 md:col-span-2 h-16 rounded-2xl bg-slate-100" />
+      ))}
+      <div className="col-span-full md:col-span-7 h-56 rounded-2xl bg-slate-100" />
+      <div className="col-span-full md:col-span-5 h-56 rounded-2xl bg-slate-100" />
+      <div className="col-span-full md:col-span-5 h-40 rounded-2xl bg-slate-100" />
+      <div className="col-span-full md:col-span-4 h-40 rounded-2xl bg-slate-100" />
+      <div className="col-span-full md:col-span-3 h-40 rounded-2xl bg-slate-100" />
+    </div>
+  )
+}
+
+// ─── Root ─────────────────────────────────────────────────────────────────────
+export default function Dashboard() {
+  const { user } = useAuth()
+  const hour      = new Date().getHours()
+  const greeting  = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+  const isAthlete = user?.role === 'athlete'
+  const isParent  = user?.role === 'parent'
+
+  return (
+    <div className="px-4 py-4 md:p-6 lg:p-8 max-w-screen-xl mx-auto">
+      {/* Compact header */}
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h1 className="text-xl font-black text-slate-900">
+            {greeting}, {user?.full_name?.split(' ')[0]} 👋
+          </h1>
+          <p className="text-slate-400 text-xs mt-0.5">
+            {new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          </p>
+        </div>
+        <div className="hidden sm:flex items-center gap-2">
+          <Zap className="h-4 w-4 text-emerald-500" />
+          <span className="text-xs font-semibold text-slate-400">PathwayHQ</span>
         </div>
       </div>
+
+      {(isAthlete || isParent)
+        ? <AthleteDashboard user={user} />
+        : <ClubDashboard user={user} />
+      }
     </div>
   )
 }

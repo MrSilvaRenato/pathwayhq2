@@ -1,11 +1,11 @@
-import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Users, CalendarDays, Calendar, Trophy,
-  BarChart3, Settings, LogOut, Zap, Shield, Baby, Dumbbell,
-  Megaphone, HandHeart, Globe, X, Menu,
+  BarChart3, Settings, LogOut, Zap, Shield, Dumbbell,
+  Megaphone, HandHeart, Globe, X,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import { useSidebar } from '../../contexts/SidebarContext'
 
 const COACH_NAV = [
   { name: 'Dashboard',     href: '/dashboard',     icon: LayoutDashboard },
@@ -20,16 +20,19 @@ const COACH_NAV = [
 ]
 const ADMIN_NAV    = COACH_NAV
 const PARENT_NAV   = [
-  { name: 'My Child',      href: '/parent',        icon: Baby },
+  { name: 'Dashboard',     href: '/dashboard',     icon: LayoutDashboard },
   { name: 'Announcements', href: '/announcements', icon: Megaphone },
   { name: 'Calendar',      href: '/calendar',      icon: Calendar },
+  { name: 'Milestones',    href: '/milestones',    icon: Trophy },
   { name: 'Volunteering',  href: '/volunteering',  icon: HandHeart },
   { name: 'Settings',      href: '/settings',      icon: Settings },
 ]
 const ATHLETE_NAV  = [
-  { name: 'My Dashboard',  href: '/athlete',       icon: Dumbbell },
+  { name: 'My Dashboard',  href: '/dashboard',     icon: Dumbbell },
   { name: 'Announcements', href: '/announcements', icon: Megaphone },
   { name: 'Calendar',      href: '/calendar',      icon: Calendar },
+  { name: 'Milestones',    href: '/milestones',    icon: Trophy },
+  { name: 'Volunteering',  href: '/volunteering',  icon: HandHeart },
   { name: 'Settings',      href: '/settings',      icon: Settings },
 ]
 const SITE_ADMIN_NAV = [
@@ -52,9 +55,9 @@ function initials(name = '') {
 
 export default function Sidebar() {
   const { user, logout } = useAuth()
+  const { open, setOpen } = useSidebar()
   const location = useLocation()
   const navigate = useNavigate()
-  const [open, setOpen] = useState(false)
   const nav = getNav(user?.role)
 
   function handleLogout() {
@@ -65,7 +68,7 @@ export default function Sidebar() {
   const content = (
     <div className="flex h-full flex-col">
       <div className="flex h-16 items-center justify-between border-b border-slate-200 px-4">
-        <Link to="/dashboard" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
+        <Link to="/dashboard" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity" onClick={() => setOpen(false)}>
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 shadow-sm">
             <Zap className="h-4 w-4 text-white" />
           </div>
@@ -120,18 +123,12 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Desktop */}
+      {/* Desktop sidebar */}
       <aside className="hidden lg:flex h-screen w-60 flex-col border-r border-slate-200 bg-white shrink-0">
         {content}
       </aside>
 
-      {/* Mobile toggle */}
-      <button onClick={() => setOpen(true)}
-        className="lg:hidden fixed top-3 left-3 z-30 rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
-        <Menu className="h-4 w-4 text-slate-600" />
-      </button>
-
-      {/* Mobile overlay */}
+      {/* Mobile overlay — triggered by Topbar or BottomNav More tab */}
       {open && (
         <>
           <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setOpen(false)} />

@@ -12,6 +12,13 @@ use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\VolunteeringController;
 use App\Http\Controllers\NotificationController;
 
+// ─── Health check ────────────────────────────────────────────────────────────
+Route::get('/health', fn() => response()->json([
+    'status'    => 'ok',
+    'version'   => '1.0.0',
+    'timestamp' => now()->toISOString(),
+]));
+
 // ─── Public routes ───────────────────────────────────────────────────────────
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login',    [AuthController::class, 'login']);
@@ -26,6 +33,7 @@ Route::middleware('auth:api')->group(function () {
     // Auth
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me',      [AuthController::class, 'me']);
+    Route::get('/users/lookup', [AuthController::class, 'lookup']);
 
     // Profile
     Route::get('/profile',  [ProfileController::class, 'show']);
@@ -37,11 +45,16 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/clubs/all',    [ClubController::class, 'all']);     // site_admin only
 
     // Athletes
-    Route::get('/athletes',          [AthleteController::class, 'index']);
-    Route::post('/athletes',         [AthleteController::class, 'store']);
-    Route::get('/athletes/{id}',     [AthleteController::class, 'show']);
-    Route::put('/athletes/{id}',     [AthleteController::class, 'update']);
-    Route::delete('/athletes/{id}',  [AthleteController::class, 'destroy']);
+    Route::get('/athletes',                       [AthleteController::class, 'index']);
+    Route::get('/athletes/me',                    [AthleteController::class, 'me']);
+    Route::get('/athletes/invites',               [AthleteController::class, 'invites']);
+    Route::post('/athletes',                      [AthleteController::class, 'store']);
+    Route::post('/athletes/claim',                [AthleteController::class, 'claim']);
+    Route::post('/athletes/{id}/accept-invite',   [AthleteController::class, 'acceptInvite']);
+    Route::delete('/athletes/{id}/reject-invite', [AthleteController::class, 'rejectInvite']);
+    Route::get('/athletes/{id}',                  [AthleteController::class, 'show']);
+    Route::put('/athletes/{id}',                  [AthleteController::class, 'update']);
+    Route::delete('/athletes/{id}',               [AthleteController::class, 'destroy']);
 
     // Squads
     Route::get('/squads',                    [SquadController::class, 'index']);
@@ -49,18 +62,21 @@ Route::middleware('auth:api')->group(function () {
     Route::put('/squads/{id}',               [SquadController::class, 'update']);
     Route::delete('/squads/{id}',            [SquadController::class, 'destroy']);
     Route::get('/squads/{id}/athletes',      [SquadController::class, 'athletes']);
+    Route::delete('/squads/{id}/athletes/{athleteId}', [SquadController::class, 'removeAthlete']);
 
     // Events / Calendar
-    Route::get('/events',         [EventController::class, 'index']);
-    Route::post('/events',        [EventController::class, 'store']);
-    Route::put('/events/{id}',    [EventController::class, 'update']);
-    Route::delete('/events/{id}', [EventController::class, 'destroy']);
+    Route::get('/events',              [EventController::class, 'index']);
+    Route::post('/events',             [EventController::class, 'store']);
+    Route::post('/events/{id}/rsvp',   [EventController::class, 'rsvp']);
+    Route::put('/events/{id}',         [EventController::class, 'update']);
+    Route::delete('/events/{id}',      [EventController::class, 'destroy']);
 
     // Milestones
-    Route::get('/milestones',         [MilestoneController::class, 'index']);
-    Route::post('/milestones',        [MilestoneController::class, 'store']);
-    Route::put('/milestones/{id}',    [MilestoneController::class, 'update']);
-    Route::delete('/milestones/{id}', [MilestoneController::class, 'destroy']);
+    Route::get('/milestones',              [MilestoneController::class, 'index']);
+    Route::get('/milestones/athlete/{id}', [MilestoneController::class, 'byAthlete']);
+    Route::post('/milestones',             [MilestoneController::class, 'store']);
+    Route::put('/milestones/{id}',         [MilestoneController::class, 'update']);
+    Route::delete('/milestones/{id}',      [MilestoneController::class, 'destroy']);
 
     // Announcements
     Route::get('/announcements',         [AnnouncementController::class, 'index']);
@@ -73,9 +89,10 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/volunteering',                      [VolunteeringController::class, 'store']);
     Route::put('/volunteering/{id}',                  [VolunteeringController::class, 'update']);
     Route::delete('/volunteering/{id}',               [VolunteeringController::class, 'destroy']);
-    Route::post('/volunteering/{id}/signup',          [VolunteeringController::class, 'signup']);
-    Route::delete('/volunteering/{id}/signup',        [VolunteeringController::class, 'cancelSignup']);
-    Route::get('/volunteering/{id}/signups',          [VolunteeringController::class, 'signups']);
+    Route::post('/volunteering/{id}/signup',                      [VolunteeringController::class, 'signup']);
+    Route::delete('/volunteering/{id}/signup',                    [VolunteeringController::class, 'cancelSignup']);
+    Route::get('/volunteering/{id}/signups',                      [VolunteeringController::class, 'signups']);
+    Route::delete('/volunteering/{id}/volunteers/{userId}',       [VolunteeringController::class, 'removeVolunteer']);
 
     // Notifications
     Route::get('/notifications',              [NotificationController::class, 'index']);

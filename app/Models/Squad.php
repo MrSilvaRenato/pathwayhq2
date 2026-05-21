@@ -9,6 +9,7 @@ class Squad extends Model
     protected $table = 'squads';
     public $incrementing = false;
     protected $keyType = 'string';
+    public $timestamps = false;
     protected $fillable = ['id', 'club_id', 'name', 'description'];
     protected $casts = ['id' => 'string', 'club_id' => 'string'];
 

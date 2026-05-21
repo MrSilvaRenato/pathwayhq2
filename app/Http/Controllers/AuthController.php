@@ -84,6 +84,26 @@ class AuthController extends Controller
         return response()->json($this->userPayload($request->user()));
     }
 
+    /**
+     * Admin-only lookup: check if an email belongs to an existing user.
+     * Returns only name fields — no sensitive data exposed.
+     */
+    public function lookup(Request $request)
+    {
+        $email = $request->query('email');
+        if (!$email) return response()->json(['found' => false]);
+
+        $user = User::where('email', $email)->first();
+        if (!$user) return response()->json(['found' => false]);
+
+        return response()->json([
+            'found'      => true,
+            'full_name'  => $user->full_name,
+            'first_name' => explode(' ', $user->full_name)[0],
+            'last_name'  => implode(' ', array_slice(explode(' ', $user->full_name), 1)) ?: '',
+        ]);
+    }
+
     private function userPayload(User $user): array
     {
         return [

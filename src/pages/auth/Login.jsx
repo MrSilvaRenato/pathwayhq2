@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Zap, Eye, EyeOff, AlertCircle } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 
 export default function Login() {
-  const { login }  = useAuth()
-  const navigate   = useNavigate()
+  const { login }      = useAuth()
+  const navigate       = useNavigate()
+  const [searchParams] = useSearchParams()
+  const claimToken     = searchParams.get('claim')
   const [form, setForm]     = useState({ email: '', password: '' })
   const [error, setError]   = useState('')
   const [loading, setLoading] = useState(false)
@@ -17,7 +19,7 @@ export default function Login() {
     setError('')
     try {
       await login(form.email, form.password)
-      navigate('/dashboard')
+      navigate(claimToken ? `/claim/${claimToken}` : '/dashboard')
     } catch (err) {
       setError(err.response?.data?.error ?? 'Invalid email or password. Please try again.')
     } finally {

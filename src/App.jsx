@@ -24,6 +24,8 @@ import Volunteering  from './pages/app/Volunteering'
 import Milestones    from './pages/app/Milestones'
 import Analytics     from './pages/app/Analytics'
 import Settings      from './pages/app/Settings'
+import SiteAdmin     from './pages/app/SiteAdmin'
+import ClaimProfile  from './pages/ClaimProfile'
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -39,6 +41,12 @@ function PublicOnlyRoute({ children }) {
   return children
 }
 
+function SmartRedirect() {
+  const { user, loading } = useAuth()
+  if (loading) return null
+  return <Navigate to={user ? '/dashboard' : '/'} replace />
+}
+
 export default function App() {
   return (
     <ToastProvider>
@@ -52,8 +60,9 @@ export default function App() {
           <Route path="/brisbane-2032" element={<Brisbane />} />
 
           {/* Auth */}
-          <Route path="/login"  element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
-          <Route path="/signup" element={<PublicOnlyRoute><Signup /></PublicOnlyRoute>} />
+          <Route path="/login"       element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
+          <Route path="/signup"      element={<PublicOnlyRoute><Signup /></PublicOnlyRoute>} />
+          <Route path="/claim/:token" element={<ClaimProfile />} />
 
           {/* App */}
           <Route path="/" element={<PrivateRoute><AppLayout /></PrivateRoute>}>
@@ -67,9 +76,10 @@ export default function App() {
             <Route path="milestones"    element={<Milestones />} />
             <Route path="analytics"     element={<Analytics />} />
             <Route path="settings"      element={<Settings />} />
+            <Route path="site-admin"    element={<SiteAdmin />} />
           </Route>
 
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<SmartRedirect />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

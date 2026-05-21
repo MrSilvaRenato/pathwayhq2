@@ -9,10 +9,12 @@ class Athlete extends Model
     protected $table = 'athletes';
     public $incrementing = false;
     protected $keyType = 'string';
+    public $timestamps = false;
 
     protected $fillable = [
         'id', 'club_id', 'user_id', 'first_name', 'last_name',
         'dob', 'sport', 'gender', 'ftem_phase', 'is_active', 'notes',
+        'invite_email', 'invite_token', 'invite_status', 'phone',
     ];
 
     protected $casts = ['id' => 'string', 'club_id' => 'string', 'is_active' => 'boolean'];

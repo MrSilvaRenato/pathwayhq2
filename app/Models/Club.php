@@ -9,6 +9,7 @@ class Club extends Model
     protected $table = 'clubs';
     public $incrementing = false;
     protected $keyType = 'string';
+    public $timestamps = false;
 
     protected $fillable = [
         'id', 'name', 'sport', 'city', 'state', 'slug', 'description',

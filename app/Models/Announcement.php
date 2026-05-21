@@ -9,6 +9,7 @@ class Announcement extends Model
     protected $table = 'announcements';
     public $incrementing = false;
     protected $keyType = 'string';
+    public $timestamps = false;
     protected $fillable = ['id','club_id','author_id','title','body'];
     protected $casts = ['id'=>'string','club_id'=>'string'];
 
