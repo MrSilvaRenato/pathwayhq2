@@ -43,22 +43,28 @@ function AnnouncePeek({ a }) {
   const long  = a.body && a.body.length > 200
 
   return (
-    <div className={`rounded-2xl border p-5 ${cat.color} bg-white/5`}>
-      <div className="flex items-start gap-3">
-        <span className="text-2xl shrink-0 mt-0.5">{emoji}</span>
-        <div className="flex-1 min-w-0">
-          <p className="font-bold text-white leading-snug">{a.title}</p>
-          {a.body && (
-            <p className="text-sm text-slate-400 mt-2 leading-relaxed whitespace-pre-line">
-              {long && !open ? a.body.slice(0, 200).trimEnd() + '…' : a.body}
-            </p>
-          )}
-          {long && (
-            <button onClick={() => setOpen(v => !v)}
-              className="mt-2 flex items-center gap-1 text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition-colors">
-              {open ? <><ChevronUp className="h-3.5 w-3.5" />Show less</> : <><ChevronDown className="h-3.5 w-3.5" />Read more</>}
-            </button>
-          )}
+    <div className={`rounded-2xl border overflow-hidden ${cat.color} bg-white/5`}>
+      {/* Hero image */}
+      {a.image_url && (
+        <img src={a.image_url} alt="" className="w-full h-44 object-cover" />
+      )}
+      <div className="p-5">
+        <div className="flex items-start gap-3">
+          <span className="text-2xl shrink-0 mt-0.5">{emoji}</span>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-white leading-snug">{a.title}</p>
+            {a.body && (
+              <p className="text-sm text-slate-400 mt-2 leading-relaxed whitespace-pre-line">
+                {long && !open ? a.body.slice(0, 200).trimEnd() + '…' : a.body}
+              </p>
+            )}
+            {long && (
+              <button onClick={() => setOpen(v => !v)}
+                className="mt-2 flex items-center gap-1 text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition-colors">
+                {open ? <><ChevronUp className="h-3.5 w-3.5" />Show less</> : <><ChevronDown className="h-3.5 w-3.5" />Read more</>}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
