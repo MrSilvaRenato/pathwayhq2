@@ -137,7 +137,7 @@ class SquadController extends Controller
                 'user_id' => $admin->id,
                 'title'   => "🔄 Squad request: {$athlete->first_name} {$athlete->last_name}",
                 'body'    => "Wants to join: {$squad->name}{$reason}",
-                'link'    => '/squads',
+                'link'    => '/squad',
                 'is_read' => false,
                 'at'      => now()->toDateTimeString(),
             ]);

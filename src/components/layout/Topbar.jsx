@@ -32,10 +32,11 @@ export default function Topbar() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  async function markRead(id, link) {
+  function markRead(id, link) {
     setNotifications(p => p.map(n => n.id === id ? { ...n, is_read: true } : n))
-    await api.put(`/notifications/${id}/read`)
-    if (link) { setOpen(false); navigate(link) }
+    api.put(`/notifications/${id}/read`).catch(() => {})
+    setOpen(false)
+    if (link) navigate(link)
   }
 
   async function markAllRead() {
