@@ -28,10 +28,11 @@ class ClubController extends Controller
         $athletes  = Athlete::where('club_id', $club->id)->where('is_active', true)
                         ->select('id','ftem_phase','sport','gender')->get();
 
-        $milestones = Milestone::where('club_id', $club->id)
-                        ->where('is_shared_with_parent', true)
-                        ->select('id','title','ftem_phase','achieved_at')
-                        ->orderBy('achieved_at', 'desc')->limit(6)->get();
+        $milestones = Milestone::where('milestones.club_id', $club->id)
+                        ->where('milestones.is_shared_with_parent', true)
+                        ->leftJoin('athletes', 'milestones.athlete_id', '=', 'athletes.id')
+                        ->select('milestones.id','milestones.title','milestones.ftem_phase','milestones.achieved_at','athletes.first_name as athlete_name')
+                        ->orderBy('milestones.achieved_at', 'desc')->limit(12)->get();
 
         return response()->json(compact('club', 'athletes', 'milestones'));
     }
