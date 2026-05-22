@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Layers, Calendar, Trophy, Award,
@@ -6,6 +7,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useSidebar } from '../../contexts/SidebarContext'
+import api from '../../lib/api'
 
 const COACH_NAV = [
   { name: 'Dashboard',     href: '/dashboard',     icon: LayoutDashboard },
@@ -60,6 +62,12 @@ export default function Sidebar() {
   const location = useLocation()
   const navigate = useNavigate()
   const nav = getNav(user?.role)
+  const [squadRequestCount, setSquadRequestCount] = useState(0)
+
+  useEffect(() => {
+    if (user?.role !== 'club_admin' && user?.role !== 'coach') return
+    api.get('/squad-requests').then(r => setSquadRequestCount(r.data?.length ?? 0)).catch(() => {})
+  }, [user?.role, location.pathname])
 
   function handleLogout() {
     logout()
@@ -91,7 +99,13 @@ export default function Sidebar() {
               }`}>
               <item.icon className={`h-4 w-4 shrink-0 ${active ? 'text-emerald-600' : 'text-slate-400'}`} />
               {item.name}
-              {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-500" />}
+              {item.href === '/squad' && squadRequestCount > 0 && (
+                <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-400 px-1 text-[10px] font-black text-white">
+                  {squadRequestCount}
+                </span>
+              )}
+              {active && item.href !== '/squad' && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-500" />}
+              {active && item.href === '/squad' && squadRequestCount === 0 && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-500" />}
             </Link>
           )
         })}

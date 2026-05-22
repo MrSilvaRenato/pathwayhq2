@@ -36,8 +36,15 @@ class SquadRequestController extends Controller
             ->where('status', 'pending')
             ->firstOrFail();
 
-        $squad = Squad::find($sr->squad_id);
-        $squad->athletes()->syncWithoutDetaching([$sr->athlete_id]);
+        $newSquad    = Squad::find($sr->squad_id);
+        $clubSquadIds = Squad::where('club_id', $clubId)->pluck('id')->toArray();
+
+        // Remove athlete from every current squad in this club, then add to the new one
+        \DB::table('squad_athletes')
+            ->where('athlete_id', $sr->athlete_id)
+            ->whereIn('squad_id', $clubSquadIds)
+            ->delete();
+        $newSquad->athletes()->attach($sr->athlete_id);
 
         $sr->update(['status' => 'approved']);
 
@@ -47,7 +54,7 @@ class SquadRequestController extends Controller
                 'id'      => (string) Str::uuid(),
                 'user_id' => $athlete->user_id,
                 'title'   => "✅ Squad request approved",
-                'body'    => "You've been added to {$squad->name}.",
+                'body'    => "You've been added to {$newSquad->name}.",
                 'link'    => '/dashboard',
                 'is_read' => false,
                 'at'      => now()->toDateTimeString(),
