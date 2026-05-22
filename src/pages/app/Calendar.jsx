@@ -442,7 +442,7 @@ export default function Calendar() {
                   return (
                     <div
                       key={`empty-${idx}`}
-                      className="bg-slate-50/30 min-h-[110px] md:min-h-[130px]"
+                      className="bg-slate-50/30 min-h-[80px] md:min-h-[90px]"
                     />
                   )
                 }
@@ -458,7 +458,7 @@ export default function Calendar() {
                     key={day}
                     onClick={() => selectDay(day)}
                     className={[
-                      'min-h-[110px] md:min-h-[130px] p-1.5 md:p-2 flex flex-col transition-all cursor-pointer select-none group',
+                      'min-h-[80px] md:min-h-[90px] p-1.5 md:p-2 flex flex-col transition-all cursor-pointer select-none group',
                       isSelected && isToday
                         ? 'bg-emerald-50'
                         : isSelected
