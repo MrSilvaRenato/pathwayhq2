@@ -13,6 +13,7 @@ use App\Http\Controllers\VolunteeringController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\UploadController;
 use App\Http\Controllers\ClubTrophyController;
+use App\Http\Controllers\SquadRequestController;
 
 // ─── Health check ────────────────────────────────────────────────────────────
 Route::get('/health', fn() => response()->json([
@@ -71,6 +72,11 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/squads/{id}/athletes',     [SquadController::class, 'addAthlete']);
     Route::delete('/squads/{id}/athletes/{athleteId}', [SquadController::class, 'removeAthlete']);
     Route::post('/squads/{id}/request',      [SquadController::class, 'requestSquadChange']);
+
+    // Squad change requests (admin/coach approve/reject)
+    Route::get('/squad-requests',                    [SquadRequestController::class, 'index']);
+    Route::put('/squad-requests/{id}/approve',       [SquadRequestController::class, 'approve']);
+    Route::put('/squad-requests/{id}/reject',        [SquadRequestController::class, 'reject']);
 
     // Events / Calendar
     Route::get('/events',              [EventController::class, 'index']);

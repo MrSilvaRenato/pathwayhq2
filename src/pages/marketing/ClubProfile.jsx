@@ -398,9 +398,9 @@ export default function ClubProfile() {
                         return (
                           <div key={t.id} className="rounded-xl border border-white/8 bg-white/[0.04] overflow-hidden flex flex-col">
                             {t.image_url ? (
-                              <div className="relative h-40 bg-slate-900">
+                              <div className="relative h-48 bg-slate-900 flex items-center justify-center">
                                 <img src={t.image_url} alt={t.title}
-                                  className="w-full h-full object-cover"
+                                  className="max-h-48 w-full object-contain"
                                   onError={e => { e.target.parentElement.style.display = 'none' }} />
                                 <span className="absolute top-2 left-2 rounded-full bg-black/50 backdrop-blur-sm px-2 py-0.5 text-[10px] font-bold text-white border border-white/10">
                                   {meta.emoji} {meta.label}

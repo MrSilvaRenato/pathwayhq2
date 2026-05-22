@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Plus, Users, Trash2, X, Pencil, Check, ChevronRight, Loader2, UserPlus, Search } from 'lucide-react'
+import { Plus, Users, Trash2, X, Pencil, Check, ChevronRight, Loader2, UserPlus, Search, CheckCircle, XCircle, Clock } from 'lucide-react'
 import api from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
@@ -566,6 +566,85 @@ function MobileRosterOverlay({ squad, isAdmin, onClose, onAthleteRemoved, onAthl
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
+function PendingRequests({ onApproved }) {
+  const toast = useToast()
+  const [requests, setRequests] = useState([])
+  const [acting, setActing]     = useState(null)
+
+  useEffect(() => {
+    api.get('/squad-requests').then(r => setRequests(r.data)).catch(() => {})
+  }, [])
+
+  if (requests.length === 0) return null
+
+  async function act(id, action) {
+    setActing(id + action)
+    try {
+      await api.put(`/squad-requests/${id}/${action}`)
+      setRequests(p => p.filter(r => r.id !== id))
+      if (action === 'approve') {
+        toast.success('Athlete added to squad')
+        onApproved?.()
+      } else {
+        toast.success('Request declined')
+      }
+    } catch {
+      toast.error('Action failed')
+    } finally {
+      setActing(null)
+    }
+  }
+
+  return (
+    <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Clock className="h-4 w-4 text-amber-600" />
+        <h2 className="text-sm font-bold text-amber-800">
+          Pending squad request{requests.length !== 1 ? 's' : ''} ({requests.length})
+        </h2>
+      </div>
+      <div className="space-y-2">
+        {requests.map(r => (
+          <div key={r.id} className="flex items-start gap-3 rounded-xl bg-white border border-amber-100 p-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-sm font-black text-amber-700">
+              {r.athlete?.first_name?.[0]}{r.athlete?.last_name?.[0]}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-slate-800">
+                {r.athlete?.first_name} {r.athlete?.last_name}
+              </p>
+              <p className="text-xs text-slate-500">
+                Wants to join <span className="font-semibold text-slate-700">{r.squad?.name}</span>
+              </p>
+              {r.reason && (
+                <p className="mt-1 text-xs text-slate-400 italic line-clamp-2">"{r.reason}"</p>
+              )}
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <button
+                onClick={() => act(r.id, 'approve')}
+                disabled={!!acting}
+                className="flex items-center gap-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 px-3 py-1.5 text-xs font-bold text-white transition-colors"
+              >
+                {acting === r.id + 'approve' ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle className="h-3 w-3" />}
+                Approve
+              </button>
+              <button
+                onClick={() => act(r.id, 'reject')}
+                disabled={!!acting}
+                className="flex items-center gap-1 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50 px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors"
+              >
+                {acting === r.id + 'reject' ? <Loader2 className="h-3 w-3 animate-spin" /> : <XCircle className="h-3 w-3" />}
+                Decline
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function Squads() {
   const { isAdmin } = useAuth()
   const toast = useToast()
@@ -575,6 +654,10 @@ export default function Squads() {
   const [form, setForm]               = useState({ name: '', description: '' })
   const [saving, setSaving]           = useState(false)
   const detailRef = useRef(null)
+
+  function reloadSquads() {
+    api.get('/squads').then(r => setSquads(r.data)).catch(() => {})
+  }
 
   useEffect(() => {
     api.get('/squads')
@@ -649,6 +732,9 @@ export default function Squads() {
       </div>
 
       <div className="px-4 md:px-8 max-w-6xl mx-auto">
+        {/* Pending squad requests — admin/coach only */}
+        {isAdmin && <PendingRequests onApproved={reloadSquads} />}
+
         {/* Grid */}
         {squads.length === 0 ? (
           <div className="text-center py-20 rounded-2xl border border-dashed border-slate-200">

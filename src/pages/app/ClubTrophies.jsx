@@ -48,7 +48,9 @@ function TrophyCard({ trophy, isAdmin, onEdit, onDelete, onTogglePublic }) {
   return (
     <div className={`rounded-2xl border overflow-hidden ${CARD_COLORS[trophy.category] || CARD_COLORS.other} transition-shadow hover:shadow-md`}>
       {trophy.image_url && (
-        <img src={trophy.image_url} alt={trophy.title} className="w-full h-40 object-cover" />
+        <div className="flex items-center justify-center bg-slate-900 h-48">
+          <img src={trophy.image_url} alt={trophy.title} className="max-h-48 w-full object-contain" />
+        </div>
       )}
       <div className="p-4">
         <div className="flex items-start justify-between gap-2 mb-2">
@@ -214,7 +216,7 @@ function TrophyModal({ trophy, onClose, onSaved }) {
               <label className="text-xs font-semibold text-slate-500 mb-2 block">Photo</label>
               {form.image_url ? (
                 <div className="relative rounded-xl overflow-hidden border border-slate-200">
-                  <img src={form.image_url} alt="" className="w-full h-40 object-cover" />
+                  <img src={form.image_url} alt="" className="w-full max-h-48 object-contain bg-slate-900" />
                   <button
                     type="button"
                     onClick={() => setForm(p => ({ ...p, image_url: '' }))}

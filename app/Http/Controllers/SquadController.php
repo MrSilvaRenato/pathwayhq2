@@ -8,6 +8,7 @@ use App\Models\Squad;
 use App\Models\Athlete;
 use App\Models\User;
 use App\Models\Notification;
+use App\Models\SquadRequest;
 
 class SquadController extends Controller
 {
@@ -110,6 +111,15 @@ class SquadController extends Controller
         $admins = User::where('club_id', $athlete->club_id)
             ->whereIn('role', ['club_admin', 'coach'])
             ->get();
+
+        SquadRequest::create([
+            'id'         => (string) Str::uuid(),
+            'club_id'    => $athlete->club_id,
+            'athlete_id' => $athlete->id,
+            'squad_id'   => $id,
+            'reason'     => $data['reason'] ?? null,
+            'status'     => 'pending',
+        ]);
 
         $reason = !empty($data['reason']) ? ' — "' . $data['reason'] . '"' : '';
         foreach ($admins as $admin) {
