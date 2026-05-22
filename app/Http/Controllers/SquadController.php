@@ -108,6 +108,15 @@ class SquadController extends Controller
 
         $squad = Squad::where('id', $id)->where('club_id', $athlete->club_id)->firstOrFail();
 
+        // Block duplicate pending requests for the same athlete + squad
+        $already = SquadRequest::where('athlete_id', $athlete->id)
+            ->where('squad_id', $id)
+            ->where('status', 'pending')
+            ->exists();
+        if ($already) {
+            return response()->json(['message' => 'You already have a pending request for this squad.'], 422);
+        }
+
         $admins = User::where('club_id', $athlete->club_id)
             ->whereIn('role', ['club_admin', 'coach'])
             ->get();

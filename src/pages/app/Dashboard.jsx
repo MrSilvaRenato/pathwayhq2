@@ -479,8 +479,9 @@ function SquadRequestModal({ onClose }) {
       await api.post(`/squads/${selected}/request`, { reason })
       toast.success('Request sent to your coach!')
       onClose()
-    } catch {
-      toast.error('Failed to send request')
+    } catch (err) {
+      const msg = err?.response?.data?.message
+      toast.error(msg || 'Failed to send request')
       setSaving(false)
     }
   }
