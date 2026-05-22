@@ -11,6 +11,7 @@ use App\Http\Controllers\MilestoneController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\VolunteeringController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\UploadController;
 
 // ─── Health check ────────────────────────────────────────────────────────────
 Route::get('/health', fn() => response()->json([
@@ -71,7 +72,8 @@ Route::middleware('auth:api')->group(function () {
     // Events / Calendar
     Route::get('/events',              [EventController::class, 'index']);
     Route::post('/events',             [EventController::class, 'store']);
-    Route::post('/events/{id}/rsvp',   [EventController::class, 'rsvp']);
+    Route::post('/events/{id}/rsvp',       [EventController::class, 'rsvp']);
+    Route::get('/events/{id}/attendees',   [EventController::class, 'attendees']);
     Route::put('/events/{id}',         [EventController::class, 'update']);
     Route::delete('/events/{id}',      [EventController::class, 'destroy']);
 
@@ -97,6 +99,9 @@ Route::middleware('auth:api')->group(function () {
     Route::delete('/volunteering/{id}/signup',                    [VolunteeringController::class, 'cancelSignup']);
     Route::get('/volunteering/{id}/signups',                      [VolunteeringController::class, 'signups']);
     Route::delete('/volunteering/{id}/volunteers/{userId}',       [VolunteeringController::class, 'removeVolunteer']);
+
+    // File uploads
+    Route::post('/upload/image', [UploadController::class, 'image']);
 
     // Notifications
     Route::get('/notifications',              [NotificationController::class, 'index']);

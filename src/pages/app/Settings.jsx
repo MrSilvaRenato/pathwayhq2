@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Save, ExternalLink, Eye, EyeOff, Phone } from 'lucide-react'
+import { Save, ExternalLink, Eye, EyeOff, Phone, Globe, Instagram, Facebook, Twitter, Image, Lock, Unlock, Users, Trophy, Calendar, Megaphone } from 'lucide-react'
 import api from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import { SPORTS, STATES, SUBSCRIPTION_TIERS } from '../../lib/constants'
+import ImageUpload from '../../components/ImageUpload'
 
 // ── Avatar initials circle ────────────────────────────────────────────────────
 function AvatarCircle({ name, role }) {
@@ -63,15 +64,26 @@ export default function Settings() {
       if (d.club_id) {
         setClub(d)
         setClubForm({
-          name:          d.club_name      ?? '',
-          city:          d.city           ?? '',
-          state:         d.state          ?? 'QLD',
-          sport:         d.sport          ?? 'soccer',
-          slug:          d.slug           ?? '',
-          description:   d.description   ?? '',
-          website:       d.website        ?? '',
-          contact_email: d.contact_email  ?? '',
-          is_public:     d.is_public      ?? false,
+          name:                d.club_name        ?? '',
+          city:                d.city             ?? '',
+          state:               d.state            ?? 'QLD',
+          sport:               d.sport            ?? 'soccer',
+          slug:                d.slug             ?? '',
+          description:         d.description      ?? '',
+          website:             d.website          ?? '',
+          contact_email:       d.contact_email    ?? '',
+          phone:               d.phone            ?? '',
+          is_public:           d.is_public        ?? false,
+          cover_image_url:     d.cover_image_url  ?? '',
+          logo_url:            d.logo_url         ?? '',
+          founded_year:        d.founded_year     ?? '',
+          social_facebook:     d.social_facebook  ?? '',
+          social_instagram:    d.social_instagram ?? '',
+          social_twitter:      d.social_twitter   ?? '',
+          show_milestones:     d.show_milestones     ?? true,
+          show_athletes_count: d.show_athletes_count ?? true,
+          show_events:         d.show_events         ?? false,
+          show_announcements:  d.show_announcements  ?? false,
         })
       }
     }).catch(() => toast.error('Failed to load profile'))
@@ -196,104 +208,187 @@ export default function Settings() {
       {club && isAdmin && (
         <SectionCard title="Club details">
           <form onSubmit={saveClub} className="space-y-4 mt-4">
+
+            {/* Basic info */}
             <div>
               <label className={labelCls}>Club name</label>
-              <input
-                required
-                value={clubForm.name}
+              <input required value={clubForm.name}
                 onChange={e => setClubForm(p => ({ ...p, name: e.target.value }))}
-                className={inputCls}
-              />
+                className={inputCls} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelCls}>City</label>
-                <input
-                  value={clubForm.city}
+                <input value={clubForm.city}
                   onChange={e => setClubForm(p => ({ ...p, city: e.target.value }))}
-                  className={inputCls}
-                />
+                  className={inputCls} />
               </div>
               <div>
                 <label className={labelCls}>State</label>
-                <select
-                  value={clubForm.state}
+                <select value={clubForm.state}
                   onChange={e => setClubForm(p => ({ ...p, state: e.target.value }))}
                   className={inputCls + ' cursor-pointer'}>
                   {STATES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
             </div>
-            <div>
-              <label className={labelCls}>Primary sport</label>
-              <select
-                value={clubForm.sport}
-                onChange={e => setClubForm(p => ({ ...p, sport: e.target.value }))}
-                className={inputCls + ' cursor-pointer'}>
-                {SPORTS.map(s => <option key={s.value} value={s.value}>{s.emoji} {s.label}</option>)}
-              </select>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelCls}>Primary sport</label>
+                <select value={clubForm.sport}
+                  onChange={e => setClubForm(p => ({ ...p, sport: e.target.value }))}
+                  className={inputCls + ' cursor-pointer'}>
+                  {SPORTS.map(s => <option key={s.value} value={s.value}>{s.emoji} {s.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Founded year</label>
+                <input type="number" min="1800" max="2100"
+                  value={clubForm.founded_year}
+                  onChange={e => setClubForm(p => ({ ...p, founded_year: e.target.value }))}
+                  className={inputCls} placeholder="e.g. 1998" />
+              </div>
             </div>
             <div>
-              <label className={labelCls}>Description</label>
-              <textarea
-                value={clubForm.description}
+              <label className={labelCls}>About the club</label>
+              <textarea value={clubForm.description}
                 onChange={e => setClubForm(p => ({ ...p, description: e.target.value }))}
-                rows={3}
-                className={inputCls + ' resize-none h-auto min-h-0'}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Website</label>
-              <input
-                value={clubForm.website}
-                onChange={e => setClubForm(p => ({ ...p, website: e.target.value }))}
-                className={inputCls}
-                placeholder="https://"
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Contact email</label>
-              <input
-                type="email"
-                value={clubForm.contact_email}
-                onChange={e => setClubForm(p => ({ ...p, contact_email: e.target.value }))}
-                className={inputCls}
-              />
+                rows={3} className={inputCls + ' resize-none h-auto min-h-0'}
+                placeholder="Tell people about your club, your mission, and your values…" />
             </div>
 
-            {/* Public toggle */}
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <label className="flex items-start gap-3 cursor-pointer">
-                <div className="relative mt-0.5">
-                  <input
-                    type="checkbox"
-                    checked={clubForm.is_public}
-                    onChange={e => setClubForm(p => ({ ...p, is_public: e.target.checked }))}
-                    className="sr-only peer"
-                  />
-                  <div className="w-10 h-6 rounded-full bg-slate-300 peer-checked:bg-emerald-500 transition-colors" />
-                  <div className="absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform peer-checked:translate-x-4" />
+            {/* Branding */}
+            <div className="pt-3 border-t border-slate-100">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5"><Image className="h-3.5 w-3.5" /> Branding</p>
+              <div className="space-y-4">
+                <ImageUpload
+                  label="Club logo"
+                  aspectHint="Square image recommended"
+                  type="logo"
+                  value={clubForm.logo_url || null}
+                  onChange={url => setClubForm(p => ({ ...p, logo_url: url ?? '' }))}
+                  previewClass="h-32 w-32 rounded-2xl object-cover"
+                />
+                <ImageUpload
+                  label="Cover / banner image"
+                  aspectHint="16:9 recommended"
+                  type="cover"
+                  value={clubForm.cover_image_url || null}
+                  onChange={url => setClubForm(p => ({ ...p, cover_image_url: url ?? '' }))}
+                  previewClass="h-36"
+                />
+              </div>
+            </div>
+
+            {/* Contact */}
+            <div className="pt-3 border-t border-slate-100">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5"><Globe className="h-3.5 w-3.5" /> Contact &amp; links</p>
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelCls}>Website</label>
+                    <input value={clubForm.website}
+                      onChange={e => setClubForm(p => ({ ...p, website: e.target.value }))}
+                      className={inputCls} placeholder="https://" />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Contact email</label>
+                    <input type="email" value={clubForm.contact_email}
+                      onChange={e => setClubForm(p => ({ ...p, contact_email: e.target.value }))}
+                      className={inputCls} />
+                  </div>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-slate-800">Make club profile public</p>
-                  <p className="text-xs text-slate-400 mt-0.5">Athletes and parents can discover your club online</p>
+                  <label className={labelCls}>Phone</label>
+                  <input type="tel" value={clubForm.phone}
+                    onChange={e => setClubForm(p => ({ ...p, phone: e.target.value }))}
+                    className={inputCls} placeholder="+61 7 xxxx xxxx" />
                 </div>
-              </label>
-              {clubForm.slug && (
-                <div className="mt-3 flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-semibold text-slate-500">Public URL:</span>
-                  <code className="text-xs text-slate-600 bg-white border border-slate-200 px-2 py-0.5 rounded-lg">/club/{clubForm.slug}</code>
-                  <a href={`/club/${clubForm.slug}`} target="_blank" rel="noreferrer"
-                    className="text-emerald-500 hover:text-emerald-600 transition-colors">
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </a>
+              </div>
+            </div>
+
+            {/* Social */}
+            <div className="pt-3 border-t border-slate-100">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Social media</p>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Instagram className="h-4 w-4 text-pink-500 shrink-0" />
+                  <input value={clubForm.social_instagram}
+                    onChange={e => setClubForm(p => ({ ...p, social_instagram: e.target.value }))}
+                    className={inputCls} placeholder="https://instagram.com/yourclub" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Facebook className="h-4 w-4 text-blue-600 shrink-0" />
+                  <input value={clubForm.social_facebook}
+                    onChange={e => setClubForm(p => ({ ...p, social_facebook: e.target.value }))}
+                    className={inputCls} placeholder="https://facebook.com/yourclub" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Twitter className="h-4 w-4 text-sky-500 shrink-0" />
+                  <input value={clubForm.social_twitter}
+                    onChange={e => setClubForm(p => ({ ...p, social_twitter: e.target.value }))}
+                    className={inputCls} placeholder="https://x.com/yourclub" />
+                </div>
+              </div>
+            </div>
+
+            {/* Privacy & visibility */}
+            <div className="pt-3 border-t border-slate-100">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1.5"><Lock className="h-3.5 w-3.5" /> Public profile visibility</p>
+              <p className="text-xs text-slate-400 mb-4">Choose what visitors can see on your public club page.</p>
+
+              {/* Master toggle */}
+              <div className={`rounded-xl p-4 mb-3 ${clubForm.is_public ? 'bg-emerald-50 border border-emerald-200' : 'bg-slate-50 border border-slate-200'}`}>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <div className="relative shrink-0" onClick={() => setClubForm(p => ({ ...p, is_public: !p.is_public }))}>
+                    <div className={`w-11 h-6 rounded-full transition-colors ${clubForm.is_public ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                    <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${clubForm.is_public ? 'translate-x-5' : ''}`} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                      {clubForm.is_public ? <><Unlock className="h-3.5 w-3.5 text-emerald-500" /> Profile is public</> : <><Lock className="h-3.5 w-3.5 text-slate-400" /> Profile is private</>}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {clubForm.is_public ? 'Your club appears in the public directory and has a shareable profile page.' : 'Your club is hidden from public search and the directory.'}
+                    </p>
+                  </div>
+                </label>
+                {clubForm.is_public && clubForm.slug && (
+                  <div className="mt-3 flex items-center gap-2 flex-wrap pl-14">
+                    <code className="text-xs text-slate-600 bg-white border border-slate-200 px-2 py-0.5 rounded-lg">/club/{clubForm.slug}</code>
+                    <a href={`/club/${clubForm.slug}`} target="_blank" rel="noreferrer" className="text-emerald-500 hover:text-emerald-600 transition-colors">
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  </div>
+                )}
+              </div>
+
+              {/* Section toggles — only show when public */}
+              {clubForm.is_public && (
+                <div className="rounded-xl border border-slate-100 bg-white divide-y divide-slate-50">
+                  {[
+                    { key: 'show_athletes_count', label: 'Athlete count & FTEM breakdown', desc: 'Show how many athletes you have and their development phases', icon: Users,    color: 'text-blue-500' },
+                    { key: 'show_milestones',     label: 'Recent achievements',            desc: 'Show milestones marked as shared with parent',              icon: Trophy,   color: 'text-amber-500' },
+                    { key: 'show_events',         label: 'Upcoming sessions & matches',   desc: 'Show your next 5 events on your public page',               icon: Calendar, color: 'text-purple-500' },
+                    { key: 'show_announcements',  label: 'Club announcements',            desc: 'Show your latest posts and news publicly',                  icon: Megaphone,color: 'text-emerald-600' },
+                  ].map(({ key, label, desc, icon: Icon, color }) => (
+                    <label key={key} className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50 transition-colors">
+                      <Icon className={`h-4 w-4 shrink-0 ${color}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-700">{label}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
+                      </div>
+                      <div className="relative shrink-0" onClick={e => { e.preventDefault(); setClubForm(p => ({ ...p, [key]: !p[key] })) }}>
+                        <div className={`w-10 h-5 rounded-full transition-colors ${clubForm[key] ? 'bg-emerald-500' : 'bg-slate-200'}`} />
+                        <div className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${clubForm[key] ? 'translate-x-5' : ''}`} />
+                      </div>
+                    </label>
+                  ))}
                 </div>
               )}
             </div>
 
-            <button
-              type="submit"
-              disabled={savingClub}
+            <button type="submit" disabled={savingClub}
               className="w-full md:w-auto flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 disabled:opacity-50 px-6 py-3 text-sm font-bold text-white transition-all shadow-sm shadow-emerald-500/20 min-h-[48px]">
               <Save className="h-4 w-4" />
               {savingClub ? 'Saving…' : 'Save club details'}

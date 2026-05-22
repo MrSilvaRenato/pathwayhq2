@@ -108,7 +108,7 @@ export default function ClubProfile() {
   return (
     <div className="min-h-screen bg-slate-950 text-white">
 
-      {/* Nav */}
+      {/* ── Nav ── */}
       <nav className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/95 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
           <Link to="/" className="flex items-center gap-2.5">
@@ -340,6 +340,124 @@ export default function ClubProfile() {
                             </span>
                           )}
                         </div>
+=======
+            {/* FTEM distribution */}
+            {Object.keys(ftem).length > 0 && (
+              <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-5">
+                <h2 className="mb-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Development pathway</h2>
+                <div className="space-y-2.5">
+                  {Object.keys(FTEM_PHASES).map(phase => {
+                    const count = ftem[phase] ?? 0
+                    if (!count) return null
+                    const pct = Math.round((count / athleteList.length) * 100)
+                    return (
+                      <div key={phase} className="flex items-center gap-2.5">
+                        <span className={`inline-flex w-10 shrink-0 justify-center rounded-full px-1.5 py-0.5 text-xs font-black ${FTEM_PHASES[phase].color}`}>{phase}</span>
+                        <div className="flex-1 rounded-full bg-white/5 h-2 overflow-hidden">
+                          <div className="h-2 rounded-full bg-emerald-500 transition-all duration-700" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-xs font-bold text-slate-400 w-4 text-right">{count}</span>
+                      </div>
+                    )
+                  })}
+                  <p className="text-[11px] text-slate-600 pt-1">FTEM = Foundation → Talent → Elite → Mastery</p>
+                </div>
+              </div>
+            )}
+
+            {/* Join CTA — sidebar on desktop */}
+            <div className="hidden lg:block rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-6 text-center">
+              <div className="text-3xl mb-3">🏟️</div>
+              <h3 className="text-base font-black text-white mb-2">Join {club.name}</h3>
+              <p className="text-xs text-slate-400 mb-4 leading-relaxed">
+                Ask your coach to set up your athlete profile and start tracking your development.
+              </p>
+              <Link to="/signup"
+                className="block w-full rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 py-3 text-sm font-bold transition-all shadow-lg shadow-emerald-500/25 text-center">
+                Create athlete account
+              </Link>
+            </div>
+          </div>
+
+          {/* ── Main content ── */}
+          <div className="lg:col-span-2 space-y-6 order-1 lg:order-2">
+
+            {/* Upcoming events */}
+            {hasEvents && (
+              <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-5">
+                <h2 className="mb-4 flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  <Calendar className="h-4 w-4 text-purple-400" /> Upcoming sessions
+                </h2>
+                <div className="space-y-3">
+                  {events.map((ev, i) => (
+                    <div key={ev.id} className={`flex items-center gap-4 rounded-xl p-3.5 border border-white/5 ${i === 0 ? 'bg-purple-500/10 border-purple-500/20' : 'bg-white/[0.02]'}`}>
+                      {/* Date block */}
+                      <div className={`flex flex-col items-center justify-center h-12 w-12 rounded-xl shrink-0 ${i === 0 ? 'bg-purple-500' : 'bg-white/10'}`}>
+                        <span className={`text-sm font-black leading-none ${i === 0 ? 'text-white' : 'text-slate-300'}`}>
+                          {new Date(ev.start_time).getDate()}
+                        </span>
+                        <span className={`text-[10px] font-semibold ${i === 0 ? 'text-purple-200' : 'text-slate-500'}`}>
+                          {new Date(ev.start_time).toLocaleDateString('en-AU', { month: 'short' }).toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-bold text-white truncate">{ev.title}</p>
+                          <span className={`shrink-0 h-1.5 w-1.5 rounded-full ${EVENT_COLORS[ev.event_type] ?? 'bg-slate-400'}`} />
+                        </div>
+                        <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                          <span className="text-xs text-slate-500 flex items-center gap-1">
+                            <Clock className="h-3 w-3" /> {fmtTime(ev.start_time)}
+                          </span>
+                          {ev.location && (
+                            <span className="text-xs text-slate-500 flex items-center gap-1">
+                              <MapPin className="h-3 w-3" /> {ev.location}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {i === 0 && <span className="shrink-0 text-[10px] font-bold bg-purple-500/30 text-purple-300 rounded-full px-2.5 py-0.5">Next</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Announcements */}
+            {hasAnnounce && (
+              <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-5">
+                <h2 className="mb-4 flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  <Megaphone className="h-4 w-4 text-emerald-400" /> Club news
+                </h2>
+                <div className="space-y-3">
+                  {announcements.map(a => <AnnouncePeek key={a.id} a={a} />)}
+                </div>
+              </div>
+            )}
+
+            {/* Recent milestones */}
+            {hasMile && (
+              <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-5">
+                <h2 className="mb-4 flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  <Trophy className="h-4 w-4 text-amber-400" /> Recent achievements
+                </h2>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {milestones.map(m => (
+                    <div key={m.id} className="rounded-xl bg-amber-500/5 border border-amber-500/10 p-4 flex items-start gap-3">
+                      <div className="h-9 w-9 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0">
+                        <Trophy className="h-4 w-4 text-amber-400" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-white leading-snug line-clamp-2">{m.title}</p>
+                        <div className="mt-1.5 flex items-center gap-2">
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-black ${FTEM_PHASES[m.ftem_phase]?.color ?? 'bg-slate-700 text-slate-300'}`}>
+                            {m.ftem_phase}
+                          </span>
+                          <span className="text-[11px] text-slate-500">
+                            {new Date(m.achieved_at).toLocaleDateString('en-AU', { month: 'short', year: 'numeric' })}
+                          </span>
+                        </div>
+>>>>>>> Stashed changes
                       </div>
                       {i === 0 && <span className="shrink-0 text-[10px] font-bold bg-purple-500/30 text-purple-300 rounded-full px-2.5 py-0.5">Next</span>}
                     </div>
@@ -422,6 +540,7 @@ export default function ClubProfile() {
         </div>
       </div>
 
+<<<<<<< Updated upstream
       {/* Footer */}
       <footer className="border-t border-white/5 px-4 sm:px-6 py-8">
         <div className="mx-auto max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-4">

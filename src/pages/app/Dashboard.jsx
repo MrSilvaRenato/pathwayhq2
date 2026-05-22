@@ -3,11 +3,184 @@ import { Link } from 'react-router-dom'
 import {
   Users, Trophy, Calendar, ArrowRight, Zap, Dumbbell,
   MapPin, Megaphone, CheckCircle2, XCircle, HandHeart,
-  TrendingUp, Clock,
+  TrendingUp, Clock, X, HelpCircle, Loader2,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import api from '../../lib/api'
 import { FTEM_PHASES, SPORTS } from '../../lib/constants'
+
+// ─── Attendance modal ─────────────────────────────────────────────────────────
+// Compact threshold: if a section has more than this many people, show avatar chips
+// instead of full rows (saves vertical space, handles 23+ gracefully)
+const COMPACT_THRESHOLD = 7
+
+function AttendanceModal({ event, onClose }) {
+  const [data, setData]       = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.get(`/events/${event.id}/attendees`)
+      .then(r => setData(r.data))
+      .catch(() => setData({ yes: [], maybe: [], no: [], total: 0 }))
+      .finally(() => setLoading(false))
+  }, [event.id])
+
+  function initials(name = '') {
+    return (name || '?').split(' ').map(n => n[0] ?? '').join('').slice(0, 2).toUpperCase() || '?'
+  }
+
+  // Full-row view for small groups — shows name + email
+  function FullList({ people, iconColor, bg }) {
+    return (
+      <div className="space-y-1.5">
+        {people.map((p, i) => (
+          <div key={i} className="flex items-center gap-2.5 min-h-[40px]">
+            <div className={`h-9 w-9 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${bg} ${iconColor}`}>
+              {initials(p.name)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-slate-800 truncate leading-tight">{p.name}</p>
+              {p.email && <p className="text-[11px] text-slate-400 truncate leading-tight">{p.email}</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  // Chip grid view for large groups (23+ etc) — compact avatar + name
+  function ChipGrid({ people, iconColor, bg }) {
+    return (
+      <div className="grid grid-cols-2 gap-1.5">
+        {people.map((p, i) => (
+          <div key={i} className={`flex items-center gap-2 rounded-xl px-2.5 py-2 ${bg} min-w-0`}>
+            <div className={`h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 bg-white/60 ${iconColor}`}>
+              {initials(p.name)}
+            </div>
+            <span className={`text-xs font-semibold truncate ${iconColor.replace('text-', 'text-').replace('-600','-800').replace('-500','-700').replace('-500','-700')}`}>
+              {p.name.split(' ')[0]}
+            </span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  const Section = ({ label, people, icon: Icon, iconColor, bg }) => {
+    if (!people || people.length === 0) return null
+    const compact = people.length >= COMPACT_THRESHOLD
+    return (
+      <div>
+        {/* Section header */}
+        <div className="flex items-center gap-2 mb-2.5">
+          <Icon className={`h-4 w-4 ${iconColor} shrink-0`} />
+          <span className={`text-xs font-bold ${iconColor}`}>{label}</span>
+          <span className={`ml-auto text-[10px] font-black ${bg} ${iconColor} rounded-full px-2.5 py-0.5`}>{people.length}</span>
+        </div>
+        {compact
+          ? <ChipGrid people={people} iconColor={iconColor} bg={bg} />
+          : <FullList  people={people} iconColor={iconColor} bg={bg} />
+        }
+      </div>
+    )
+  }
+
+  // Summary stat pill
+  const Stat = ({ value, label }) => (
+    <div className="flex-1 text-center">
+      <p className="text-2xl font-black leading-none">{value}</p>
+      <p className="text-[10px] text-purple-200 mt-0.5 leading-none">{label}</p>
+    </div>
+  )
+
+  return (
+    // Backdrop — bottom-sheet on mobile, centered on md+
+    <div
+      className="fixed inset-0 z-50 flex flex-col justify-end md:items-center md:justify-center bg-black/50 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full md:max-w-md bg-white rounded-t-3xl md:rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+        style={{ maxHeight: 'calc(90vh - env(safe-area-inset-top, 0px))' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Drag handle — mobile only */}
+        <div className="flex justify-center pt-3 pb-1 md:hidden shrink-0">
+          <div className="w-10 h-1 rounded-full bg-slate-200" />
+        </div>
+
+        {/* Purple header */}
+        <div className="bg-gradient-to-r from-purple-600 to-purple-500 px-5 py-4 text-white shrink-0">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-bold text-purple-200 uppercase tracking-widest mb-1">Session attendance</p>
+              <h3 className="font-black text-base leading-tight truncate">{event.title}</h3>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1.5">
+                <span className="text-xs text-purple-200 flex items-center gap-1">
+                  <Clock className="h-3 w-3 shrink-0" />
+                  {fmtFull(event.start_time)} · {fmtTime(event.start_time)}
+                </span>
+                {event.squad_name && (
+                  <span className="text-xs text-purple-200 flex items-center gap-1">
+                    <Users className="h-3 w-3 shrink-0" /> {event.squad_name}
+                  </span>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="h-9 w-9 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 transition-all shrink-0"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Stat row — always shown, skeleton while loading */}
+          <div className="flex gap-1 mt-4 pt-3 border-t border-white/20">
+            {loading ? (
+              <div className="flex-1 flex items-center justify-center gap-2 text-purple-300 text-xs py-1">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+              </div>
+            ) : data ? (
+              <>
+                <Stat value={data.yes.length}   label="Going" />
+                <div className="w-px bg-white/20 self-stretch" />
+                <Stat value={data.maybe.length} label="Maybe" />
+                <div className="w-px bg-white/20 self-stretch" />
+                <Stat value={data.no.length}    label="Can't go" />
+                <div className="w-px bg-white/20 self-stretch" />
+                <Stat value={data.total}        label="Replied" />
+              </>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="overflow-y-auto flex-1 p-5" style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}>
+          {loading ? (
+            <div className="flex items-center justify-center py-12 gap-2 text-slate-400">
+              <Loader2 className="h-5 w-5 animate-spin" /> Fetching responses…
+            </div>
+          ) : !data || data.total === 0 ? (
+            <div className="text-center py-12">
+              <div className="h-14 w-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                <Users className="h-6 w-6 text-slate-300" />
+              </div>
+              <p className="text-slate-500 text-sm font-semibold">No responses yet</p>
+              <p className="text-slate-400 text-xs mt-1">Athletes haven't replied to this session</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <Section label="Going"        people={data.yes}   icon={CheckCircle2} iconColor="text-emerald-600" bg="bg-emerald-50" />
+              <Section label="Maybe"        people={data.maybe} icon={HelpCircle}   iconColor="text-amber-500"   bg="bg-amber-50" />
+              <Section label="Can't make it" people={data.no}  icon={XCircle}      iconColor="text-red-500"     bg="bg-red-50" />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function fmtDay(dt)  { return new Date(dt).toLocaleDateString('en-AU', { day: 'numeric' }) }
@@ -22,12 +195,13 @@ function Empty({ msg }) {
 
 // ─── CLUB ADMIN / COACH DASHBOARD ────────────────────────────────────────────
 function ClubDashboard({ user }) {
-  const [athletes,      setAthletes]      = useState([])
-  const [milestones,    setMilestones]    = useState([])
-  const [events,        setEvents]        = useState([])
-  const [announcements, setAnnouncements] = useState([])
-  const [volunteering,  setVolunteering]  = useState([])
-  const [loading,       setLoading]       = useState(true)
+  const [athletes,        setAthletes]        = useState([])
+  const [milestones,      setMilestones]      = useState([])
+  const [events,          setEvents]          = useState([])
+  const [announcements,   setAnnouncements]   = useState([])
+  const [volunteering,    setVolunteering]    = useState([])
+  const [loading,         setLoading]         = useState(true)
+  const [attendanceModal, setAttendanceModal] = useState(null)
 
   useEffect(() => {
     Promise.all([
@@ -91,6 +265,7 @@ function ClubDashboard({ user }) {
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-bold text-slate-900 flex items-center gap-2">
             <Calendar className="h-4 w-4 text-purple-500" /> Upcoming Sessions
+            <span className="text-[10px] font-normal text-slate-400 hidden sm:block">· tap to see attendance</span>
           </h2>
           <Link to="/calendar" className="text-xs text-emerald-600 hover:text-emerald-700 font-semibold flex items-center gap-1">
             Full calendar <ArrowRight className="h-3 w-3" />
@@ -105,7 +280,8 @@ function ClubDashboard({ user }) {
         ) : (
           <div className="space-y-2 flex-1">
             {events.map((e, i) => (
-              <div key={e.id} className={`flex items-center gap-3 rounded-xl p-3 transition-colors ${i === 0 ? 'bg-purple-50 border border-purple-100' : 'border border-slate-50 hover:bg-slate-50'}`}>
+              <button key={e.id} onClick={() => setAttendanceModal(e)}
+                className={`w-full text-left flex items-center gap-3 rounded-xl p-3 transition-colors cursor-pointer ${i === 0 ? 'bg-purple-50 border border-purple-100 hover:bg-purple-100' : 'border border-slate-50 hover:bg-slate-50'}`}>
                 <div className={`flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl ${i === 0 ? 'bg-purple-500' : 'bg-slate-100'}`}>
                   <span className={`text-sm font-black leading-none ${i === 0 ? 'text-white' : 'text-slate-700'}`}>{fmtDay(e.start_time)}</span>
                   <span className={`text-[10px] font-semibold ${i === 0 ? 'text-purple-200' : 'text-slate-400'}`}>{fmtMon(e.start_time)}</span>
@@ -128,8 +304,15 @@ function ClubDashboard({ user }) {
                     )}
                   </div>
                 </div>
-                {i === 0 && <span className="shrink-0 text-[10px] font-bold text-purple-600 bg-purple-100 rounded-full px-2 py-0.5">Next</span>}
-              </div>
+                <div className="shrink-0 flex flex-col items-end gap-1">
+                  {i === 0 && <span className="text-[10px] font-bold text-purple-600 bg-purple-100 rounded-full px-2 py-0.5">Next</span>}
+                  {e.rsvp_counts && (
+                    <span className="text-[10px] text-slate-400 flex items-center gap-0.5">
+                      <Users className="h-2.5 w-2.5" /> {e.rsvp_counts.yes} going
+                    </span>
+                  )}
+                </div>
+              </button>
             ))}
           </div>
         )}
@@ -265,6 +448,11 @@ function ClubDashboard({ user }) {
           </div>
         )}
       </div>
+
+      {/* Attendance modal */}
+      {attendanceModal && (
+        <AttendanceModal event={attendanceModal} onClose={() => setAttendanceModal(null)} />
+      )}
 
     </div>
   )

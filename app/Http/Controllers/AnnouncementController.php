@@ -15,37 +15,87 @@ class AnnouncementController extends Controller
         $clubId = $request->user()->resolveClubId();
         if (!$clubId) return response()->json([]);
 
-        return response()->json(
-            Announcement::where('club_id', $clubId)
-                ->orderBy('created_at', 'desc')->get()
-        );
+        try {
+            $query = Announcement::where('club_id', $clubId)
+                ->with('author:id,full_name');
+
+            // Use new columns if they exist, fall back gracefully
+            $columns = \Schema::getColumnListing('announcements');
+            if (in_array('pinned', $columns))     $query->orderByDesc('pinned');
+            if (in_array('posted_at', $columns))  $query->orderByDesc('posted_at');
+            else                                   $query->orderByDesc('created_at');
+
+            return response()->json(
+                $query->get()->map(function ($a) {
+                    $a->author_name = $a->author?->full_name;
+                    unset($a->author);
+                    return $a;
+                })
+            );
+        } catch (\Exception $e) {
+            // Absolute fallback — return basic data if anything goes wrong
+            return response()->json(
+                Announcement::where('club_id', $clubId)
+                    ->orderByDesc('created_at')
+                    ->get()
+                    ->map(function ($a) {
+                        $a->author_name = null;
+                        return $a;
+                    })
+            );
+        }
     }
 
     public function store(Request $request)
     {
         $data = $request->validate([
-            'title'    => 'required|string',
-            'body'     => 'required|string',
-            'audience' => 'nullable|string',
+            'title'     => 'required|string|max:200',
+            'body'      => 'required|string',
+            'category'  => 'nullable|string|in:general,match,training,news,camp,urgent',
+            'emoji'     => 'nullable|string|max:8',
+            'image_url' => 'nullable|url',
+            'pinned'    => 'boolean',
         ]);
 
-        $clubId = $request->user()->club_id;
+        $clubId = $request->user()->resolveClubId();
 
-        $announcement = Announcement::create(array_merge($data, [
-            'id'         => (string) Str::uuid(),
-            'club_id'    => $clubId,
-            'author_id'  => $request->user()->id,
-        ]));
+        $columns  = \Schema::getColumnListing('announcements');
+        $newCols  = in_array('posted_at', $columns);
 
-        // Notify all linked athletes in this club
-        $athletes = Athlete::where('club_id', $clubId)
-            ->whereNotNull('user_id')->get();
+        $announcement = Announcement::create(array_merge(
+            array_intersect_key($data, array_flip(array_intersect(array_keys($data), $columns))),
+            [
+                'id'        => (string) Str::uuid(),
+                'club_id'   => $clubId,
+                'author_id' => $request->user()->id,
+                'title'     => $data['title'],
+                'body'      => $data['body'],
+            ],
+            $newCols ? [
+                'category'  => $data['category'] ?? 'general',
+                'pinned'    => $data['pinned'] ?? false,
+                'posted_at' => now()->toDateTimeString(),
+            ] : []
+        ));
+
+        // Notify all linked athletes
+        $athletes = Athlete::where('club_id', $clubId)->whereNotNull('user_id')->get();
+
+        $categoryEmojis = [
+            'match'    => '⚽',
+            'training' => '💪',
+            'news'     => '📰',
+            'camp'     => '🏕️',
+            'urgent'   => '🚨',
+            'general'  => '📢',
+        ];
+        $notifEmoji = $data['emoji'] ?? $categoryEmojis[$data['category'] ?? 'general'] ?? '📢';
 
         foreach ($athletes as $athlete) {
             Notification::create([
                 'id'      => (string) Str::uuid(),
                 'user_id' => $athlete->user_id,
-                'title'   => '📢 ' . $data['title'],
+                'title'   => $notifEmoji . ' ' . $data['title'],
                 'body'    => Str::limit($data['body'], 120),
                 'link'    => '/announcements',
                 'is_read' => false,
@@ -59,18 +109,27 @@ class AnnouncementController extends Controller
     public function update(Request $request, $id)
     {
         $data = $request->validate([
-            'title'    => 'required|string',
-            'body'     => 'required|string',
-            'audience' => 'nullable|string',
+            'title'     => 'required|string|max:200',
+            'body'      => 'required|string',
+            'category'  => 'nullable|string|in:general,match,training,news,camp,urgent',
+            'emoji'     => 'nullable|string|max:8',
+            'image_url' => 'nullable|url',
+            'pinned'    => 'boolean',
         ]);
 
-        Announcement::where('id', $id)->where('club_id', $request->user()->club_id)->update($data);
+        Announcement::where('id', $id)
+            ->where('club_id', $request->user()->resolveClubId())
+            ->update($data);
+
         return response()->json(['ok' => true]);
     }
 
     public function destroy(Request $request, $id)
     {
-        Announcement::where('id', $id)->where('club_id', $request->user()->club_id)->delete();
+        Announcement::where('id', $id)
+            ->where('club_id', $request->user()->resolveClubId())
+            ->delete();
+
         return response()->json(['ok' => true]);
     }
 }

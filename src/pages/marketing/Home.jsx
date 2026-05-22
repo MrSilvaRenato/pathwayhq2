@@ -96,11 +96,20 @@ export default function Home() {
       </nav>
 
       {/* Hero */}
+<<<<<<< Updated upstream
       <section className="relative overflow-hidden border-b border-white/5 min-h-[640px] lg:min-h-[760px]">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/85 to-slate-950/20" />
           <div className="absolute bottom-0 inset-x-0 h-40 bg-gradient-to-t from-slate-950 to-transparent" />
           <div className="absolute top-0 left-0 h-[500px] w-[700px] rounded-full bg-emerald-600/10 blur-[120px]" />
+=======
+      <section className="relative overflow-hidden border-b border-white/5">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute inset-0 opacity-[0.03]"
+            style={{ backgroundImage: 'repeating-linear-gradient(45deg,white 0px,white 1px,transparent 1px,transparent 60px)' }} />
+          <div className="absolute top-0 left-0 h-[500px] w-[700px] rounded-full bg-emerald-600/15 blur-[120px]" />
+          <div className="absolute top-0 right-0 h-[300px] w-[400px] rounded-full bg-blue-600/10 blur-[80px]" />
+>>>>>>> Stashed changes
         </div>
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 py-16 lg:py-32">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -138,20 +147,35 @@ export default function Home() {
 
             {/* Brisbane 2032 countdown */}
             <div className="flex justify-center lg:justify-end">
+<<<<<<< Updated upstream
               <div className="relative overflow-hidden rounded-3xl border border-white/10 p-8 backdrop-blur-sm text-center w-full max-w-sm shadow-2xl">
                 <img src="/hero-athlete.png" alt="" className="absolute inset-0 h-full w-full object-cover object-center opacity-80" />
                 <div className="absolute inset-0 bg-slate-950/50" />
                 <div className="relative z-10">
                 <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 text-xs font-bold text-amber-400 mb-6">
+=======
+              <div className="relative rounded-3xl border border-white/10 overflow-hidden p-8 text-center w-full max-w-sm">
+                {/* Athlete background */}
+                <img src="/hero-athlete.png" alt="" className="absolute inset-0 h-full w-full object-cover object-center opacity-[0.80]" />
+                {/* Dark overlay so text stays readable */}
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/30 to-slate-950/10" />
+                {/* Content */}
+                <div className="relative z-10">
+                <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/20 border border-amber-500/30 px-3 py-1.5 text-xs font-bold text-amber-400 mb-6">
+>>>>>>> Stashed changes
                   🏅 Brisbane 2032 Olympics
                 </div>
                 <OlympicsCountdown large />
-                <p className="mt-6 text-sm text-slate-400 leading-relaxed">Your athletes have time — start their pathway today.</p>
+                <p className="mt-6 text-sm text-slate-300 leading-relaxed">Your athletes have time — start their pathway today.</p>
                 <Link to="/brisbane-2032"
                   className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-400 hover:text-emerald-300 transition-colors">
                   Explore the pathway <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
+<<<<<<< Updated upstream
                 </div>
+=======
+                </div>{/* end z-10 */}
+>>>>>>> Stashed changes
               </div>
             </div>
           </div>

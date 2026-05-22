@@ -7,4 +7,5 @@ class EventRsvp extends Model {
     protected $keyType = 'string';
     public $timestamps = false;
     protected $fillable = ['id','event_id','user_id','status'];
+    public function user() { return $this->belongsTo(User::class); }
 }

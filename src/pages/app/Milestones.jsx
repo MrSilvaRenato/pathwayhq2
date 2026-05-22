@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
-import { Plus, X, Trophy, Search, ChevronDown, Loader2 } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Plus, X, Trophy, Search, ChevronDown, Loader2, Zap } from 'lucide-react'
 import api from '../../lib/api'
 import { FTEM_PHASES } from '../../lib/constants'
 import { useAuth } from '../../contexts/AuthContext'
@@ -51,74 +51,78 @@ function FtemBadge({ phase, abbreviated = false }) {
 
 function MilestoneCard({ m, isAdmin, onDelete }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const phase = FTEM_PHASES[m.ftem_phase]
 
   return (
-    <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-4 md:px-5">
-      <div className="flex items-start gap-3 md:gap-4">
-        {/* FTEM badge */}
-        <div className="pt-0.5 shrink-0">
-          <span className="hidden sm:inline">
-            <FtemBadge phase={m.ftem_phase} />
-          </span>
-          <span className="sm:hidden">
-            <FtemBadge phase={m.ftem_phase} abbreviated />
-          </span>
-        </div>
+    <div className="rounded-2xl border border-amber-100 bg-white shadow-sm overflow-hidden">
+      {/* Coloured top accent stripe */}
+      <div className="h-1 w-full bg-gradient-to-r from-amber-400 to-yellow-300" />
 
-        {/* Center text */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <h2 className="font-bold text-slate-900 leading-snug truncate">{m.title}</h2>
-            {m.is_claimed && (
-              <span className="shrink-0 h-2 w-2 rounded-full bg-emerald-400" title="Athlete has linked account" />
+      <div className="px-4 py-3.5 md:px-5">
+        <div className="flex items-start gap-3">
+          {/* Trophy icon with FTEM colour */}
+          <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${phase?.color ?? 'bg-amber-50 text-amber-500'}`}>
+            <Trophy className="h-5 w-5" />
+          </div>
+
+          {/* Main content */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h2 className="font-bold text-slate-900 leading-snug">{m.title}</h2>
+              {m.is_claimed && (
+                <span className="h-2 w-2 rounded-full bg-emerald-400 shrink-0" title="Athlete has linked account" />
+              )}
+            </div>
+            {(m.first_name || m.last_name) && (
+              <p className="text-xs text-slate-500 mt-0.5 font-medium">{m.first_name} {m.last_name}</p>
+            )}
+            {m.description && (
+              <p className="text-xs text-slate-400 mt-1.5 leading-relaxed line-clamp-2">{m.description}</p>
+            )}
+            {/* Mobile: show date inline under name */}
+            <p className="text-[11px] text-slate-400 mt-1.5 sm:hidden">{fmtDate(m.achieved_at)}</p>
+          </div>
+
+          {/* Right column: date + FTEM + delete */}
+          <div className="shrink-0 flex flex-col items-end gap-1.5">
+            <p className="text-xs text-slate-400 whitespace-nowrap hidden sm:block">{fmtDate(m.achieved_at)}</p>
+            <FtemBadge phase={m.ftem_phase} />
+            {m.is_shared_with_parent && (
+              <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 whitespace-nowrap">
+                Shared
+              </span>
+            )}
+            {isAdmin && !confirmDelete && (
+              <button
+                onClick={() => setConfirmDelete(true)}
+                className="h-8 w-8 flex items-center justify-center text-slate-300 hover:text-red-400 hover:bg-red-50 rounded-lg transition-colors"
+                title="Delete milestone"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
             )}
           </div>
-          <p className="text-sm text-slate-500 mt-0.5">
-            {m.first_name} {m.last_name}
-          </p>
-          {m.description && (
-            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">{m.description}</p>
-          )}
         </div>
 
-        {/* Right: date + badges + delete */}
-        <div className="shrink-0 flex flex-col items-end gap-1.5">
-          <p className="text-xs text-slate-400 whitespace-nowrap">{fmtDate(m.achieved_at)}</p>
-          {m.is_shared_with_parent && (
-            <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs font-semibold text-emerald-600 whitespace-nowrap hidden sm:inline">
-              Shared
-            </span>
-          )}
-          {isAdmin && !confirmDelete && (
+        {/* Inline delete confirm */}
+        {isAdmin && confirmDelete && (
+          <div className="mt-3 flex items-center gap-2 bg-red-50 rounded-xl px-3 py-2.5 border border-red-100">
+            <span className="text-xs font-semibold text-red-700 flex-1">Delete this milestone?</span>
             <button
-              onClick={() => setConfirmDelete(true)}
-              className="h-8 w-8 flex items-center justify-center text-slate-300 hover:text-red-400 hover:bg-red-50 rounded-lg transition-colors"
-              title="Delete milestone"
+              onClick={() => setConfirmDelete(false)}
+              className="h-9 px-3 rounded-lg text-xs font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-colors min-w-[48px]"
             >
-              <X className="h-3.5 w-3.5" />
+              No
             </button>
-          )}
-        </div>
+            <button
+              onClick={() => onDelete(m.id)}
+              className="h-9 px-3 rounded-lg text-xs font-bold text-white bg-red-500 hover:bg-red-400 active:scale-95 transition-all min-w-[80px]"
+            >
+              Yes, delete
+            </button>
+          </div>
+        )}
       </div>
-
-      {/* Inline delete confirm */}
-      {isAdmin && confirmDelete && (
-        <div className="mt-3 flex items-center gap-2 bg-red-50 rounded-xl px-3 py-2 border border-red-100">
-          <span className="text-xs font-semibold text-red-700 flex-1">Delete this milestone?</span>
-          <button
-            onClick={() => setConfirmDelete(false)}
-            className="h-9 px-3 rounded-lg text-xs font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-colors"
-          >
-            No
-          </button>
-          <button
-            onClick={() => onDelete(m.id)}
-            className="h-9 px-3 rounded-lg text-xs font-bold text-white bg-red-500 hover:bg-red-400 transition-colors"
-          >
-            Yes, delete
-          </button>
-        </div>
-      )}
     </div>
   )
 }
@@ -397,6 +401,16 @@ export default function Milestones() {
   const selectCls =
     'h-11 rounded-lg border border-slate-200 bg-white pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 appearance-none cursor-pointer'
 
+  // Phase breakdown for athlete — shows their own phases
+  const myPhases = useMemo(() => {
+    if (isAdmin) return []
+    const counts = {}
+    for (const m of items) {
+      if (m.ftem_phase) counts[m.ftem_phase] = (counts[m.ftem_phase] || 0) + 1
+    }
+    return Object.entries(counts)
+  }, [items, isAdmin])
+
   return (
     <div className="pb-24 md:pb-8">
       {/* Header */}
@@ -415,6 +429,28 @@ export default function Milestones() {
           </button>
         )}
       </div>
+
+      {/* Athlete: phase summary strip */}
+      {!isAdmin && myPhases.length > 0 && (
+        <div className="px-4 md:px-8 mb-2">
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-4 px-4 md:mx-0 md:px-0">
+            {myPhases.map(([phase, count]) => {
+              const meta = FTEM_PHASES[phase]
+              return (
+                <div key={phase} className={`shrink-0 flex items-center gap-2 rounded-xl px-3 py-2 border ${meta?.color ?? 'bg-slate-50 border-slate-200'}`}>
+                  <Trophy className="h-3.5 w-3.5" />
+                  <span className="text-xs font-bold">{phase}</span>
+                  <span className="text-xs font-black">{count}</span>
+                </div>
+              )
+            })}
+            <div className={`shrink-0 flex items-center gap-2 rounded-xl px-3 py-2 border bg-slate-50 border-slate-100`}>
+              <Zap className="h-3.5 w-3.5 text-emerald-500" />
+              <span className="text-xs font-bold text-slate-600">{items.length} total</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="px-4 md:px-8 max-w-3xl mx-auto">
         {/* ── Filters — horizontal scroll on mobile ── */}
@@ -479,26 +515,35 @@ export default function Milestones() {
             <Loader2 className="h-8 w-8 animate-spin text-slate-300" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-20 rounded-2xl border border-dashed border-slate-200">
-            <Trophy className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+          <div className="text-center py-16 rounded-2xl border border-dashed border-slate-200 bg-white">
+            <div className="h-16 w-16 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto mb-4">
+              <Trophy className="h-8 w-8 text-amber-300" />
+            </div>
             {isAdmin ? (
               <>
-                <p className="font-bold text-slate-400 mb-1">
-                  {hasFilters ? 'No milestones match your filters' : 'No milestones yet'}
+                <p className="font-bold text-slate-500 text-base mb-1">
+                  {hasFilters ? 'No milestones match your filters' : 'No milestones recorded yet'}
+                </p>
+                <p className="text-sm text-slate-400">
+                  {hasFilters ? 'Try adjusting your search or filters.' : 'Start celebrating your athletes\' achievements.'}
                 </p>
                 {!hasFilters && (
                   <button
                     onClick={() => setShowModal(true)}
-                    className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-600 hover:text-emerald-500 min-h-[44px]"
+                    className="mt-5 inline-flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 px-5 py-3 text-sm font-bold text-white transition-all shadow-lg shadow-emerald-500/20 min-h-[44px]"
                   >
-                    <Plus className="h-4 w-4" /> Record your first milestone
+                    <Plus className="h-4 w-4" /> Record first milestone
                   </button>
                 )}
               </>
             ) : (
-              <p className="font-bold text-slate-400">
-                No milestones recorded yet — keep training!
-              </p>
+              <>
+                <p className="font-bold text-slate-500 text-base mb-1">No milestones yet</p>
+                <p className="text-sm text-slate-400">Keep training — your coach will celebrate your progress here.</p>
+                <div className="flex items-center justify-center gap-1.5 mt-4 text-xs text-emerald-600 font-semibold">
+                  <Zap className="h-3.5 w-3.5" /> Keep going!
+                </div>
+              </>
             )}
           </div>
         ) : (
@@ -516,11 +561,12 @@ export default function Milestones() {
         )}
       </div>
 
-      {/* Mobile FAB */}
+      {/* Mobile FAB — sits above the 64px bottom nav + safe area */}
       {isAdmin && (
         <button
           onClick={() => setShowModal(true)}
-          className="md:hidden fixed bottom-20 right-4 z-20 h-14 w-14 rounded-full bg-emerald-500 hover:bg-emerald-400 shadow-lg shadow-emerald-500/30 flex items-center justify-center transition-colors"
+          style={{ bottom: 'calc(72px + env(safe-area-inset-bottom, 0px))' }}
+          className="md:hidden fixed right-4 z-20 h-14 w-14 rounded-full bg-emerald-500 hover:bg-emerald-400 active:scale-95 shadow-xl shadow-emerald-500/30 flex items-center justify-center transition-all"
           aria-label="Add milestone"
         >
           <Plus className="h-6 w-6 text-white" />

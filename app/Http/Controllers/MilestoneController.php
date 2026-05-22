@@ -17,7 +17,7 @@ class MilestoneController extends Controller
         if (!$clubId) return response()->json([]);
 
         $query = Milestone::where('club_id', $clubId)
-            ->with('athlete:id,first_name,last_name,ftem_phase,is_active,squad_names,user_id')
+            ->with('athlete:id,first_name,last_name,ftem_phase,is_active,user_id')
             ->orderBy('achieved_at', 'desc');
 
         // Athletes only see their own milestones
@@ -55,7 +55,7 @@ class MilestoneController extends Controller
 
         $milestone = Milestone::create(array_merge($data, [
             'id'      => (string) Str::uuid(),
-            'club_id' => $request->user()->club_id,
+            'club_id' => $request->user()->resolveClubId(),
         ]));
 
         // Notify the athlete if their user account is linked
@@ -88,7 +88,7 @@ class MilestoneController extends Controller
             'is_shared_with_parent'=> 'boolean',
         ]);
 
-        Milestone::where('id', $id)->where('club_id', $request->user()->club_id)->update($data);
+        Milestone::where('id', $id)->where('club_id', $request->user()->resolveClubId())->update($data);
         return response()->json(['ok' => true]);
     }
 
@@ -104,7 +104,7 @@ class MilestoneController extends Controller
 
     public function destroy(Request $request, $id)
     {
-        Milestone::where('id', $id)->where('club_id', $request->user()->club_id)->delete();
+        Milestone::where('id', $id)->where('club_id', $request->user()->resolveClubId())->delete();
         return response()->json(['ok' => true]);
     }
 }

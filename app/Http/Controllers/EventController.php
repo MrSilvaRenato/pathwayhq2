@@ -48,32 +48,76 @@ class EventController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'title'       => 'required|string',
-            'description' => 'nullable|string',
-            'location'    => 'nullable|string',
-            'start_time'  => 'required|date',
-            'end_time'    => 'nullable|date',
-            'event_type'  => 'nullable|string',
-            'squad_id'    => 'nullable|string',
+            'title'        => 'required|string',
+            'description'  => 'nullable|string',
+            'location'     => 'nullable|string',
+            'start_time'   => 'required|date',
+            'end_time'     => 'nullable|date',
+            'event_type'   => 'nullable|string',
+            'squad_id'     => 'nullable|string',
+            'recurrence'   => 'nullable|in:none,daily,weekly,biweekly,monthly',
+            'repeat_until' => 'nullable|date',
         ]);
 
         $clubId = $request->user()->club_id;
 
-        $event = Event::create(array_merge($data, [
-            'id'      => (string) Str::uuid(),
-            'club_id' => $clubId,
-        ]));
+        $recurrence  = $data['recurrence'] ?? 'none';
+        $seriesId    = ($recurrence && $recurrence !== 'none') ? (string) Str::uuid() : null;
+        $startTime   = new \DateTime($data['start_time']);
+        $endTime     = !empty($data['end_time']) ? new \DateTime($data['end_time']) : null;
+        $duration    = $endTime ? $startTime->diff($endTime) : null;
+        $repeatUntil = !empty($data['repeat_until']) ? new \DateTime($data['repeat_until']) : null;
 
-        // Notify all linked athletes in this club
+        $occurrences = [];
+        if ($recurrence === 'none' || !$repeatUntil) {
+            $occurrences[] = clone $startTime;
+        } else {
+            $cur = clone $startTime; $count = 0;
+            while ($cur <= $repeatUntil && $count < 104) {
+                $occurrences[] = clone $cur;
+                match($recurrence) {
+                    'daily'    => $cur->modify('+1 day'),
+                    'weekly'   => $cur->modify('+1 week'),
+                    'biweekly' => $cur->modify('+2 weeks'),
+                    'monthly'  => $cur->modify('+1 month'),
+                    default    => $cur->modify('+999 years'),
+                };
+                $count++;
+            }
+        }
+
+        $firstEventId = null;
+        foreach ($occurrences as $i => $occ) {
+            $occEnd = ($duration && $endTime) ? (clone $occ)->add($duration) : null;
+            $event = Event::create([
+                'id'          => (string) Str::uuid(),
+                'club_id'     => $clubId,
+                'title'       => $data['title'],
+                'description' => $data['description'] ?? null,
+                'location'    => $data['location'] ?? null,
+                'start_time'  => $occ->format('Y-m-d H:i:s'),
+                'end_time'    => $occEnd ? $occEnd->format('Y-m-d H:i:s') : null,
+                'event_type'  => $data['event_type'] ?? 'training',
+                'squad_id'    => $data['squad_id'] ?? null,
+                'series_id'   => $seriesId,
+                'recurrence'  => $recurrence !== 'none' ? $recurrence : null,
+            ]);
+            if ($i === 0) $firstEventId = $event->id;
+        }
+
+        // Notify all linked athletes — once per series
         $athletes = Athlete::where('club_id', $clubId)
             ->whereNotNull('user_id')->get();
 
+        $totalSessions = count($occurrences);
         $dateStr = date('D j M', strtotime($data['start_time']));
+        $suffix  = $totalSessions > 1 ? " ({$totalSessions} sessions)" : '';
+
         foreach ($athletes as $athlete) {
             Notification::create([
                 'id'      => (string) Str::uuid(),
                 'user_id' => $athlete->user_id,
-                'title'   => '📅 New session: ' . $data['title'],
+                'title'   => '📅 New session: ' . $data['title'] . $suffix,
                 'body'    => $dateStr . ($data['location'] ? ' · ' . $data['location'] : ''),
                 'link'    => '/calendar',
                 'is_read' => false,
@@ -81,7 +125,7 @@ class EventController extends Controller
             ]);
         }
 
-        return response()->json(['id' => $event->id], 201);
+        return response()->json(['id' => $firstEventId, 'count' => $totalSessions], 201);
     }
 
     public function update(Request $request, $id)
@@ -90,20 +134,90 @@ class EventController extends Controller
             'title'       => 'required|string',
             'description' => 'nullable|string',
             'location'    => 'nullable|string',
-            'start_time'  => 'required|date',
+            'start_time'  => 'nullable|date',
             'end_time'    => 'nullable|date',
             'event_type'  => 'nullable|string',
             'squad_id'    => 'nullable|string',
+            'series_id'   => 'nullable|string',
+            'recurrence'  => 'nullable|string',
         ]);
 
-        Event::where('id', $id)->where('club_id', $request->user()->club_id)->update($data);
+        $clubId = $request->user()->resolveClubId();
+
+        if ($request->query('series') === 'true') {
+            // Find the event to get its series_id
+            $event = Event::where('id', $id)->where('club_id', $clubId)->first();
+            if (!$event || !$event->series_id) {
+                // Fallback: just update the single event
+                Event::where('id', $id)->where('club_id', $clubId)->update($data);
+                return response()->json(['ok' => true]);
+            }
+
+            // For series bulk-edit: update shared fields only.
+            // Preserve each occurrence's own start_time / end_time.
+            $sharedFields = array_filter([
+                'title'       => $data['title'],
+                'description' => $data['description'] ?? null,
+                'location'    => $data['location']    ?? null,
+                'event_type'  => $data['event_type']  ?? null,
+                'squad_id'    => $data['squad_id']    ?? null,
+            ], fn($v) => $v !== null);
+
+            Event::where('series_id', $event->series_id)
+                 ->where('club_id', $clubId)
+                 ->update($sharedFields);
+        } else {
+            Event::where('id', $id)->where('club_id', $clubId)->update($data);
+        }
+
         return response()->json(['ok' => true]);
     }
 
     public function destroy(Request $request, $id)
     {
-        Event::where('id', $id)->where('club_id', $request->user()->club_id)->delete();
+        $event = Event::where('id', $id)->where('club_id', $request->user()->club_id)->first();
+        if (!$event) return response()->json(['error' => 'Not found'], 404);
+
+        if ($request->query('series') === 'true' && $event->series_id) {
+            Event::where('series_id', $event->series_id)
+                 ->where('club_id', $request->user()->club_id)
+                 ->delete();
+        } else {
+            $event->delete();
+        }
         return response()->json(['ok' => true]);
+    }
+
+    public function attendees(Request $request, $id)
+    {
+        // Verify event belongs to this club
+        $clubId = $request->user()->resolveClubId();
+        $event  = Event::where('id', $id)->where('club_id', $clubId)->firstOrFail();
+
+        $rsvps = EventRsvp::where('event_id', $id)
+            ->with('user:id,full_name,email')
+            ->get();
+
+        $grouped = ['yes' => [], 'maybe' => [], 'no' => []];
+        foreach ($rsvps as $r) {
+            $status = $r->status;
+            if (!isset($grouped[$status])) continue;
+            $grouped[$status][] = [
+                'name'  => $r->user?->full_name ?? 'Unknown',
+                'email' => $r->user?->email ?? '',
+                'initials' => collect(explode(' ', $r->user?->full_name ?? '?'))
+                    ->map(fn($w) => strtoupper($w[0] ?? ''))
+                    ->implode(''),
+            ];
+        }
+
+        return response()->json([
+            'event'   => ['id' => $event->id, 'title' => $event->title, 'start_time' => $event->start_time, 'squad_name' => $event->squad?->name],
+            'yes'     => $grouped['yes'],
+            'maybe'   => $grouped['maybe'],
+            'no'      => $grouped['no'],
+            'total'   => count($rsvps),
+        ]);
     }
 
     public function rsvp(Request $request, $id)
