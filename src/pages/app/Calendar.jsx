@@ -12,6 +12,14 @@ const TYPE_META = {
 }
 const tm = (type) => TYPE_META[type] || TYPE_META.other
 
+const TYPE_CHIP = {
+  training: { border: 'border-blue-400',    bg: 'bg-blue-50',    text: 'text-blue-700',    dot: 'bg-blue-400' },
+  match:    { border: 'border-emerald-400', bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-400' },
+  camp:     { border: 'border-purple-400',  bg: 'bg-purple-50',  text: 'text-purple-700',  dot: 'bg-purple-400' },
+  other:    { border: 'border-slate-300',   bg: 'bg-slate-50',   text: 'text-slate-600',   dot: 'bg-slate-300' },
+}
+const chip = (type) => TYPE_CHIP[type] || TYPE_CHIP.other
+
 // keep legacy aliases so pill/dot refs still work
 const TYPE_COLORS     = Object.fromEntries(Object.entries(TYPE_META).map(([k,v]) => [k, v.pill]))
 const TYPE_DOT_COLORS = Object.fromEntries(Object.entries(TYPE_META).map(([k,v]) => [k, v.dot]))
@@ -375,107 +383,66 @@ export default function Calendar() {
           <div className="flex-1 min-w-0">
 
             {/* Month navigation header */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h2 className="text-2xl font-black text-slate-900 leading-none">
+                  {MONTHS[month]}
+                </h2>
+                <p className="text-sm font-semibold text-slate-400 mt-0.5">{year}</p>
+              </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={prevMonth}
-                  className="h-9 w-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 transition-colors"
-                  aria-label="Previous month"
+                  onClick={goToday}
+                  className="rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white px-4 py-2 text-sm font-bold transition-colors shadow-sm shadow-emerald-200"
                 >
-                  <ChevronLeft className="h-4 w-4 text-slate-600" />
+                  Today
                 </button>
-                <button
-                  onClick={nextMonth}
-                  className="h-9 w-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 transition-colors"
-                  aria-label="Next month"
-                >
-                  <ChevronRight className="h-4 w-4 text-slate-600" />
-                </button>
-              </div>
-              <div className="text-center">
-                <h2 className="text-xl font-black text-slate-900 leading-tight">{MONTHS[month]}</h2>
-                <p className="text-xs font-semibold text-slate-400 leading-tight">{year}</p>
-              </div>
-              <button
-                onClick={goToday}
-                className="rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 px-4 py-1.5 text-sm font-bold transition-colors"
-              >
-                Today
-              </button>
-            </div>
-
-            {/* This-week strip */}
-            {(() => {
-              const todayDow = today.getDay()
-              const weekStart = new Date(today)
-              weekStart.setDate(today.getDate() - todayDow)
-              const weekDays = Array.from({ length: 7 }, (_, i) => {
-                const d = new Date(weekStart)
-                d.setDate(weekStart.getDate() + i)
-                return d
-              })
-              return (
-                <div className="grid grid-cols-7 gap-1.5 mb-4">
-                  {weekDays.map((d, i) => {
-                    const key = toLocalDateKey(d)
-                    const evCount = (eventsByDay[key] || []).length
-                    const isTodayCell = isSameDay(d, today)
-                    const firstEvType = evCount > 0 ? (eventsByDay[key][0].event_type || 'other') : null
-                    return (
-                      <button
-                        key={i}
-                        onClick={() => {
-                          setSelectedDate(d)
-                          setShowDetail(true)
-                        }}
-                        className={[
-                          'rounded-xl border p-2 text-center cursor-pointer hover:border-emerald-300 transition-colors',
-                          isTodayCell
-                            ? 'border-emerald-400 bg-emerald-50'
-                            : 'bg-white border-slate-100',
-                        ].join(' ')}
-                      >
-                        <p className="text-[10px] font-semibold text-slate-400 leading-none mb-1">
-                          {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][i]}
-                        </p>
-                        <p className={`text-sm font-black leading-none mb-1 ${isTodayCell ? 'text-emerald-700' : 'text-slate-700'}`}>
-                          {d.getDate()}
-                        </p>
-                        {evCount > 0 && firstEvType ? (
-                          <span className={`inline-block h-1.5 w-1.5 rounded-full ${TYPE_DOT_COLORS[firstEvType] || 'bg-slate-400'}`} />
-                        ) : (
-                          <span className="inline-block h-1.5 w-1.5" />
-                        )}
-                      </button>
-                    )
-                  })}
+                <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden">
+                  <button
+                    onClick={prevMonth}
+                    className="h-9 w-9 flex items-center justify-center bg-white hover:bg-slate-50 transition-colors"
+                    aria-label="Previous month"
+                  >
+                    <ChevronLeft className="h-4 w-4 text-slate-500" />
+                  </button>
+                  <div className="w-px h-5 bg-slate-200" />
+                  <button
+                    onClick={nextMonth}
+                    className="h-9 w-9 flex items-center justify-center bg-white hover:bg-slate-50 transition-colors"
+                    aria-label="Next month"
+                  >
+                    <ChevronRight className="h-4 w-4 text-slate-500" />
+                  </button>
                 </div>
-              )
-            })()}
+              </div>
+            </div>
 
             {/* Day-of-week header row */}
             <div className="grid grid-cols-7 mb-1">
               {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d, i) => (
                 <div
                   key={d}
-                  className={`text-center py-2 text-[11px] font-bold uppercase tracking-wider ${i === 0 || i === 6 ? 'text-slate-400' : 'text-slate-500'}`}
+                  className={`text-center pb-2 text-[11px] font-bold uppercase tracking-widest ${
+                    i === 0 || i === 6 ? 'text-slate-400' : 'text-slate-500'
+                  }`}
                 >
-                  {d}
+                  <span className="hidden sm:inline">{d}</span>
+                  <span className="sm:hidden">{d[0]}</span>
                 </div>
               ))}
             </div>
 
-            {/* Calendar grid cells */}
-            <div className="grid grid-cols-7 gap-px bg-slate-200 rounded-2xl overflow-hidden">
+            {/* Calendar grid */}
+            <div className="grid grid-cols-7 gap-px bg-slate-200 rounded-2xl overflow-hidden shadow-sm">
               {cells.map((day, idx) => {
-                const colIdx = idx % 7
+                const colIdx   = idx % 7
                 const isWeekend = colIdx === 0 || colIdx === 6
 
                 if (day === null) {
                   return (
                     <div
                       key={`empty-${idx}`}
-                      className="bg-slate-50/40 min-h-[90px] md:min-h-[110px]"
+                      className="bg-slate-50/30 min-h-[110px] md:min-h-[130px]"
                     />
                   )
                 }
@@ -491,55 +458,80 @@ export default function Calendar() {
                     key={day}
                     onClick={() => selectDay(day)}
                     className={[
-                      'min-h-[90px] md:min-h-[110px] p-2 flex flex-col transition-colors cursor-pointer select-none',
-                      isSelected
+                      'min-h-[110px] md:min-h-[130px] p-1.5 md:p-2 flex flex-col transition-all cursor-pointer select-none group',
+                      isSelected && isToday
                         ? 'bg-emerald-50'
-                        : isWeekend
-                          ? 'bg-slate-50/60 hover:bg-slate-50'
-                          : 'bg-white hover:bg-slate-50',
+                        : isSelected
+                          ? 'bg-emerald-50 ring-1 ring-inset ring-emerald-300'
+                          : isWeekend
+                            ? 'bg-slate-50/60 hover:bg-slate-100/60'
+                            : 'bg-white hover:bg-slate-50',
                     ].join(' ')}
                   >
-                    <span className={[
-                      'self-start shrink-0 mb-1',
-                      isToday
-                        ? 'h-7 w-7 rounded-full bg-emerald-500 text-white font-black text-sm flex items-center justify-center'
-                        : isSelected
-                          ? 'h-7 w-7 rounded-full bg-emerald-100 text-emerald-700 font-black text-sm flex items-center justify-center'
-                          : `text-sm font-semibold ${isWeekend ? 'text-slate-400' : 'text-slate-700'}`,
-                    ].join(' ')}>
-                      {day}
-                    </span>
-
-                    {/* Mobile: colored dots only */}
-                    <div className="flex flex-wrap gap-0.5 md:hidden">
-                      {dayEvs.slice(0, 3).map(ev => (
-                        <span
-                          key={ev.id}
-                          className={`h-1.5 w-1.5 rounded-full ${TYPE_DOT_COLORS[ev.event_type] || 'bg-slate-400'}`}
-                        />
-                      ))}
+                    {/* Date number */}
+                    <div className="flex items-start justify-between mb-1">
+                      <span className={[
+                        'h-7 w-7 flex items-center justify-center rounded-full text-xs md:text-sm font-bold leading-none transition-all shrink-0',
+                        isToday
+                          ? 'bg-emerald-500 text-white font-black shadow-sm shadow-emerald-200'
+                          : isSelected
+                            ? 'bg-emerald-200 text-emerald-800 font-black'
+                            : isWeekend
+                              ? 'text-slate-400'
+                              : 'text-slate-700 group-hover:bg-slate-100',
+                      ].join(' ')}>
+                        {day}
+                      </span>
+                      {/* Mobile dots */}
+                      {dayEvs.length > 0 && (
+                        <div className="flex gap-0.5 md:hidden pt-1 pr-0.5 flex-wrap justify-end max-w-[40px]">
+                          {dayEvs.slice(0, 3).map(ev => (
+                            <span
+                              key={ev.id}
+                              className={`h-1.5 w-1.5 rounded-full shrink-0 ${TYPE_DOT_COLORS[ev.event_type] || 'bg-slate-400'}`}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
 
-                    {/* Desktop: full event chips, max 2 + overflow */}
-                    <div className="hidden md:flex flex-col gap-0.5">
-                      {dayEvs.slice(0, 2).map(ev => (
-                        <div
-                          key={ev.id}
-                          className={`${TYPE_COLORS[ev.event_type] || 'bg-slate-400'} rounded-md px-1.5 py-0.5 text-white text-[10px] font-semibold truncate leading-tight`}
-                          title={ev.title}
-                        >
-                          {ev.title}
-                        </div>
-                      ))}
-                      {dayEvs.length > 2 && (
-                        <span className="text-[10px] text-slate-400 font-medium pl-0.5">
-                          +{dayEvs.length - 2} more
+                    {/* Desktop event chips — left-border accent style */}
+                    <div className="hidden md:flex flex-col gap-0.5 flex-1 min-h-0">
+                      {dayEvs.slice(0, 3).map(ev => {
+                        const c = chip(ev.event_type)
+                        const t = new Date(ev.start_time).toLocaleTimeString('en-AU', {
+                          hour: '2-digit', minute: '2-digit', hour12: false,
+                        })
+                        return (
+                          <div
+                            key={ev.id}
+                            className={`border-l-2 ${c.border} ${c.bg} ${c.text} rounded-r-md pl-1.5 pr-1.5 py-0.5 text-[10px] font-semibold truncate leading-tight flex items-center gap-1 min-w-0`}
+                            title={`${t} ${ev.title}`}
+                          >
+                            <span className="opacity-60 shrink-0 tabular-nums font-medium">{t}</span>
+                            <span className="truncate">{ev.title}</span>
+                          </div>
+                        )
+                      })}
+                      {dayEvs.length > 3 && (
+                        <span className="text-[10px] text-slate-400 font-semibold pl-0.5 leading-none">
+                          +{dayEvs.length - 3} more
                         </span>
                       )}
                     </div>
                   </div>
                 )
               })}
+            </div>
+
+            {/* Legend */}
+            <div className="flex items-center gap-4 mt-3 px-1">
+              {Object.entries(TYPE_CHIP).map(([type, c]) => (
+                <div key={type} className="flex items-center gap-1.5">
+                  <span className={`h-2.5 w-2.5 rounded-sm border-l-2 ${c.border} ${c.bg}`} />
+                  <span className="text-[10px] font-semibold text-slate-400 capitalize">{type}</span>
+                </div>
+              ))}
             </div>
           </div>
 
