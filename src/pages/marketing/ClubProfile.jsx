@@ -46,7 +46,7 @@ function AnnouncePeek({ a }) {
     <div className={`rounded-2xl border overflow-hidden ${cat.color} bg-white/5`}>
       {/* Hero image */}
       {a.image_url && (
-        <img src={a.image_url} alt="" className="w-full h-44 object-cover" />
+        <img src={a.image_url} alt="" className="w-full object-contain" />
       )}
       <div className="p-5">
         <div className="flex items-start gap-3">
