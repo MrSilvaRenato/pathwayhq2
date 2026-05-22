@@ -13,8 +13,9 @@ class SquadController extends Controller
 {
     public function index(Request $request)
     {
+        $clubId = $request->user()->club_id ?? $request->user()->resolveClubId();
         return response()->json(
-            Squad::where('club_id', $request->user()->club_id)
+            Squad::where('club_id', $clubId)
                 ->withCount('athletes')
                 ->orderBy('name')->get()
         );
