@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Plus, X, Trophy, Search, ChevronDown, Loader2, Zap } from 'lucide-react'
+import { Plus, X, Trophy, Search, ChevronDown, Loader2, Zap, Globe, GlobeLock } from 'lucide-react'
 import api from '../../lib/api'
 import { FTEM_PHASES } from '../../lib/constants'
 import { useAuth } from '../../contexts/AuthContext'
@@ -49,9 +49,17 @@ function FtemBadge({ phase, abbreviated = false }) {
   )
 }
 
-function MilestoneCard({ m, isAdmin, onDelete }) {
+function MilestoneCard({ m, isAdmin, onDelete, onTogglePublic }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [toggling, setToggling]           = useState(false)
   const phase = FTEM_PHASES[m.ftem_phase]
+
+  async function handleTogglePublic(e) {
+    e.stopPropagation()
+    setToggling(true)
+    await onTogglePublic(m.id, !m.is_shared_with_parent)
+    setToggling(false)
+  }
 
   return (
     <div className="rounded-2xl border border-amber-100 bg-white shadow-sm overflow-hidden">
@@ -79,27 +87,45 @@ function MilestoneCard({ m, isAdmin, onDelete }) {
             {m.description && (
               <p className="text-xs text-slate-400 mt-1.5 leading-relaxed line-clamp-2">{m.description}</p>
             )}
-            {/* Mobile: show date inline under name */}
             <p className="text-[11px] text-slate-400 mt-1.5 sm:hidden">{fmtDate(m.achieved_at)}</p>
           </div>
 
-          {/* Right column: date + FTEM + delete */}
+          {/* Right column: date + FTEM + actions */}
           <div className="shrink-0 flex flex-col items-end gap-1.5">
             <p className="text-xs text-slate-400 whitespace-nowrap hidden sm:block">{fmtDate(m.achieved_at)}</p>
             <FtemBadge phase={m.ftem_phase} />
-            {m.is_shared_with_parent && (
-              <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 whitespace-nowrap">
-                Shared
-              </span>
-            )}
             {isAdmin && !confirmDelete && (
-              <button
-                onClick={() => setConfirmDelete(true)}
-                className="h-8 w-8 flex items-center justify-center text-slate-300 hover:text-red-400 hover:bg-red-50 rounded-lg transition-colors"
-                title="Delete milestone"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={handleTogglePublic}
+                  disabled={toggling}
+                  title={m.is_shared_with_parent ? 'Remove from public profile' : 'Show on public profile'}
+                  className={`h-8 px-2 flex items-center gap-1 rounded-lg text-[10px] font-semibold transition-colors ${
+                    m.is_shared_with_parent
+                      ? 'bg-emerald-50 border border-emerald-200 text-emerald-600 hover:bg-emerald-100'
+                      : 'bg-slate-50 border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  {toggling
+                    ? <Loader2 className="h-3 w-3 animate-spin" />
+                    : m.is_shared_with_parent
+                      ? <><Globe className="h-3 w-3" /> Public</>
+                      : <><GlobeLock className="h-3 w-3" /> Private</>
+                  }
+                </button>
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  className="h-8 w-8 flex items-center justify-center text-slate-300 hover:text-red-400 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Delete milestone"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
+            {!isAdmin && m.is_shared_with_parent && (
+              <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 whitespace-nowrap">
+                Public
+              </span>
             )}
           </div>
         </div>
@@ -127,7 +153,7 @@ function MilestoneCard({ m, isAdmin, onDelete }) {
   )
 }
 
-function MonthGroup({ monthKey: key, milestones, isAdmin, onDelete }) {
+function MonthGroup({ monthKey: key, milestones, isAdmin, onDelete, onTogglePublic }) {
   return (
     <div>
       <div className="flex items-center gap-3 mb-3 sticky top-0 bg-slate-50 md:bg-transparent py-2 z-10">
@@ -139,7 +165,7 @@ function MonthGroup({ monthKey: key, milestones, isAdmin, onDelete }) {
       </div>
       <div className="flex flex-col gap-3 pl-0 md:pl-4">
         {milestones.map(m => (
-          <MilestoneCard key={m.id} m={m} isAdmin={isAdmin} onDelete={onDelete} />
+          <MilestoneCard key={m.id} m={m} isAdmin={isAdmin} onDelete={onDelete} onTogglePublic={onTogglePublic} />
         ))}
       </div>
     </div>
@@ -276,14 +302,17 @@ function AddMilestoneModal({ athletes, onClose, onSaved }) {
               />
             </div>
 
-            <label className="flex items-center gap-3 text-sm text-slate-600 cursor-pointer select-none min-h-[44px]">
+            <label className="flex items-start gap-3 text-sm text-slate-600 cursor-pointer select-none min-h-[44px] rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
               <input
                 type="checkbox"
                 checked={form.is_shared_with_parent}
                 onChange={e => setForm(p => ({ ...p, is_shared_with_parent: e.target.checked }))}
-                className="rounded accent-emerald-500 h-4 w-4"
+                className="rounded accent-emerald-500 h-4 w-4 mt-0.5 shrink-0"
               />
-              Share with parent
+              <div>
+                <span className="font-semibold text-slate-700">Show on public club profile</span>
+                <p className="text-xs text-slate-400 mt-0.5">Displays this milestone in the club's trophy cabinet and shares with parents</p>
+              </div>
             </label>
           </form>
         </div>
@@ -385,6 +414,25 @@ export default function Milestones() {
       toast.success('Milestone deleted.')
     } catch {
       toast.error('Failed to delete milestone.')
+    }
+  }
+
+  async function handleTogglePublic(id, value) {
+    const item = items.find(m => m.id === id)
+    if (!item) return
+    try {
+      await api.put(`/milestones/${id}`, {
+        athlete_id:            item.athlete_id,
+        title:                 item.title,
+        description:           item.description,
+        ftem_phase:            item.ftem_phase,
+        achieved_at:           item.achieved_at,
+        is_shared_with_parent: value,
+      })
+      setItems(p => p.map(m => m.id === id ? { ...m, is_shared_with_parent: value } : m))
+      toast.success(value ? 'Now showing on public profile' : 'Removed from public profile')
+    } catch {
+      toast.error('Failed to update milestone.')
     }
   }
 
@@ -555,6 +603,7 @@ export default function Milestones() {
                 milestones={milestones}
                 isAdmin={isAdmin}
                 onDelete={handleDelete}
+                onTogglePublic={handleTogglePublic}
               />
             ))}
           </div>

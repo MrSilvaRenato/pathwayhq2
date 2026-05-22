@@ -67,7 +67,9 @@ Route::middleware('auth:api')->group(function () {
     Route::put('/squads/{id}',               [SquadController::class, 'update']);
     Route::delete('/squads/{id}',            [SquadController::class, 'destroy']);
     Route::get('/squads/{id}/athletes',      [SquadController::class, 'athletes']);
+    Route::post('/squads/{id}/athletes',     [SquadController::class, 'addAthlete']);
     Route::delete('/squads/{id}/athletes/{athleteId}', [SquadController::class, 'removeAthlete']);
+    Route::post('/squads/{id}/request',      [SquadController::class, 'requestSquadChange']);
 
     // Events / Calendar
     Route::get('/events',              [EventController::class, 'index']);

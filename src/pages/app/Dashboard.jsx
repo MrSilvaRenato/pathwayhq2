@@ -6,6 +6,7 @@ import {
   TrendingUp, Clock, X, HelpCircle, Loader2,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../contexts/ToastContext'
 import api from '../../lib/api'
 import { FTEM_PHASES, SPORTS } from '../../lib/constants'
 
@@ -459,6 +460,75 @@ function ClubDashboard({ user }) {
 }
 
 // ─── ATHLETE DASHBOARD ────────────────────────────────────────────────────────
+function SquadRequestModal({ onClose }) {
+  const toast = useToast()
+  const [squads,   setSquads]   = useState([])
+  const [selected, setSelected] = useState('')
+  const [reason,   setReason]   = useState('')
+  const [saving,   setSaving]   = useState(false)
+
+  useEffect(() => {
+    api.get('/squads').then(r => setSquads(r.data)).catch(() => {})
+  }, [])
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (!selected) return
+    setSaving(true)
+    try {
+      await api.post(`/squads/${selected}/request`, { reason })
+      toast.success('Request sent to your coach!')
+      onClose()
+    } catch {
+      toast.error('Failed to send request')
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col justify-end md:items-center md:justify-center bg-black/40 backdrop-blur-sm">
+      <div className="w-full md:max-w-sm md:rounded-2xl bg-white md:shadow-2xl rounded-t-3xl shadow-2xl">
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-slate-100">
+          <h2 className="text-base font-black text-slate-900">Request squad change</h2>
+          <button onClick={onClose} className="h-10 w-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="px-5 py-4 space-y-3">
+          <div>
+            <label className="text-xs font-semibold text-slate-500 mb-1 block">Which squad do you want to join?</label>
+            <select
+              required
+              value={selected}
+              onChange={e => setSelected(e.target.value)}
+              className="w-full h-11 rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+            >
+              <option value="">Select squad…</option>
+              {squads.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-slate-500 mb-1 block">Reason (optional)</label>
+            <textarea
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              rows={2}
+              placeholder="e.g. I moved age groups…"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+          <div className="flex gap-3 pb-2">
+            <button type="button" onClick={onClose} className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 min-h-[44px]">Cancel</button>
+            <button type="submit" disabled={saving || !selected} className="flex-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 py-3 text-sm font-bold text-white disabled:opacity-50 min-h-[44px]">
+              {saving ? 'Sending…' : 'Send request'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 function AthleteDashboard({ user }) {
   const [profile,       setProfile]      = useState(null)
   const [milestones,    setMilestones]   = useState([])
@@ -468,6 +538,7 @@ function AthleteDashboard({ user }) {
   const [volunteering,  setVolunteering] = useState([])
   const [loading,       setLoading]      = useState(true)
   const [inviteAction,  setInviteAction] = useState({})
+  const [showSquadRequest, setShowSquadRequest] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -526,6 +597,8 @@ function AthleteDashboard({ user }) {
   const nextEvent = events[0] ?? null
 
   return (
+    <>
+    {showSquadRequest && <SquadRequestModal onClose={() => setShowSquadRequest(false)} />}
     <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
 
       {/* ── Pending invites (full-width alert — very prominent on mobile) ── */}
@@ -568,6 +641,14 @@ function AthleteDashboard({ user }) {
                   <span className={`inline-flex rounded-lg px-2.5 py-1 text-xs font-black border ${phase.color}`}>{profile.ftem_phase}</span>
                   <span className="text-xs text-slate-400">{phase.label}</span>
                 </div>
+              )}
+              {profile.squad_names && (
+                <button
+                  onClick={() => setShowSquadRequest(true)}
+                  className="mt-2 text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition-colors"
+                >
+                  Request squad change →
+                </button>
               )}
             </div>
           </div>
@@ -724,6 +805,7 @@ function AthleteDashboard({ user }) {
       </div>
 
     </div>
+    </>
   )
 }
 

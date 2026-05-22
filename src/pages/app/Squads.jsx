@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Plus, Users, Trash2, X, Pencil, Check, ChevronRight, Loader2 } from 'lucide-react'
+import { Plus, Users, Trash2, X, Pencil, Check, ChevronRight, Loader2, UserPlus, Search } from 'lucide-react'
 import api from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
@@ -275,12 +275,193 @@ function RosterContent({ squad, athletes, isAdmin, removing, confirmRemoveId, on
   )
 }
 
+// ── Add Athlete Picker ────────────────────────────────────────────────────────
+function AddAthletePicker({ squad, currentAthletes, onAdded, onCancel }) {
+  const toast = useToast()
+  const [allAthletes, setAllAthletes] = useState([])
+  const [q, setQ]                     = useState('')
+  const [adding, setAdding]           = useState(null)
+
+  useEffect(() => {
+    api.get('/athletes').then(r => setAllAthletes(r.data)).catch(() => {})
+  }, [])
+
+  const currentIds = new Set((currentAthletes ?? []).map(a => a.id))
+  const available  = allAthletes
+    .filter(a => !currentIds.has(a.id) && a.is_active !== false)
+    .filter(a => !q || `${a.first_name} ${a.last_name}`.toLowerCase().includes(q.toLowerCase()))
+
+  async function handleAdd(athlete) {
+    setAdding(athlete.id)
+    try {
+      await api.post(`/squads/${squad.id}/athletes`, { athlete_id: athlete.id })
+      onAdded(athlete)
+      toast.success(`${athlete.first_name} added to ${squad.name}`)
+    } catch {
+      toast.error('Failed to add athlete')
+      setAdding(null)
+    }
+  }
+
+  return (
+    <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-bold text-emerald-700 uppercase tracking-widest">Add athlete to squad</p>
+        <button onClick={onCancel} className="h-7 w-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-white transition-colors">
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <div className="relative mb-3">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+        <input
+          autoFocus
+          value={q}
+          onChange={e => setQ(e.target.value)}
+          placeholder="Search athletes…"
+          className="w-full h-9 rounded-lg border border-white bg-white pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+        />
+      </div>
+      {available.length === 0 ? (
+        <p className="text-xs text-slate-400 text-center py-3">{q ? 'No athletes found' : 'All athletes are already in this squad'}</p>
+      ) : (
+        <ul className="space-y-1 max-h-48 overflow-y-auto">
+          {available.map(a => (
+            <li key={a.id} className="flex items-center justify-between gap-2 rounded-lg bg-white border border-slate-100 px-3 py-2">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-800 truncate">{a.first_name} {a.last_name}</p>
+                {a.squad_names && <p className="text-xs text-slate-400 truncate">{a.squad_names}</p>}
+              </div>
+              <button
+                onClick={() => handleAdd(a)}
+                disabled={adding === a.id}
+                className="shrink-0 h-8 px-3 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-bold disabled:opacity-50 flex items-center gap-1 transition-colors"
+              >
+                {adding === a.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                Add
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 // ── Desktop Detail Panel ──────────────────────────────────────────────────────
-function SquadDetail({ squad, isAdmin, onClose, onAthleteRemoved }) {
+function SquadDetail({ squad, isAdmin, onClose, onAthleteRemoved, onAthleteAdded }) {
   const toast = useToast()
   const [athletes, setAthletes]               = useState(null)
   const [removing, setRemoving]               = useState(null)
   const [confirmRemoveId, setConfirmRemoveId] = useState(null)
+  const [showAddPicker, setShowAddPicker]     = useState(false)
+  const cache = useRef({})
+
+  useEffect(() => {
+    if (!squad) return
+    if (cache.current[squad.id]) {
+      setAthletes(cache.current[squad.id])
+      return
+    }
+    setAthletes(null)
+    setShowAddPicker(false)
+    api.get(`/squads/${squad.id}/athletes`)
+      .then(r => {
+        cache.current[squad.id] = r.data
+        setAthletes(r.data)
+      })
+      .catch(() => {
+        toast.error('Failed to load athletes')
+        setAthletes([])
+      })
+  }, [squad?.id])
+
+  async function handleRemoveConfirm(athlete) {
+    setRemoving(athlete.id)
+    try {
+      await api.delete(`/squads/${squad.id}/athletes/${athlete.id}`)
+      const updated = athletes.filter(a => a.id !== athlete.id)
+      cache.current[squad.id] = updated
+      setAthletes(updated)
+      onAthleteRemoved(squad.id, updated.length)
+      toast.success(`${athlete.first_name} removed from squad`)
+    } catch {
+      toast.error('Failed to remove athlete')
+    } finally {
+      setRemoving(null)
+      setConfirmRemoveId(null)
+    }
+  }
+
+  function handleAthleteAdded(athlete) {
+    const updated = [...(athletes ?? []), { ...athlete, status: 'active' }]
+    cache.current[squad.id] = updated
+    setAthletes(updated)
+    onAthleteAdded(squad.id, updated.length)
+    setShowAddPicker(false)
+  }
+
+  if (!squad) return null
+
+  return (
+    <div className="mt-4 rounded-2xl border border-emerald-200 bg-white shadow-xl shadow-emerald-50 overflow-hidden">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-emerald-50">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500">
+            <Users className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h3 className="font-black text-slate-900">{squad.name}</h3>
+            <p className="text-xs text-slate-500">{athletes?.length ?? (squad.athletes_count ?? 0)} athlete{(athletes?.length ?? 0) !== 1 ? 's' : ''}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {isAdmin && (
+            <button
+              onClick={() => setShowAddPicker(v => !v)}
+              className="h-9 px-3 flex items-center gap-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-bold transition-colors"
+            >
+              <UserPlus className="h-3.5 w-3.5" /> Add athlete
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="h-11 w-11 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 hover:bg-white transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
+      <div className="p-6">
+        {showAddPicker && isAdmin && (
+          <AddAthletePicker
+            squad={squad}
+            currentAthletes={athletes}
+            onAdded={handleAthleteAdded}
+            onCancel={() => setShowAddPicker(false)}
+          />
+        )}
+        <RosterContent
+          squad={squad}
+          athletes={athletes}
+          isAdmin={isAdmin}
+          removing={removing}
+          confirmRemoveId={confirmRemoveId}
+          onRemoveClick={a => setConfirmRemoveId(a.id)}
+          onRemoveConfirm={handleRemoveConfirm}
+          onRemoveCancelConfirm={() => setConfirmRemoveId(null)}
+        />
+      </div>
+    </div>
+  )
+}
+
+// ── Mobile Roster Overlay ─────────────────────────────────────────────────────
+function MobileRosterOverlay({ squad, isAdmin, onClose, onAthleteRemoved, onAthleteAdded }) {
+  const toast = useToast()
+  const [athletes, setAthletes]               = useState(null)
+  const [removing, setRemoving]               = useState(null)
+  const [confirmRemoveId, setConfirmRemoveId] = useState(null)
+  const [showAddPicker, setShowAddPicker]     = useState(false)
   const cache = useRef({})
 
   useEffect(() => {
@@ -318,84 +499,12 @@ function SquadDetail({ squad, isAdmin, onClose, onAthleteRemoved }) {
     }
   }
 
-  if (!squad) return null
-
-  return (
-    <div className="mt-4 rounded-2xl border border-emerald-200 bg-white shadow-xl shadow-emerald-50 overflow-hidden">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-emerald-50">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500">
-            <Users className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h3 className="font-black text-slate-900">{squad.name}</h3>
-            <p className="text-xs text-slate-500">{athletes?.length ?? (squad.athletes_count ?? 0)} athlete{(athletes?.length ?? 0) !== 1 ? 's' : ''}</p>
-          </div>
-        </div>
-        <button
-          onClick={onClose}
-          className="h-11 w-11 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 hover:bg-white transition-colors"
-        >
-          <X className="h-5 w-5" />
-        </button>
-      </div>
-      <div className="p-6">
-        <RosterContent
-          squad={squad}
-          athletes={athletes}
-          isAdmin={isAdmin}
-          removing={removing}
-          confirmRemoveId={confirmRemoveId}
-          onRemoveClick={a => setConfirmRemoveId(a.id)}
-          onRemoveConfirm={handleRemoveConfirm}
-          onRemoveCancelConfirm={() => setConfirmRemoveId(null)}
-        />
-      </div>
-    </div>
-  )
-}
-
-// ── Mobile Roster Overlay ─────────────────────────────────────────────────────
-function MobileRosterOverlay({ squad, isAdmin, onClose, onAthleteRemoved }) {
-  const toast = useToast()
-  const [athletes, setAthletes]               = useState(null)
-  const [removing, setRemoving]               = useState(null)
-  const [confirmRemoveId, setConfirmRemoveId] = useState(null)
-  const cache = useRef({})
-
-  useEffect(() => {
-    if (!squad) return
-    if (cache.current[squad.id]) {
-      setAthletes(cache.current[squad.id])
-      return
-    }
-    setAthletes(null)
-    api.get(`/squads/${squad.id}/athletes`)
-      .then(r => {
-        cache.current[squad.id] = r.data
-        setAthletes(r.data)
-      })
-      .catch(() => {
-        toast.error('Failed to load athletes')
-        setAthletes([])
-      })
-  }, [squad?.id])
-
-  async function handleRemoveConfirm(athlete) {
-    setRemoving(athlete.id)
-    try {
-      await api.delete(`/squads/${squad.id}/athletes/${athlete.id}`)
-      const updated = athletes.filter(a => a.id !== athlete.id)
-      cache.current[squad.id] = updated
-      setAthletes(updated)
-      onAthleteRemoved(squad.id, updated.length)
-      toast.success(`${athlete.first_name} removed from squad`)
-    } catch {
-      toast.error('Failed to remove athlete')
-    } finally {
-      setRemoving(null)
-      setConfirmRemoveId(null)
-    }
+  function handleAthleteAdded(athlete) {
+    const updated = [...(athletes ?? []), { ...athlete, status: 'active' }]
+    cache.current[squad.id] = updated
+    setAthletes(updated)
+    onAthleteAdded(squad.id, updated.length)
+    setShowAddPicker(false)
   }
 
   const count = athletes?.length ?? (squad?.athletes_count ?? squad?.athlete_count ?? 0)
@@ -414,14 +523,32 @@ function MobileRosterOverlay({ squad, isAdmin, onClose, onAthleteRemoved }) {
               <p className="text-xs text-slate-500">{count} athlete{count !== 1 ? 's' : ''}</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="h-11 w-11 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 hover:bg-white transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <button
+                onClick={() => setShowAddPicker(v => !v)}
+                className="h-9 px-3 flex items-center gap-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-bold transition-colors"
+              >
+                <UserPlus className="h-3.5 w-3.5" /> Add
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="h-11 w-11 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 hover:bg-white transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
         <div className="overflow-y-auto flex-1 px-5 py-4">
+          {showAddPicker && isAdmin && (
+            <AddAthletePicker
+              squad={squad}
+              currentAthletes={athletes}
+              onAdded={handleAthleteAdded}
+              onCancel={() => setShowAddPicker(false)}
+            />
+          )}
           <RosterContent
             squad={squad}
             athletes={athletes}
@@ -472,6 +599,13 @@ export default function Squads() {
   }
 
   function handleAthleteRemoved(squadId, newCount) {
+    setSquads(p => p.map(s => s.id === squadId
+      ? { ...s, athletes_count: newCount, athlete_count: newCount }
+      : s
+    ))
+  }
+
+  function handleAthleteAdded(squadId, newCount) {
     setSquads(p => p.map(s => s.id === squadId
       ? { ...s, athletes_count: newCount, athlete_count: newCount }
       : s
@@ -552,6 +686,7 @@ export default function Squads() {
             isAdmin={isAdmin}
             onClose={() => setSelectedId(null)}
             onAthleteRemoved={handleAthleteRemoved}
+            onAthleteAdded={handleAthleteAdded}
           />
         </div>
       </div>
@@ -564,6 +699,7 @@ export default function Squads() {
             isAdmin={isAdmin}
             onClose={() => setSelectedId(null)}
             onAthleteRemoved={handleAthleteRemoved}
+            onAthleteAdded={handleAthleteAdded}
           />
         </div>
       )}

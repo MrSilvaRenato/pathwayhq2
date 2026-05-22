@@ -13,19 +13,33 @@ class EventController extends Controller
 {
     public function index(Request $request)
     {
-        $clubId = $request->user()->resolveClubId();
+        $user   = $request->user();
+        $clubId = $user->resolveClubId();
         if (!$clubId) return response()->json([]);
 
-        $userId = $request->user()->id;
+        $userId = $user->id;
+
+        $query = Event::where('club_id', $clubId)
+            ->with([
+                'squad:id,name',
+                'rsvps' => fn($q) => $q->select('id','event_id','user_id','status'),
+            ])
+            ->orderBy('start_time', 'asc');
+
+        // Athletes only see their squad's events + club-wide events (no squad)
+        if ($user->role === 'athlete') {
+            $athlete  = Athlete::where('user_id', $userId)->where('invite_status', 'accepted')->first();
+            $squadIds = $athlete ? $athlete->squads()->pluck('squads.id')->toArray() : [];
+            $query->where(function ($q) use ($squadIds) {
+                $q->whereNull('squad_id');
+                if (!empty($squadIds)) {
+                    $q->orWhereIn('squad_id', $squadIds);
+                }
+            });
+        }
 
         return response()->json(
-            Event::where('club_id', $clubId)
-                ->with([
-                    'squad:id,name',
-                    'rsvps' => fn($q) => $q->select('id','event_id','user_id','status'),
-                ])
-                ->orderBy('start_time', 'asc')
-                ->get()
+            $query->get()
                 ->map(function($e) use ($userId) {
                     $e->squad_name = $e->squad?->name;
                     unset($e->squad);
@@ -105,9 +119,12 @@ class EventController extends Controller
             if ($i === 0) $firstEventId = $event->id;
         }
 
-        // Notify all linked athletes — once per series
-        $athletes = Athlete::where('club_id', $clubId)
-            ->whereNotNull('user_id')->get();
+        // Notify relevant linked athletes — once per series
+        $athleteQuery = Athlete::where('club_id', $clubId)->whereNotNull('user_id');
+        if (!empty($data['squad_id'])) {
+            $athleteQuery->whereHas('squads', fn($q) => $q->where('squads.id', $data['squad_id']));
+        }
+        $athletes = $athleteQuery->get();
 
         $totalSessions = count($occurrences);
         $dateStr = date('D j M', strtotime($data['start_time']));

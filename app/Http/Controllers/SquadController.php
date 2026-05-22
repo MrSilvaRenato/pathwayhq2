@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use App\Models\Squad;
+use App\Models\Athlete;
+use App\Models\User;
+use App\Models\Notification;
 
 class SquadController extends Controller
 {
@@ -70,10 +73,56 @@ class SquadController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    public function addAthlete(Request $request, $id)
+    {
+        $data  = $request->validate(['athlete_id' => 'required|string']);
+        $squad = Squad::where('id', $id)->where('club_id', $request->user()->club_id)->firstOrFail();
+
+        // Verify athlete belongs to the same club
+        Athlete::where('id', $data['athlete_id'])
+            ->where('club_id', $request->user()->club_id)
+            ->firstOrFail();
+
+        $squad->athletes()->syncWithoutDetaching([$data['athlete_id']]);
+        return response()->json(['ok' => true]);
+    }
+
     public function removeAthlete(Request $request, $id, $athleteId)
     {
         $squad = Squad::where('id', $id)->where('club_id', $request->user()->club_id)->firstOrFail();
         $squad->athletes()->detach($athleteId);
+        return response()->json(['ok' => true]);
+    }
+
+    // Athlete requests to join/transfer to a squad
+    public function requestSquadChange(Request $request, $id)
+    {
+        $data = $request->validate(['reason' => 'nullable|string|max:500']);
+        $user = $request->user();
+
+        $athlete = Athlete::where('user_id', $user->id)
+            ->where('invite_status', 'accepted')
+            ->firstOrFail();
+
+        $squad = Squad::where('id', $id)->where('club_id', $athlete->club_id)->firstOrFail();
+
+        $admins = User::where('club_id', $athlete->club_id)
+            ->whereIn('role', ['club_admin', 'coach'])
+            ->get();
+
+        $reason = !empty($data['reason']) ? ' — "' . $data['reason'] . '"' : '';
+        foreach ($admins as $admin) {
+            Notification::create([
+                'id'      => (string) Str::uuid(),
+                'user_id' => $admin->id,
+                'title'   => "🔄 Squad request: {$athlete->first_name} {$athlete->last_name}",
+                'body'    => "Wants to join: {$squad->name}{$reason}",
+                'link'    => '/squads',
+                'is_read' => false,
+                'at'      => now()->toDateTimeString(),
+            ]);
+        }
+
         return response()->json(['ok' => true]);
     }
 }

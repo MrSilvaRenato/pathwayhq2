@@ -303,9 +303,29 @@ class AthleteController extends Controller
         $athlete = Athlete::where('id', $id)
             ->where('user_id', $request->user()->id)
             ->where('invite_status', 'pending')
+            ->with('club:id,name')
             ->firstOrFail();
 
+        $athleteName = "{$athlete->first_name} {$athlete->last_name}";
+        $clubId      = $athlete->club_id;
+
         $athlete->delete();
+
+        // Notify all club admins and coaches
+        $admins = User::where('club_id', $clubId)
+            ->whereIn('role', ['club_admin', 'coach'])
+            ->get();
+        foreach ($admins as $admin) {
+            Notification::create([
+                'id'      => (string) Str::uuid(),
+                'user_id' => $admin->id,
+                'title'   => "❌ {$athleteName} declined the club invite",
+                'body'    => 'The athlete rejected the invitation to join your roster.',
+                'link'    => '/athletes',
+                'is_read' => false,
+                'at'      => now()->toDateTimeString(),
+            ]);
+        }
 
         return response()->json(['ok' => true]);
     }

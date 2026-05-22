@@ -127,8 +127,8 @@ export default function ClubProfile() {
             <Link to="/clubs" className="hidden sm:flex items-center gap-1 text-sm font-medium text-slate-400 hover:text-white transition-colors">
               <ArrowLeft className="h-4 w-4" /> All clubs
             </Link>
-            <Link to="/login"  className="hidden sm:block text-sm font-medium text-slate-400 hover:text-white transition-colors">Sign in</Link>
-            <Link to="/signup" className="rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 px-4 py-2 text-sm font-bold transition-all shadow-lg shadow-emerald-500/25">
+            <Link to="/?modal=login"  className="hidden sm:block text-sm font-medium text-slate-400 hover:text-white transition-colors">Sign in</Link>
+            <Link to="/?modal=signup" className="rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 px-4 py-2 text-sm font-bold transition-all shadow-lg shadow-emerald-500/25">
               Get started free
             </Link>
           </div>
@@ -305,7 +305,7 @@ export default function ClubProfile() {
               <p className="text-xs text-slate-400 mb-4 leading-relaxed">
                 Ask your coach to set up your athlete profile and start tracking your development.
               </p>
-              <Link to="/signup"
+              <Link to="/?modal=signup"
                 className="block w-full rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 py-3 text-sm font-bold transition-all shadow-lg shadow-emerald-500/25 text-center">
                 Create athlete account
               </Link>
@@ -419,7 +419,7 @@ export default function ClubProfile() {
                 Ask your coach to set up your athlete profile and start tracking your development.
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Link to="/signup"
+                <Link to="/?modal=signup"
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 px-6 py-3.5 text-sm font-bold transition-all shadow-lg shadow-emerald-500/25">
                   Create athlete account <ArrowRight className="h-4 w-4" />
                 </Link>
