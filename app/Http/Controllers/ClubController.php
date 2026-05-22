@@ -58,8 +58,14 @@ class ClubController extends Controller
         if ($showEvents) {
             $events = Event::where('club_id', $club->id)
                 ->where('start_time', '>=', now())
+                ->with('squad:id,name')
                 ->select('id','title','event_type','start_time','end_time','location','squad_id')
-                ->orderBy('start_time')->limit(5)->get();
+                ->orderBy('start_time')->limit(5)->get()
+                ->map(function ($ev) {
+                    $ev->squad_name = $ev->squad?->name;
+                    unset($ev->squad);
+                    return $ev;
+                });
         }
 
         // Announcements

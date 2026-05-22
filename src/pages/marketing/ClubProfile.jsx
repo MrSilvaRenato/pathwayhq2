@@ -335,10 +335,15 @@ export default function ClubProfile() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="text-sm font-bold text-white truncate">{ev.title}</p>
                           <span className={`shrink-0 h-1.5 w-1.5 rounded-full ${EVENT_COLORS[ev.event_type] ?? 'bg-slate-400'}`} />
+                          {ev.squad_name && (
+                            <span className="text-[10px] font-semibold bg-white/10 text-slate-300 rounded-full px-2 py-0.5 shrink-0">{ev.squad_name}</span>
+                          )}
                         </div>
                         <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                           <span className="text-xs text-slate-500 flex items-center gap-1">
-                            <Clock className="h-3 w-3" /> {fmtTime(ev.start_time)}
+                            <Clock className="h-3 w-3" />
+                            {fmtTime(ev.start_time)}
+                            {ev.end_time && <> – {fmtTime(ev.end_time)}</>}
                           </span>
                           {ev.location && (
                             <span className="text-xs text-slate-500 flex items-center gap-1">
