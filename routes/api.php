@@ -12,6 +12,7 @@ use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\VolunteeringController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\UploadController;
+use App\Http\Controllers\ClubTrophyController;
 
 // ─── Health check ────────────────────────────────────────────────────────────
 Route::get('/health', fn() => response()->json([
@@ -101,6 +102,12 @@ Route::middleware('auth:api')->group(function () {
     Route::delete('/volunteering/{id}/signup',                    [VolunteeringController::class, 'cancelSignup']);
     Route::get('/volunteering/{id}/signups',                      [VolunteeringController::class, 'signups']);
     Route::delete('/volunteering/{id}/volunteers/{userId}',       [VolunteeringController::class, 'removeVolunteer']);
+
+    // Club Trophy Cabinet
+    Route::get('/club-trophies',       [ClubTrophyController::class, 'index']);
+    Route::post('/club-trophies',      [ClubTrophyController::class, 'store']);
+    Route::put('/club-trophies/{id}',  [ClubTrophyController::class, 'update']);
+    Route::delete('/club-trophies/{id}', [ClubTrophyController::class, 'destroy']);
 
     // File uploads
     Route::post('/upload/image', [UploadController::class, 'image']);

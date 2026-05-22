@@ -19,6 +19,7 @@ import Calendar      from './pages/app/Calendar'
 import Announcements from './pages/app/Announcements'
 import Volunteering  from './pages/app/Volunteering'
 import Milestones    from './pages/app/Milestones'
+import ClubTrophies  from './pages/app/ClubTrophies'
 import Analytics     from './pages/app/Analytics'
 import Settings      from './pages/app/Settings'
 import SiteAdmin     from './pages/app/SiteAdmin'
@@ -65,6 +66,7 @@ export default function App() {
             <Route path="announcements" element={<Announcements />} />
             <Route path="volunteering"  element={<Volunteering />} />
             <Route path="milestones"    element={<Milestones />} />
+            <Route path="trophies"      element={<ClubTrophies />} />
             <Route path="analytics"     element={<Analytics />} />
             <Route path="settings"      element={<Settings />} />
             <Route path="site-admin"    element={<SiteAdmin />} />

@@ -100,7 +100,7 @@ export default function ClubProfile() {
     </div>
   )
 
-  const { club, athletes, ftemDist, milestones, events, announcements } = data
+  const { club, athletes, ftemDist, milestones, events, announcements, clubTrophies } = data
   const sportMeta   = SPORTS.find(s => s.value === club.sport)
   const athleteList = athletes ?? []
   const ftem        = ftemDist ?? {}
@@ -110,6 +110,7 @@ export default function ClubProfile() {
   const hasEvents   = events && events.length > 0
   const hasMile     = milestones && milestones.length > 0
   const hasAnnounce = announcements && announcements.length > 0
+  const hasTrophies = clubTrophies && clubTrophies.length > 0
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -266,9 +267,15 @@ export default function ClubProfile() {
                       <span className="font-black text-white text-2xl">{phases}</span>
                     </div>
                   )}
+                  {hasTrophies && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500 text-sm">Club trophies</span>
+                      <span className="font-black text-white text-2xl">{clubTrophies.length}</span>
+                    </div>
+                  )}
                   {hasMile && (
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-500 text-sm">Achievements</span>
+                      <span className="text-slate-500 text-sm">Milestones</span>
                       <span className="font-black text-white text-2xl">{milestones.length}</span>
                     </div>
                   )}
@@ -370,10 +377,67 @@ export default function ClubProfile() {
               </div>
             )}
 
+            {hasTrophies && (
+              <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-5">
+                <h2 className="mb-4 flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  <Trophy className="h-4 w-4 text-amber-400" /> Club trophy cabinet
+                </h2>
+                {(() => {
+                  const CAT_META = {
+                    competition: { emoji: '🏆', label: 'Competition' },
+                    award:       { emoji: '⭐', label: 'Award' },
+                    sponsorship: { emoji: '🤝', label: 'Sponsorship' },
+                    facility:    { emoji: '🏗️', label: 'Facility' },
+                    milestone:   { emoji: '🎯', label: 'Milestone' },
+                    other:       { emoji: '📌', label: 'Other' },
+                  }
+                  return (
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      {clubTrophies.map(t => {
+                        const meta = CAT_META[t.category] || CAT_META.other
+                        return (
+                          <div key={t.id} className="rounded-xl border border-white/8 bg-white/[0.04] overflow-hidden flex flex-col">
+                            {t.image_url ? (
+                              <div className="relative h-40 bg-slate-900">
+                                <img src={t.image_url} alt={t.title}
+                                  className="w-full h-full object-cover"
+                                  onError={e => { e.target.parentElement.style.display = 'none' }} />
+                                <span className="absolute top-2 left-2 rounded-full bg-black/50 backdrop-blur-sm px-2 py-0.5 text-[10px] font-bold text-white border border-white/10">
+                                  {meta.emoji} {meta.label}
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="h-20 flex items-center justify-center bg-gradient-to-br from-amber-500/10 to-emerald-500/5 border-b border-white/5">
+                                <span className="text-4xl">{meta.emoji}</span>
+                              </div>
+                            )}
+                            <div className="p-4 flex flex-col gap-1 flex-1">
+                              {!t.image_url && (
+                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{meta.label}</span>
+                              )}
+                              <p className="text-sm font-bold text-white leading-snug">{t.title}</p>
+                              {t.description && (
+                                <p className="text-xs text-slate-400 leading-relaxed line-clamp-2">{t.description}</p>
+                              )}
+                              {t.achieved_at && (
+                                <p className="text-[11px] text-slate-500 mt-auto pt-2">
+                                  {new Date(t.achieved_at).toLocaleDateString('en-AU', { month: 'long', year: 'numeric' })}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )
+                })()}
+              </div>
+            )}
+
             {hasMile && (
               <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-5">
                 <h2 className="mb-4 flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                  <Trophy className="h-4 w-4 text-amber-400" /> Trophy cabinet
+                  <Trophy className="h-4 w-4 text-emerald-400" /> Athlete milestones
                 </h2>
                 <div className="grid sm:grid-cols-2 gap-3">
                   {milestones.map(m => {
@@ -405,7 +469,7 @@ export default function ClubProfile() {
               </div>
             )}
 
-            {!hasEvents && !hasAnnounce && !hasMile && athleteList.length === 0 && (
+            {!hasEvents && !hasAnnounce && !hasMile && !hasTrophies && athleteList.length === 0 && (
               <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-10 text-center">
                 <div className="text-4xl mb-4">🏟️</div>
                 <p className="font-bold text-slate-400 text-base">Profile coming soon</p>

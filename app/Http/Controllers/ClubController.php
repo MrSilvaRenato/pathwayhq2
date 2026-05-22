@@ -8,6 +8,7 @@ use App\Models\Athlete;
 use App\Models\Milestone;
 use App\Models\Event;
 use App\Models\Announcement;
+use App\Models\ClubTrophy;
 
 class ClubController extends Controller
 {
@@ -81,7 +82,14 @@ class ClubController extends Controller
             )->limit(4)->get();
         }
 
-        return response()->json(compact('club','athletes','ftemDist','milestones','events','announcements'));
+        // Club Trophy Cabinet
+        $clubTrophies = ClubTrophy::where('club_id', $club->id)
+            ->where('is_public', true)
+            ->orderByDesc('achieved_at')
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json(compact('club','athletes','ftemDist','milestones','events','announcements','clubTrophies'));
     }
 
     // Auth: get my club

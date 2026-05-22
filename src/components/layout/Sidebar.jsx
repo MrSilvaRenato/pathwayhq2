@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, Users, Layers, Calendar, Trophy,
+  LayoutDashboard, Users, Layers, Calendar, Trophy, Award,
   BarChart3, Settings, LogOut, Zap, Shield, Dumbbell,
   Megaphone, HandHeart, Globe, X,
 } from 'lucide-react'
@@ -15,6 +15,7 @@ const COACH_NAV = [
   { name: 'Announcements', href: '/announcements',  icon: Megaphone },
   { name: 'Volunteering',  href: '/volunteering',   icon: HandHeart },
   { name: 'Milestones',    href: '/milestones',     icon: Trophy },
+  { name: 'Trophy Cabinet', href: '/trophies',      icon: Award },
   { name: 'Analytics',     href: '/analytics',      icon: BarChart3 },
   { name: 'Settings',      href: '/settings',       icon: Settings },
 ]
