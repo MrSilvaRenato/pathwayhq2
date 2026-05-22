@@ -373,50 +373,109 @@ export default function Calendar() {
 
           {/* Monthly grid */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-center gap-4 mb-4">
-              <button
-                onClick={prevMonth}
-                className="h-11 w-11 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors"
-                aria-label="Previous month"
-              >
-                <ChevronLeft className="h-5 w-5 text-slate-600" />
-              </button>
-              <div className="flex items-center gap-3">
-                <h2 className="text-lg font-bold text-slate-900">
-                  {MONTHS[month]} {year}
-                </h2>
+
+            {/* Month navigation header */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={goToday}
-                  className="text-xs font-semibold text-emerald-600 hover:text-emerald-500 border border-emerald-200 hover:border-emerald-300 rounded-lg px-3 py-1.5 transition-colors min-h-[36px]"
+                  onClick={prevMonth}
+                  className="h-9 w-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 transition-colors"
+                  aria-label="Previous month"
                 >
-                  Today
+                  <ChevronLeft className="h-4 w-4 text-slate-600" />
+                </button>
+                <button
+                  onClick={nextMonth}
+                  className="h-9 w-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 transition-colors"
+                  aria-label="Next month"
+                >
+                  <ChevronRight className="h-4 w-4 text-slate-600" />
                 </button>
               </div>
+              <div className="text-center">
+                <h2 className="text-xl font-black text-slate-900 leading-tight">{MONTHS[month]}</h2>
+                <p className="text-xs font-semibold text-slate-400 leading-tight">{year}</p>
+              </div>
               <button
-                onClick={nextMonth}
-                className="h-11 w-11 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors"
-                aria-label="Next month"
+                onClick={goToday}
+                className="rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 px-4 py-1.5 text-sm font-bold transition-colors"
               >
-                <ChevronRight className="h-5 w-5 text-slate-600" />
+                Today
               </button>
             </div>
 
+            {/* This-week strip */}
+            {(() => {
+              const todayDow = today.getDay()
+              const weekStart = new Date(today)
+              weekStart.setDate(today.getDate() - todayDow)
+              const weekDays = Array.from({ length: 7 }, (_, i) => {
+                const d = new Date(weekStart)
+                d.setDate(weekStart.getDate() + i)
+                return d
+              })
+              return (
+                <div className="grid grid-cols-7 gap-1.5 mb-4">
+                  {weekDays.map((d, i) => {
+                    const key = toLocalDateKey(d)
+                    const evCount = (eventsByDay[key] || []).length
+                    const isTodayCell = isSameDay(d, today)
+                    const firstEvType = evCount > 0 ? (eventsByDay[key][0].event_type || 'other') : null
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          setSelectedDate(d)
+                          setShowDetail(true)
+                        }}
+                        className={[
+                          'rounded-xl border p-2 text-center cursor-pointer hover:border-emerald-300 transition-colors',
+                          isTodayCell
+                            ? 'border-emerald-400 bg-emerald-50'
+                            : 'bg-white border-slate-100',
+                        ].join(' ')}
+                      >
+                        <p className="text-[10px] font-semibold text-slate-400 leading-none mb-1">
+                          {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][i]}
+                        </p>
+                        <p className={`text-sm font-black leading-none mb-1 ${isTodayCell ? 'text-emerald-700' : 'text-slate-700'}`}>
+                          {d.getDate()}
+                        </p>
+                        {evCount > 0 && firstEvType ? (
+                          <span className={`inline-block h-1.5 w-1.5 rounded-full ${TYPE_DOT_COLORS[firstEvType] || 'bg-slate-400'}`} />
+                        ) : (
+                          <span className="inline-block h-1.5 w-1.5" />
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              )
+            })()}
+
+            {/* Day-of-week header row */}
             <div className="grid grid-cols-7 mb-1">
-              {DAYS_FULL.map((d, i) => (
-                <div key={d} className="text-center py-1">
-                  <span className="hidden sm:inline text-xs font-semibold text-slate-400">{d}</span>
-                  <span className="sm:hidden text-xs font-semibold text-slate-400">{DAYS_SHORT[i]}</span>
+              {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d, i) => (
+                <div
+                  key={d}
+                  className={`text-center py-2 text-[11px] font-bold uppercase tracking-wider ${i === 0 || i === 6 ? 'text-slate-400' : 'text-slate-500'}`}
+                >
+                  {d}
                 </div>
               ))}
             </div>
 
-            <div className="grid grid-cols-7 border-l border-t border-slate-200 rounded-xl overflow-hidden">
+            {/* Calendar grid cells */}
+            <div className="grid grid-cols-7 gap-px bg-slate-200 rounded-2xl overflow-hidden">
               {cells.map((day, idx) => {
+                const colIdx = idx % 7
+                const isWeekend = colIdx === 0 || colIdx === 6
+
                 if (day === null) {
                   return (
                     <div
                       key={`empty-${idx}`}
-                      className="border-r border-b border-slate-200 bg-slate-50/50 h-14 md:min-h-[80px]"
+                      className="bg-slate-50/40 min-h-[90px] md:min-h-[110px]"
                     />
                   )
                 }
@@ -432,18 +491,26 @@ export default function Calendar() {
                     key={day}
                     onClick={() => selectDay(day)}
                     className={[
-                      'border-r border-b border-slate-200 h-14 md:min-h-[80px] p-1 md:p-1.5 flex flex-col transition-colors cursor-pointer select-none',
-                      isSelected ? 'bg-emerald-50 ring-inset ring-2 ring-emerald-400' : 'bg-white active:bg-slate-100 hover:bg-slate-50/60',
+                      'min-h-[90px] md:min-h-[110px] p-2 flex flex-col transition-colors cursor-pointer select-none',
+                      isSelected
+                        ? 'bg-emerald-50'
+                        : isWeekend
+                          ? 'bg-slate-50/60 hover:bg-slate-50'
+                          : 'bg-white hover:bg-slate-50',
                     ].join(' ')}
                   >
                     <span className={[
-                      'text-xs font-bold self-start w-6 h-6 flex items-center justify-center rounded-full mb-1 shrink-0',
-                      isToday ? 'bg-emerald-500 text-white ring-2 ring-emerald-300' : 'text-slate-600',
-                      isSelected && !isToday ? 'text-emerald-700 font-black' : '',
+                      'self-start shrink-0 mb-1',
+                      isToday
+                        ? 'h-7 w-7 rounded-full bg-emerald-500 text-white font-black text-sm flex items-center justify-center'
+                        : isSelected
+                          ? 'h-7 w-7 rounded-full bg-emerald-100 text-emerald-700 font-black text-sm flex items-center justify-center'
+                          : `text-sm font-semibold ${isWeekend ? 'text-slate-400' : 'text-slate-700'}`,
                     ].join(' ')}>
                       {day}
                     </span>
 
+                    {/* Mobile: colored dots only */}
                     <div className="flex flex-wrap gap-0.5 md:hidden">
                       {dayEvs.slice(0, 3).map(ev => (
                         <span
@@ -453,20 +520,20 @@ export default function Calendar() {
                       ))}
                     </div>
 
+                    {/* Desktop: full event chips, max 2 + overflow */}
                     <div className="hidden md:flex flex-col gap-0.5">
-                      {dayEvs.slice(0, 3).map(ev => (
+                      {dayEvs.slice(0, 2).map(ev => (
                         <div
                           key={ev.id}
-                          className={`${TYPE_COLORS[ev.event_type] || 'bg-slate-400'} rounded px-1 py-0.5 text-white text-[10px] font-semibold truncate leading-tight flex items-center gap-0.5`}
+                          className={`${TYPE_COLORS[ev.event_type] || 'bg-slate-400'} rounded-md px-1.5 py-0.5 text-white text-[10px] font-semibold truncate leading-tight`}
                           title={ev.title}
                         >
-                          {ev.series_id && <RefreshCw className="h-2 w-2 shrink-0 opacity-80" />}
                           {ev.title}
                         </div>
                       ))}
-                      {dayEvs.length > 3 && (
+                      {dayEvs.length > 2 && (
                         <span className="text-[10px] text-slate-400 font-medium pl-0.5">
-                          +{dayEvs.length - 3} more
+                          +{dayEvs.length - 2} more
                         </span>
                       )}
                     </div>
