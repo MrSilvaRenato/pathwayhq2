@@ -125,11 +125,18 @@ export default function Clubs() {
                           {club.city && <span className="flex items-center gap-0.5"><MapPin className="h-3 w-3" />{club.city}{club.state ? `, ${club.state}` : ''}</span>}
                         </div>
                         {club.description && <p className="mt-2 text-xs text-slate-500 line-clamp-2">{club.description}</p>}
-                        {sportMeta?.in2032 && (
-                          <div className="mt-3 inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-400">
-                            <Zap className="h-3 w-3" /> 2032 sport
-                          </div>
-                        )}
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {sportMeta?.in2032 && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-400">
+                              <Zap className="h-3 w-3" /> 2032 sport
+                            </span>
+                          )}
+                          {!club.is_claimed && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-xs font-semibold text-amber-400">
+                              Unclaimed
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>

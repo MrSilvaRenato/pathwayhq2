@@ -4,9 +4,113 @@ import {
   Zap, MapPin, Users, Trophy, ArrowLeft, ArrowRight,
   Globe, Mail, Phone, Calendar, Clock, Megaphone,
   Instagram, Facebook, Twitter, ChevronDown, ChevronUp,
+  ShieldCheck, X, Loader2,
 } from 'lucide-react'
 import api from '../../lib/api'
 import { SPORTS, FTEM_PHASES } from '../../lib/constants'
+
+function ClaimModal({ club, onClose }) {
+  const [form, setForm]       = useState({ name: '', email: '', phone: '', role_at_club: '', message: '' })
+  const [saving, setSaving]   = useState(false)
+  const [done, setDone]       = useState(false)
+  const [error, setError]     = useState('')
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setSaving(true)
+    setError('')
+    try {
+      await api.post(`/clubs/public/${club.slug}/claim`, form)
+      setDone(true)
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Something went wrong. Please try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-3xl bg-slate-900 border border-white/10 shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+              <ShieldCheck className="h-5 w-5 text-emerald-400" />
+            </div>
+            <div>
+              <h2 className="font-black text-white text-base">Claim {club.name}</h2>
+              <p className="text-xs text-slate-400">Pending admin verification</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {done ? (
+          <div className="px-6 py-10 text-center">
+            <div className="text-4xl mb-4">🎉</div>
+            <h3 className="text-lg font-black text-white mb-2">Request submitted!</h3>
+            <p className="text-sm text-slate-400 leading-relaxed">
+              We'll review your claim and be in touch at <span className="text-emerald-400 font-semibold">{form.email}</span> shortly.
+            </p>
+            <button onClick={onClose} className="mt-6 rounded-xl bg-emerald-500 hover:bg-emerald-400 px-6 py-2.5 text-sm font-bold text-white transition-colors">
+              Done
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className="text-xs font-semibold text-slate-400 mb-1 block">Full name *</label>
+                <input required value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                  className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30"
+                  placeholder="Your name" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-400 mb-1 block">Email *</label>
+                <input required type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
+                  className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30"
+                  placeholder="you@club.com.au" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-400 mb-1 block">Phone</label>
+                <input value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))}
+                  className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30"
+                  placeholder="04xx xxx xxx" />
+              </div>
+              <div className="col-span-2">
+                <label className="text-xs font-semibold text-slate-400 mb-1 block">Your role at the club</label>
+                <input value={form.role_at_club} onChange={e => setForm(p => ({ ...p, role_at_club: e.target.value }))}
+                  className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30"
+                  placeholder="e.g. Club Secretary, Head Coach, President" />
+              </div>
+              <div className="col-span-2">
+                <label className="text-xs font-semibold text-slate-400 mb-1 block">Why are you claiming this profile?</label>
+                <textarea value={form.message} onChange={e => setForm(p => ({ ...p, message: e.target.value }))}
+                  rows={3} placeholder="Tell us a bit about yourself and your club…"
+                  className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 resize-none" />
+              </div>
+            </div>
+
+            {error && <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{error}</p>}
+
+            <div className="flex gap-3 pt-1">
+              <button type="button" onClick={onClose}
+                className="flex-1 rounded-xl border border-white/10 py-3 text-sm font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition-colors">
+                Cancel
+              </button>
+              <button type="submit" disabled={saving}
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-60 py-3 text-sm font-bold text-white transition-colors">
+                {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</> : 'Submit claim'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  )
+}
 
 function trophyTier(phase) {
   if (phase === 'M')                   return { icon: '🥇', border: 'border-amber-500/40',  bg: 'bg-amber-500/10',   badge: 'bg-amber-500/20 text-amber-300 border-amber-500/30'   }
@@ -73,8 +177,9 @@ function AnnouncePeek({ a }) {
 
 export default function ClubProfile() {
   const { slug } = useParams()
-  const [data,    setData]    = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [data,       setData]      = useState(null)
+  const [loading,    setLoading]   = useState(true)
+  const [showClaim,  setShowClaim] = useState(false)
 
   useEffect(() => {
     api.get(`/clubs/public/${slug}`)
@@ -317,6 +422,20 @@ export default function ClubProfile() {
                 Create athlete account
               </Link>
             </div>
+
+            {!club.is_claimed && (
+              <div className="hidden lg:block rounded-2xl border border-white/5 bg-white/[0.02] p-5 text-center">
+                <ShieldCheck className="h-7 w-7 text-slate-500 mx-auto mb-2" />
+                <h3 className="text-sm font-bold text-slate-300 mb-1">Are you from this club?</h3>
+                <p className="text-xs text-slate-500 mb-3 leading-relaxed">
+                  Claim this profile to manage your club's presence on PathwayHQ.
+                </p>
+                <button onClick={() => setShowClaim(true)}
+                  className="w-full rounded-xl border border-white/10 hover:border-emerald-500/30 hover:bg-emerald-500/5 py-2.5 text-sm font-bold text-slate-300 hover:text-emerald-400 transition-all">
+                  Claim this club →
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Main content */}
@@ -492,10 +611,18 @@ export default function ClubProfile() {
                   Browse all clubs
                 </Link>
               </div>
+              {!club.is_claimed && (
+                <button onClick={() => setShowClaim(true)}
+                  className="mt-4 w-full rounded-xl border border-white/10 hover:border-emerald-500/30 py-3 text-sm font-semibold text-slate-400 hover:text-emerald-400 transition-all">
+                  <ShieldCheck className="h-4 w-4 inline mr-1.5" />Are you from this club? Claim it →
+                </button>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      {showClaim && <ClaimModal club={club} onClose={() => setShowClaim(false)} />}
 
       {/* Footer */}
       <footer className="border-t border-white/5 px-4 sm:px-6 py-8">

@@ -14,6 +14,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\UploadController;
 use App\Http\Controllers\ClubTrophyController;
 use App\Http\Controllers\SquadRequestController;
+use App\Http\Controllers\ClubClaimController;
 
 // ─── Health check ────────────────────────────────────────────────────────────
 Route::get('/health', fn() => response()->json([
@@ -32,6 +33,9 @@ Route::get('/clubs/public/{slug}',[ClubController::class, 'publicShow']);
 
 // Public athlete profiles
 Route::get('/athletes/public/{slug}', [AthleteController::class, 'publicShow']);
+
+// Club claiming (public submission)
+Route::post('/clubs/public/{slug}/claim', [ClubClaimController::class, 'store']);
 
 // ─── Authenticated routes ─────────────────────────────────────────────────────
 Route::middleware('auth:api')->group(function () {
@@ -114,6 +118,11 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/club-trophies',      [ClubTrophyController::class, 'store']);
     Route::put('/club-trophies/{id}',  [ClubTrophyController::class, 'update']);
     Route::delete('/club-trophies/{id}', [ClubTrophyController::class, 'destroy']);
+
+    // Club claims (site admin)
+    Route::get('/club-claims',                  [ClubClaimController::class, 'index']);
+    Route::put('/club-claims/{id}/approve',     [ClubClaimController::class, 'approve']);
+    Route::put('/club-claims/{id}/reject',      [ClubClaimController::class, 'reject']);
 
     // File uploads
     Route::post('/upload/image', [UploadController::class, 'image']);
