@@ -23,4 +23,5 @@ class Athlete extends Model
     public function club()       { return $this->belongsTo(Club::class); }
     public function squads()     { return $this->belongsToMany(Squad::class, 'squad_athletes'); }
     public function milestones() { return $this->hasMany(Milestone::class); }
+    public function user()       { return $this->belongsTo(User::class); }
 }

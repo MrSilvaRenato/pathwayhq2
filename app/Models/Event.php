@@ -10,7 +10,7 @@ class Event extends Model
     public $incrementing = false;
     protected $keyType = 'string';
     public $timestamps = false;
-    protected $fillable = ['id','club_id','squad_id','title','description','location','start_time','end_time','event_type'];
+    protected $fillable = ['id','club_id','squad_id','title','description','location','start_time','end_time','event_type','series_id','recurrence'];
     protected $casts = ['id'=>'string','club_id'=>'string'];
 
     public function squad() { return $this->belongsTo(Squad::class); }

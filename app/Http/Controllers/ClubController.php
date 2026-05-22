@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use App\Models\Club;
 use App\Models\Athlete;
 use App\Models\Milestone;
+use App\Models\Event;
+use App\Models\Announcement;
 
 class ClubController extends Controller
 {
@@ -14,27 +16,74 @@ class ClubController extends Controller
     {
         return response()->json(
             Club::where('is_public', true)
-                ->select('id','name','sport','city','state','slug','description','is_public')
+                ->select('id','name','sport','city','state','slug','description','logo_url','is_public')
                 ->orderBy('name')
                 ->get()
         );
     }
 
-    // Public: single club profile
+    // Public: single club profile — respects per-section privacy toggles
     public function publicShow($slug)
     {
         $club = Club::where('slug', $slug)->where('is_public', true)->firstOrFail();
 
-        $athletes  = Athlete::where('club_id', $club->id)->where('is_active', true)
-                        ->select('id','ftem_phase','sport','gender')->get();
+        $columns = \Schema::getColumnListing('clubs');
 
+<<<<<<< Updated upstream
         $milestones = Milestone::where('milestones.club_id', $club->id)
                         ->where('milestones.is_shared_with_parent', true)
                         ->leftJoin('athletes', 'milestones.athlete_id', '=', 'athletes.id')
                         ->select('milestones.id','milestones.title','milestones.ftem_phase','milestones.achieved_at','athletes.first_name as athlete_name')
                         ->orderBy('milestones.achieved_at', 'desc')->limit(12)->get();
+=======
+        // Athletes — count + FTEM distribution
+        $athletes = [];
+        $ftemDist = [];
+        $showCount = !in_array('show_athletes_count', $columns) || $club->show_athletes_count !== false;
+        if ($showCount) {
+            $ath = Athlete::where('club_id', $club->id)->where('is_active', true)
+                    ->select('id','ftem_phase','sport','gender')->get();
+            $athletes = $ath;
+            foreach ($ath as $a) {
+                $ftemDist[$a->ftem_phase] = ($ftemDist[$a->ftem_phase] ?? 0) + 1;
+            }
+        }
+>>>>>>> Stashed changes
 
-        return response()->json(compact('club', 'athletes', 'milestones'));
+        // Milestones
+        $milestones = [];
+        $showMilestones = !in_array('show_milestones', $columns) || $club->show_milestones !== false;
+        if ($showMilestones) {
+            $milestones = Milestone::where('club_id', $club->id)
+                ->where('is_shared_with_parent', true)
+                ->select('id','title','ftem_phase','achieved_at')
+                ->orderBy('achieved_at', 'desc')->limit(6)->get();
+        }
+
+        // Upcoming events
+        $events = [];
+        $showEvents = in_array('show_events', $columns) && $club->show_events;
+        if ($showEvents) {
+            $events = Event::where('club_id', $club->id)
+                ->where('start_time', '>=', now())
+                ->select('id','title','event_type','start_time','end_time','location','squad_id')
+                ->orderBy('start_time')->limit(5)->get();
+        }
+
+        // Announcements
+        $announcements = [];
+        $showAnnouncements = in_array('show_announcements', $columns) && $club->show_announcements;
+        if ($showAnnouncements) {
+            $annQuery = Announcement::where('club_id', $club->id);
+            $annCols = \Schema::getColumnListing('announcements');
+            if (in_array('posted_at', $annCols)) $annQuery->orderByDesc('posted_at');
+            else $annQuery->orderByDesc('created_at');
+            $announcements = $annQuery->select(
+                array_intersect(['id','title','body','category','emoji','image_url','posted_at','created_at'], $annCols)
+            )->limit(4)->get();
+        }
+
+        return response()->json(compact('club','athletes','ftemDist','milestones','events','announcements'));
     }
 
     // Auth: get my club
@@ -53,18 +102,33 @@ class ClubController extends Controller
             : $user->club_id;
 
         $data = $request->validate([
-            'name'          => 'required|string',
-            'city'          => 'nullable|string',
-            'state'         => 'nullable|string',
-            'sport'         => 'required|string',
-            'slug'          => 'nullable|string',
-            'description'   => 'nullable|string',
-            'website'       => 'nullable|string',
-            'contact_email' => 'nullable|email',
-            'is_public'     => 'boolean',
+            'name'                => 'required|string',
+            'city'                => 'nullable|string',
+            'state'               => 'nullable|string',
+            'sport'               => 'required|string',
+            'slug'                => 'nullable|string',
+            'description'         => 'nullable|string',
+            'website'             => 'nullable|string',
+            'contact_email'       => 'nullable|email',
+            'phone'               => 'nullable|string',
+            'is_public'           => 'boolean',
+            'cover_image_url'     => 'nullable|string',
+            'logo_url'            => 'nullable|string',
+            'founded_year'        => 'nullable|integer|min:1800|max:2100',
+            'social_facebook'     => 'nullable|string',
+            'social_instagram'    => 'nullable|string',
+            'social_twitter'      => 'nullable|string',
+            'show_milestones'     => 'boolean',
+            'show_athletes_count' => 'boolean',
+            'show_events'         => 'boolean',
+            'show_announcements'  => 'boolean',
         ]);
 
-        Club::where('id', $clubId)->update($data);
+        // Only update columns that exist in DB (graceful before migration)
+        $columns = \Schema::getColumnListing('clubs');
+        $safe    = array_intersect_key($data, array_flip($columns));
+
+        Club::where('id', $clubId)->update($safe);
 
         return response()->json(['ok' => true]);
     }
