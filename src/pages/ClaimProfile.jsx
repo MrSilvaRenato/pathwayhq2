@@ -46,12 +46,12 @@ export default function ClaimProfile() {
           </p>
           <div className="space-y-3">
             <Link
-              to={`/signup?claim=${token}`}
+              to={`/?modal=signup&claim=${token}`}
               className="block w-full rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 py-3.5 text-sm font-bold transition-all shadow-lg shadow-emerald-500/25">
               Create account & claim profile
             </Link>
             <Link
-              to={`/login?claim=${token}`}
+              to={`/?modal=login&claim=${token}`}
               className="block w-full rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 active:scale-95 py-3.5 text-sm font-bold transition-all">
               Sign in to claim
             </Link>

@@ -53,6 +53,8 @@ export default function Home() {
   const [modal, setModal] = useState(null) // 'login' | 'signup'
   const [searchParams] = useSearchParams()
 
+  const claimToken = searchParams.get('claim') || null
+
   useEffect(() => {
     const m = searchParams.get('modal')
     if (m === 'login' || m === 'signup') setModal(m)
@@ -415,7 +417,7 @@ export default function Home() {
       </section>
 
       {/* Auth Modal */}
-      {modal && <AuthModal mode={modal} onClose={() => setModal(null)} />}
+      {modal && <AuthModal mode={modal} onClose={() => setModal(null)} claimToken={claimToken} />}
 
       {/* Footer */}
       <footer className="border-t border-white/5 px-4 sm:px-6 py-12">

@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Zap, Eye, EyeOff, AlertCircle, CheckCircle, X } from 'lucide-react'
+import { Zap, Eye, EyeOff, AlertCircle, CheckCircle, X, Building2, Dumbbell } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { SPORTS, STATES } from '../lib/constants'
 
 const inputCls = "w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
 
-function LoginForm({ onSwitch, onClose, claimToken }) {
+function LoginForm({ onSwitch, claimToken }) {
   const { login } = useAuth()
   const navigate = useNavigate()
   const [form, setForm] = useState({ email: '', password: '' })
@@ -29,10 +29,10 @@ function LoginForm({ onSwitch, onClose, claimToken }) {
   }
 
   return (
-    <div className="w-full max-w-sm">
+    <div className="w-full">
       <div className="text-center mb-7">
         <h2 className="text-2xl font-black text-white">Welcome back</h2>
-        <p className="text-slate-400 text-sm mt-1">Sign in to your club account</p>
+        <p className="text-slate-400 text-sm mt-1">Sign in to your account</p>
       </div>
 
       {error && (
@@ -45,32 +45,22 @@ function LoginForm({ onSwitch, onClose, claimToken }) {
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
           <label className="block text-sm font-medium text-slate-300 mb-2">Email address</label>
-          <input
-            type="email" required autoComplete="email"
-            value={form.email}
-            onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
-            className={inputCls} placeholder="you@example.com"
-          />
+          <input type="email" required autoComplete="email"
+            value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
+            className={inputCls} placeholder="you@example.com" />
         </div>
-
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-sm font-medium text-slate-300">Password</label>
-          </div>
+          <label className="text-sm font-medium text-slate-300 mb-2 block">Password</label>
           <div className="relative">
-            <input
-              type={showPw ? 'text' : 'password'} required autoComplete="current-password"
-              value={form.password}
-              onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
-              className={inputCls + ' pr-11'} placeholder="••••••••"
-            />
+            <input type={showPw ? 'text' : 'password'} required autoComplete="current-password"
+              value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
+              className={inputCls + ' pr-11'} placeholder="••••••••" />
             <button type="button" onClick={() => setShowPw(v => !v)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
               {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
         </div>
-
         <button type="submit" disabled={loading}
           className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed py-3.5 text-sm font-bold transition-all shadow-lg shadow-emerald-500/25">
           {loading
@@ -82,16 +72,17 @@ function LoginForm({ onSwitch, onClose, claimToken }) {
       <p className="text-center text-sm text-slate-500 mt-6">
         No account?{' '}
         <button onClick={onSwitch} className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">
-          Register your club free →
+          Create one free →
         </button>
       </p>
     </div>
   )
 }
 
-function SignupForm({ onSwitch, onClose, claimToken }) {
+function SignupForm({ onSwitch, claimToken }) {
   const { register } = useAuth()
   const navigate = useNavigate()
+  const [role, setRole] = useState(claimToken ? 'athlete' : 'club_admin')
   const [form, setForm] = useState({ full_name: '', email: '', password: '', club_name: '', sport: 'soccer', city: '', state: 'QLD' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -102,19 +93,20 @@ function SignupForm({ onSwitch, onClose, claimToken }) {
   const pwStrength = (() => {
     const p = form.password
     if (!p) return null
-    if (p.length < 6) return { label: 'Too short', color: 'bg-red-500', width: '25%' }
-    if (p.length < 8) return { label: 'Weak', color: 'bg-orange-500', width: '50%' }
-    if (p.length < 12) return { label: 'Good', color: 'bg-emerald-500', width: '75%' }
-    return { label: 'Strong', color: 'bg-emerald-400', width: '100%' }
+    if (p.length < 6)  return { label: 'Too short', color: 'bg-red-500',    width: '25%' }
+    if (p.length < 8)  return { label: 'Weak',       color: 'bg-orange-500', width: '50%' }
+    if (p.length < 12) return { label: 'Good',        color: 'bg-emerald-500',width: '75%' }
+    return                     { label: 'Strong',      color: 'bg-emerald-400',width: '100%' }
   })()
 
   async function handleSubmit(e) {
     e.preventDefault()
     if (form.password.length < 6) { setError('Password must be at least 6 characters'); return }
+    if (role === 'club_admin' && !form.club_name.trim()) { setError('Club name is required'); return }
     setLoading(true)
     setError('')
     try {
-      await register(form)
+      await register({ ...form, role })
       navigate(claimToken ? `/claim/${claimToken}` : '/dashboard')
     } catch (err) {
       setError(err.response?.data?.message ?? err.response?.data?.error ?? 'Registration failed. Please try again.')
@@ -124,10 +116,22 @@ function SignupForm({ onSwitch, onClose, claimToken }) {
   }
 
   return (
-    <div className="w-full max-w-md">
-      <div className="text-center mb-7">
-        <h2 className="text-2xl font-black text-white">Register your club</h2>
+    <div className="w-full">
+      <div className="text-center mb-6">
+        <h2 className="text-2xl font-black text-white">Create your account</h2>
         <p className="text-slate-400 text-sm mt-1">Free forever · No credit card needed</p>
+      </div>
+
+      {/* Role selector */}
+      <div className="grid grid-cols-2 gap-2 mb-6 p-1 rounded-xl bg-white/5 border border-white/10">
+        <button type="button" onClick={() => setRole('club_admin')}
+          className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${role === 'club_admin' ? 'bg-emerald-500 text-white shadow' : 'text-slate-400 hover:text-white'}`}>
+          <Building2 className="h-4 w-4" /> Club / Coach
+        </button>
+        <button type="button" onClick={() => setRole('athlete')}
+          className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${role === 'athlete' ? 'bg-emerald-500 text-white shadow' : 'text-slate-400 hover:text-white'}`}>
+          <Dumbbell className="h-4 w-4" /> Athlete
+        </button>
       </div>
 
       {error && (
@@ -137,53 +141,47 @@ function SignupForm({ onSwitch, onClose, claimToken }) {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-            <span className="h-px flex-1 bg-white/10" />Your details<span className="h-px flex-1 bg-white/10" />
-          </p>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Full name</label>
-              <input required value={form.full_name} onChange={set('full_name')} className={inputCls} placeholder="Renato Silva" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Email address</label>
-              <input type="email" required autoComplete="email" value={form.email} onChange={set('email')} className={inputCls} placeholder="you@example.com" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Password</label>
-              <div className="relative">
-                <input
-                  type={showPw ? 'text' : 'password'} required autoComplete="new-password"
-                  value={form.password} onChange={set('password')}
-                  className={inputCls + ' pr-11'} placeholder="Min. 6 characters"
-                />
-                <button type="button" onClick={() => setShowPw(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
-                  {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              {pwStrength && (
-                <div className="mt-2">
-                  <div className="h-1 w-full rounded-full bg-white/10 overflow-hidden">
-                    <div className={`h-full rounded-full transition-all duration-300 ${pwStrength.color}`} style={{ width: pwStrength.width }} />
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1">{pwStrength.label}</p>
-                </div>
-              )}
-            </div>
+          <label className="block text-sm font-medium text-slate-300 mb-2">Full name</label>
+          <input required value={form.full_name} onChange={set('full_name')} className={inputCls} placeholder="Renato Silva" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-300 mb-2">Email address</label>
+          <input type="email" required autoComplete="email" value={form.email} onChange={set('email')} className={inputCls} placeholder="you@example.com" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-300 mb-2">Password</label>
+          <div className="relative">
+            <input type={showPw ? 'text' : 'password'} required autoComplete="new-password"
+              value={form.password} onChange={set('password')}
+              className={inputCls + ' pr-11'} placeholder="Min. 6 characters" />
+            <button type="button" onClick={() => setShowPw(v => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+              {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
           </div>
+          {pwStrength && (
+            <div className="mt-2">
+              <div className="h-1 w-full rounded-full bg-white/10 overflow-hidden">
+                <div className={`h-full rounded-full transition-all duration-300 ${pwStrength.color}`} style={{ width: pwStrength.width }} />
+              </div>
+              <p className="text-xs text-slate-500 mt-1">{pwStrength.label}</p>
+            </div>
+          )}
         </div>
 
-        <div>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-            <span className="h-px flex-1 bg-white/10" />Club details<span className="h-px flex-1 bg-white/10" />
-          </p>
-          <div className="space-y-4">
+        {/* Club fields — only for club_admin */}
+        {role === 'club_admin' && (
+          <>
+            <div className="pt-1 border-t border-white/10">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 mt-3 flex items-center gap-2">
+                <span className="h-px flex-1 bg-white/10" />Club details<span className="h-px flex-1 bg-white/10" />
+              </p>
+            </div>
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">Club name</label>
-              <input required value={form.club_name} onChange={set('club_name')} className={inputCls} placeholder="North Brisbane FC" />
+              <input value={form.club_name} onChange={set('club_name')} className={inputCls} placeholder="North Brisbane FC" />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">Primary sport</label>
@@ -203,16 +201,21 @@ function SignupForm({ onSwitch, onClose, claimToken }) {
                 </select>
               </div>
             </div>
-          </div>
-        </div>
+          </>
+        )}
+
+        {role === 'athlete' && (
+          <p className="text-xs text-slate-500 bg-white/5 border border-white/10 rounded-xl px-4 py-3">
+            If a club has already invited you, your profile will be linked automatically after you sign up.
+          </p>
+        )}
 
         <button type="submit" disabled={loading}
-          className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed py-3.5 text-sm font-bold transition-all shadow-lg shadow-emerald-500/25">
+          className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed py-3.5 text-sm font-bold transition-all shadow-lg shadow-emerald-500/25 mt-2">
           {loading
             ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />Creating account…</span>
-            : <span className="flex items-center justify-center gap-2"><CheckCircle className="h-4 w-4" />Create club & account</span>}
+            : <span className="flex items-center justify-center gap-2"><CheckCircle className="h-4 w-4" />{role === 'athlete' ? 'Create athlete account' : 'Create club & account'}</span>}
         </button>
-
         <p className="text-center text-xs text-slate-500">By registering you agree to our terms of service.</p>
       </form>
 
@@ -227,11 +230,11 @@ function SignupForm({ onSwitch, onClose, claimToken }) {
 }
 
 export default function AuthModal({ mode, onClose, claimToken }) {
-  const [view, setView] = useState(mode) // 'login' | 'signup'
+  const [view, setView] = useState(mode)
 
   useEffect(() => { setView(mode) }, [mode])
 
-  const handleClose = useCallback((e) => {
+  const handleBackdrop = useCallback((e) => {
     if (e.target === e.currentTarget) onClose()
   }, [onClose])
 
@@ -247,12 +250,10 @@ export default function AuthModal({ mode, onClose, claimToken }) {
   }, [])
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-slate-950/80 backdrop-blur-sm overflow-y-auto"
-      onClick={handleClose}
-    >
-      <div className="relative w-full flex justify-center" onClick={e => e.stopPropagation()}>
-        <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-slate-900 p-8 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-start justify-center px-4 py-8 bg-slate-950/80 backdrop-blur-sm overflow-y-auto"
+      onClick={handleBackdrop}>
+      <div className="relative w-full max-w-md" onClick={e => e.stopPropagation()}>
+        <div className="relative rounded-2xl border border-white/10 bg-slate-900 p-8 shadow-2xl">
           {/* Logo */}
           <div className="flex items-center gap-2 mb-6">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-lg shadow-emerald-500/30">
@@ -261,18 +262,14 @@ export default function AuthModal({ mode, onClose, claimToken }) {
             <span className="text-base font-extrabold tracking-tight text-white">PathwayHQ</span>
           </div>
 
-          {/* Close button */}
-          <button
-            onClick={onClose}
-            className="absolute top-5 right-5 rounded-lg p-1.5 text-slate-500 hover:text-white hover:bg-white/5 transition-colors"
-          >
+          <button onClick={onClose}
+            className="absolute top-5 right-5 rounded-lg p-1.5 text-slate-500 hover:text-white hover:bg-white/5 transition-colors">
             <X className="h-4 w-4" />
           </button>
 
           {view === 'login'
-            ? <LoginForm onSwitch={() => setView('signup')} onClose={onClose} claimToken={claimToken} />
-            : <SignupForm onSwitch={() => setView('login')} onClose={onClose} claimToken={claimToken} />
-          }
+            ? <LoginForm onSwitch={() => setView('signup')} claimToken={claimToken} />
+            : <SignupForm onSwitch={() => setView('login')} claimToken={claimToken} />}
         </div>
       </div>
     </div>
