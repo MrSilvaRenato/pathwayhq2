@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useLocation, Link } from 'react-router-dom'
+import { useLocation, useNavigate, Link } from 'react-router-dom'
 import { ChevronRight, Bell, Menu } from 'lucide-react'
 import api from '../../lib/api'
 import { useSidebar } from '../../contexts/SidebarContext'
@@ -13,6 +13,7 @@ const LABELS = {
 
 export default function Topbar() {
   const { pathname } = useLocation()
+  const navigate = useNavigate()
   const { setOpen: setSidebarOpen } = useSidebar()
   const segments = pathname.split('/').filter(Boolean)
   const [notifications, setNotifications] = useState([])
@@ -31,9 +32,10 @@ export default function Topbar() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  async function markRead(id) {
+  async function markRead(id, link) {
     setNotifications(p => p.map(n => n.id === id ? { ...n, is_read: true } : n))
     await api.put(`/notifications/${id}/read`)
+    if (link) { setOpen(false); navigate(link) }
   }
 
   async function markAllRead() {
@@ -117,8 +119,8 @@ export default function Topbar() {
                 notifications.map(n => (
                   <div
                     key={n.id}
-                    onClick={() => markRead(n.id)}
-                    className={`flex items-start gap-3 px-4 py-3 border-b border-slate-50 cursor-pointer hover:bg-slate-50 transition-colors ${!n.is_read ? 'bg-emerald-50/50' : ''}`}>
+                    onClick={() => markRead(n.id, n.link)}
+                    className={`flex items-start gap-3 px-4 py-3 border-b border-slate-50 transition-colors ${n.link ? 'cursor-pointer hover:bg-slate-50' : 'cursor-default'} ${!n.is_read ? 'bg-emerald-50/50' : ''}`}>
                     <div className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${!n.is_read ? 'bg-emerald-500' : 'bg-transparent'}`} />
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm leading-snug ${!n.is_read ? 'font-semibold text-slate-800' : 'font-medium text-slate-600'}`}>
