@@ -27,6 +27,9 @@ Route::post('/auth/login',    [AuthController::class, 'login']);
 Route::get('/clubs/public',       [ClubController::class, 'publicIndex']);
 Route::get('/clubs/public/{slug}',[ClubController::class, 'publicShow']);
 
+// Public athlete profiles
+Route::get('/athletes/public/{slug}', [AthleteController::class, 'publicShow']);
+
 // ─── Authenticated routes ─────────────────────────────────────────────────────
 Route::middleware('auth:api')->group(function () {
 
@@ -47,6 +50,7 @@ Route::middleware('auth:api')->group(function () {
     // Athletes
     Route::get('/athletes',                       [AthleteController::class, 'index']);
     Route::get('/athletes/me',                    [AthleteController::class, 'me']);
+    Route::put('/athletes/me',                    [AthleteController::class, 'updateMe']);
     Route::get('/athletes/invites',               [AthleteController::class, 'invites']);
     Route::post('/athletes',                      [AthleteController::class, 'store']);
     Route::post('/athletes/claim',                [AthleteController::class, 'claim']);

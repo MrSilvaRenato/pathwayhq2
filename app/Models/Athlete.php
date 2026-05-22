@@ -15,9 +15,10 @@ class Athlete extends Model
         'id', 'club_id', 'user_id', 'first_name', 'last_name',
         'dob', 'sport', 'gender', 'ftem_phase', 'is_active', 'notes',
         'invite_email', 'invite_token', 'invite_status', 'phone',
+        'slug', 'is_public',
     ];
 
-    protected $casts = ['id' => 'string', 'club_id' => 'string', 'is_active' => 'boolean'];
+    protected $casts = ['id' => 'string', 'club_id' => 'string', 'is_active' => 'boolean', 'is_public' => 'boolean'];
 
     public function club()       { return $this->belongsTo(Club::class); }
     public function squads()     { return $this->belongsToMany(Squad::class, 'squad_athletes'); }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use App\Models\Athlete;
+use App\Models\Milestone;
 use App\Models\User;
 use App\Models\Notification;
 use App\Mail\AthleteInvite;
@@ -152,6 +153,14 @@ class AthleteController extends Controller
             }
         }
 
+        // Auto-generate a unique slug from the athlete's name
+        $baseSlug = Str::slug($data['first_name'] . '-' . $data['last_name']);
+        $slug     = $baseSlug;
+        $i        = 1;
+        while (Athlete::where('slug', $slug)->exists()) {
+            $slug = $baseSlug . '-' . $i++;
+        }
+
         $athlete = Athlete::create([
             'id'            => (string) Str::uuid(),
             'club_id'       => $request->user()->club_id,
@@ -168,6 +177,8 @@ class AthleteController extends Controller
             'invite_token'  => $inviteToken,
             'invite_status' => $inviteStatus,
             'is_active'     => true,
+            'slug'          => $slug,
+            'is_public'     => false,
         ]);
 
         if (!empty($data['squad_ids'])) {
@@ -202,6 +213,8 @@ class AthleteController extends Controller
             'gender'       => 'nullable|string',
             'ftem_phase'   => 'nullable|string',
             'is_active'    => 'boolean',
+            'is_public'    => 'boolean',
+            'slug'         => "nullable|string|unique:athletes,slug,{$athlete->id}",
             'notes'        => 'nullable|string',
             'phone'        => 'nullable|string|max:20',
             'squad_ids'    => 'nullable|array',
@@ -295,6 +308,58 @@ class AthleteController extends Controller
         $athlete->delete();
 
         return response()->json(['ok' => true]);
+    }
+
+    // Public: show athlete profile by slug (no auth)
+    public function publicShow($slug)
+    {
+        $athlete = Athlete::where('slug', $slug)
+            ->where('is_public', true)
+            ->with('club:id,name,sport,city,state,slug')
+            ->firstOrFail();
+
+        $milestones = Milestone::where('athlete_id', $athlete->id)
+            ->where('is_shared_with_parent', true)
+            ->select('id', 'title', 'description', 'ftem_phase', 'achieved_at')
+            ->orderBy('achieved_at', 'desc')
+            ->limit(20)
+            ->get();
+
+        $dobYear = $athlete->dob ? (int) substr($athlete->dob, 0, 4) : null;
+
+        return response()->json([
+            'athlete'    => [
+                'id'         => $athlete->id,
+                'first_name' => $athlete->first_name,
+                'last_name'  => $athlete->last_name,
+                'sport'      => $athlete->sport,
+                'gender'     => $athlete->gender,
+                'ftem_phase' => $athlete->ftem_phase,
+                'dob_year'   => $dobYear,
+                'slug'       => $athlete->slug,
+            ],
+            'club'       => $athlete->club,
+            'milestones' => $milestones,
+        ]);
+    }
+
+    // Athlete updates their own public profile settings
+    public function updateMe(Request $request)
+    {
+        $athlete = Athlete::where('user_id', $request->user()->id)
+            ->where('invite_status', 'accepted')
+            ->first();
+
+        if (!$athlete) return response()->json(['error' => 'No athlete profile found'], 404);
+
+        $data = $request->validate([
+            'is_public' => 'boolean',
+            'slug'      => "nullable|string|max:80|unique:athletes,slug,{$athlete->id}",
+        ]);
+
+        $athlete->update($data);
+
+        return response()->json(['ok' => true, 'slug' => $athlete->fresh()->slug]);
     }
 
     // Called when an athlete clicks the invite link and creates an account

@@ -3,10 +3,11 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ToastProvider } from './contexts/ToastContext'
 
 // Marketing
-import Home        from './pages/marketing/Home'
-import Clubs       from './pages/marketing/Clubs'
-import ClubProfile from './pages/marketing/ClubProfile'
-import Brisbane    from './pages/marketing/Brisbane2032'
+import Home           from './pages/marketing/Home'
+import Clubs          from './pages/marketing/Clubs'
+import ClubProfile    from './pages/marketing/ClubProfile'
+import AthleteProfile from './pages/marketing/AthleteProfile'
+import Brisbane       from './pages/marketing/Brisbane2032'
 
 // Auth
 import Login  from './pages/auth/Login'
@@ -55,9 +56,10 @@ export default function App() {
         <Routes>
           {/* Marketing */}
           <Route path="/"              element={<Home />} />
-          <Route path="/clubs"         element={<Clubs />} />
-          <Route path="/club/:slug"    element={<ClubProfile />} />
-          <Route path="/brisbane-2032" element={<Brisbane />} />
+          <Route path="/clubs"            element={<Clubs />} />
+          <Route path="/club/:slug"      element={<ClubProfile />} />
+          <Route path="/athlete/:slug"   element={<AthleteProfile />} />
+          <Route path="/brisbane-2032"   element={<Brisbane />} />
 
           {/* Auth */}
           <Route path="/login"       element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
