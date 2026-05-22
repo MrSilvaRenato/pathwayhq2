@@ -1,10 +1,11 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   Zap, ArrowRight, Users, Trophy, Calendar, BarChart3, Megaphone, HandHeart,
   Shield, CheckCircle, Menu, X, Star, Award, Medal, TrendingUp, MapPin,
 } from 'lucide-react'
 import OlympicsCountdown from '../../components/OlympicsCountdown'
+import AuthModal from '../../components/AuthModal'
 
 const FEATURES = [
   { icon: Users,      title: 'Athlete Profiles',    desc: 'Full profiles, FTEM phases, parent links, and squad assignments in one place.',       color: 'bg-blue-500/10 border-blue-500/20 text-blue-400'     },
@@ -49,6 +50,15 @@ const STEPS = [
 
 export default function Home() {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [modal, setModal] = useState(null) // 'login' | 'signup'
+  const [searchParams] = useSearchParams()
+
+  useEffect(() => {
+    const m = searchParams.get('modal')
+    if (m === 'login' || m === 'signup') setModal(m)
+  }, [])
+
+  function openModal(type) { setMobileOpen(false); setModal(type) }
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -71,10 +81,10 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Link to="/login"  className="hidden sm:block text-sm font-medium text-slate-400 hover:text-white transition-colors">Sign in</Link>
-            <Link to="/signup" className="rounded-lg bg-emerald-500 hover:bg-emerald-400 px-4 py-2 text-sm font-semibold transition-all shadow-lg shadow-emerald-500/25 active:scale-95">
+            <button onClick={() => openModal('login')} className="hidden sm:block text-sm font-medium text-slate-400 hover:text-white transition-colors">Sign in</button>
+            <button onClick={() => openModal('signup')} className="rounded-lg bg-emerald-500 hover:bg-emerald-400 px-4 py-2 text-sm font-semibold transition-all shadow-lg shadow-emerald-500/25 active:scale-95">
               Get started free
-            </Link>
+            </button>
             <button onClick={() => setMobileOpen(o => !o)}
               className="md:hidden rounded-lg border border-white/10 bg-white/5 p-2 text-slate-400 hover:text-white transition-colors">
               {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
@@ -89,7 +99,7 @@ export default function Home() {
               : <a    key={l.label} href={l.href} onClick={() => setMobileOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors">{l.label}</a>
             )}
             <div className="pt-2 border-t border-white/10">
-              <Link to="/login" onClick={() => setMobileOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors">Sign in</Link>
+              <button onClick={() => openModal('login')} className="block w-full text-left rounded-lg px-3 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors">Sign in</button>
             </div>
           </div>
         )}
@@ -120,10 +130,10 @@ export default function Home() {
                 every milestone — from grassroots training to the Olympic pathway.
               </p>
               <div className="flex flex-wrap gap-3">
-                <Link to="/signup"
+                <button onClick={() => openModal('signup')}
                   className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 px-6 py-3.5 font-bold transition-all shadow-xl shadow-emerald-500/25">
                   Start for free <ArrowRight className="h-4 w-4" />
-                </Link>
+                </button>
                 <Link to="/clubs"
                   className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 active:scale-95 px-6 py-3.5 font-bold transition-all">
                   Browse clubs
@@ -305,9 +315,9 @@ export default function Home() {
               <p className="text-slate-500 text-sm leading-relaxed mb-6">
                 With Brisbane 2032 on the horizon, tracking the FTEM journey isn't just good practice — it's how Australian sport identifies its next generation of champions.
               </p>
-              <Link to="/signup" className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 px-5 py-3 font-bold text-sm transition-all shadow-lg shadow-emerald-500/25">
+              <button onClick={() => openModal('signup')} className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 px-5 py-3 font-bold text-sm transition-all shadow-lg shadow-emerald-500/25">
                 Start tracking free <ArrowRight className="h-4 w-4" />
-              </Link>
+              </button>
             </div>
             <div className="grid grid-cols-2 gap-3">
               {[
@@ -359,12 +369,12 @@ export default function Home() {
                     </li>
                   ))}
                 </ul>
-                <Link to="/signup"
-                  className={`block rounded-xl py-2.5 text-center text-sm font-bold transition-all active:scale-95 ${p.highlight
+                <button onClick={() => openModal('signup')}
+                  className={`w-full rounded-xl py-2.5 text-center text-sm font-bold transition-all active:scale-95 ${p.highlight
                     ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-lg shadow-emerald-500/25'
                     : 'border border-white/10 bg-white/5 hover:bg-white/10 text-white'}`}>
                   {p.cta}
-                </Link>
+                </button>
               </div>
             ))}
           </div>
@@ -387,10 +397,10 @@ export default function Home() {
             Your trophy cabinet is waiting.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/signup"
+            <button onClick={() => openModal('signup')}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 px-8 py-4 text-lg font-bold transition-all shadow-xl shadow-emerald-500/25">
               Get started free <ArrowRight className="h-5 w-5" />
-            </Link>
+            </button>
             <Link to="/clubs"
               className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 active:scale-95 px-8 py-4 text-lg font-bold transition-all">
               Browse clubs
@@ -403,6 +413,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Auth Modal */}
+      {modal && <AuthModal mode={modal} onClose={() => setModal(null)} />}
 
       {/* Footer */}
       <footer className="border-t border-white/5 px-4 sm:px-6 py-12">
@@ -419,8 +432,8 @@ export default function Home() {
               <a href="#pricing"      className="hover:text-slate-300 transition-colors">Pricing</a>
               <Link to="/clubs"         className="hover:text-slate-300 transition-colors">Clubs</Link>
               <Link to="/brisbane-2032" className="hover:text-slate-300 transition-colors">Brisbane 2032</Link>
-              <Link to="/login"         className="hover:text-slate-300 transition-colors">Sign in</Link>
-              <Link to="/signup"        className="hover:text-slate-300 transition-colors">Get started</Link>
+              <button onClick={() => openModal('login')}  className="hover:text-slate-300 transition-colors">Sign in</button>
+              <button onClick={() => openModal('signup')} className="hover:text-slate-300 transition-colors">Get started</button>
             </div>
           </div>
           <div className="border-t border-white/5 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">

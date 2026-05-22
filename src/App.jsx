@@ -9,10 +9,6 @@ import ClubProfile    from './pages/marketing/ClubProfile'
 import AthleteProfile from './pages/marketing/AthleteProfile'
 import Brisbane       from './pages/marketing/Brisbane2032'
 
-// Auth
-import Login  from './pages/auth/Login'
-import Signup from './pages/auth/Signup'
-
 // App layout + pages
 import AppLayout     from './components/layout/AppLayout'
 import Dashboard     from './pages/app/Dashboard'
@@ -31,14 +27,7 @@ import ClaimProfile  from './pages/ClaimProfile'
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
   if (loading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><div className="w-8 h-8 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" /></div>
-  if (!user) return <Navigate to="/login" replace />
-  return children
-}
-
-function PublicOnlyRoute({ children }) {
-  const { user, loading } = useAuth()
-  if (loading) return null
-  if (user) return <Navigate to="/dashboard" replace />
+  if (!user) return <Navigate to="/?modal=login" replace />
   return children
 }
 
@@ -61,9 +50,9 @@ export default function App() {
           <Route path="/athlete/:slug"   element={<AthleteProfile />} />
           <Route path="/brisbane-2032"   element={<Brisbane />} />
 
-          {/* Auth */}
-          <Route path="/login"       element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
-          <Route path="/signup"      element={<PublicOnlyRoute><Signup /></PublicOnlyRoute>} />
+          {/* Auth — redirect old URLs to home modal */}
+          <Route path="/login"  element={<Navigate to="/?modal=login"  replace />} />
+          <Route path="/signup" element={<Navigate to="/?modal=signup" replace />} />
           <Route path="/claim/:token" element={<ClaimProfile />} />
 
           {/* App */}
