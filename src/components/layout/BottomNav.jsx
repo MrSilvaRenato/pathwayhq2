@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Calendar, Trophy, HandHeart,
-  Settings, Users, MoreHorizontal,
+  Settings, Users, MoreHorizontal, Shield,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useSidebar } from '../../contexts/SidebarContext'
@@ -30,9 +30,16 @@ const PARENT_TABS = [
   { label: 'Settings',     href: '/settings',    icon: Settings },
 ]
 
+const SITE_ADMIN_TABS = [
+  { label: 'Site Admin', href: '/site-admin', icon: Shield },
+  { label: 'Dashboard',  href: '/dashboard',  icon: LayoutDashboard },
+  { label: 'Settings',   href: '/settings',   icon: Settings },
+]
+
 function getTabs(role) {
-  if (role === 'athlete') return ATHLETE_TABS
-  if (role === 'parent') return PARENT_TABS
+  if (role === 'athlete')    return ATHLETE_TABS
+  if (role === 'parent')     return PARENT_TABS
+  if (role === 'site_admin') return SITE_ADMIN_TABS
   return COACH_TABS
 }
 
@@ -43,10 +50,17 @@ export default function BottomNav() {
   const navigate = useNavigate()
   const tabs = getTabs(user?.role)
 
-  function isActive(tab) {
+  function isTabPathActive(tab) {
     if (!tab.href) return false
     if (tab.href === '/dashboard') return location.pathname === '/dashboard'
     return location.pathname.startsWith(tab.href)
+  }
+
+  function isActive(tab) {
+    if (!tab.href) {
+      return tabs.filter(t => t.href).every(t => !isTabPathActive(t))
+    }
+    return isTabPathActive(tab)
   }
 
   function handleTab(tab) {

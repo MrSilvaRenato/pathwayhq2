@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, Users, CalendarDays, Calendar, Trophy,
+  LayoutDashboard, Users, Layers, Calendar, Trophy,
   BarChart3, Settings, LogOut, Zap, Shield, Dumbbell,
   Megaphone, HandHeart, Globe, X,
 } from 'lucide-react'
@@ -10,7 +10,7 @@ import { useSidebar } from '../../contexts/SidebarContext'
 const COACH_NAV = [
   { name: 'Dashboard',     href: '/dashboard',     icon: LayoutDashboard },
   { name: 'Athletes',      href: '/athletes',       icon: Users },
-  { name: 'Squads',        href: '/squad',          icon: CalendarDays },
+  { name: 'Squads',        href: '/squad',          icon: Layers },
   { name: 'Calendar',      href: '/calendar',       icon: Calendar },
   { name: 'Announcements', href: '/announcements',  icon: Megaphone },
   { name: 'Volunteering',  href: '/volunteering',   icon: HandHeart },
@@ -82,7 +82,7 @@ export default function Sidebar() {
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
         {nav.map(item => {
           const active = location.pathname === item.href ||
-            (item.href !== '/dashboard' && item.href !== '/athlete' && item.href !== '/parent' && item.href !== '/site-admin' && location.pathname.startsWith(item.href))
+            (item.href !== '/dashboard' && item.href !== '/site-admin' && location.pathname.startsWith(item.href))
           return (
             <Link key={item.name} to={item.href} onClick={() => setOpen(false)}
               className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
