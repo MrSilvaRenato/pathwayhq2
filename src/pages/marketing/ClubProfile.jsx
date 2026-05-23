@@ -205,7 +205,7 @@ export default function ClubProfile() {
     </div>
   )
 
-  const { club, athletes, ftemDist, milestones, events, announcements, clubTrophies } = data
+  const { club, athletes, ftemDist, milestones, events, announcements, clubTrophies, managerFirstName } = data
   const sportMeta   = SPORTS.find(s => s.value === club.sport)
   const athleteList = athletes ?? []
   const ftem        = ftemDist ?? {}
@@ -299,6 +299,17 @@ export default function ClubProfile() {
                   <span className="flex items-center gap-1.5">
                     <Users className="h-3.5 w-3.5 shrink-0" />
                     {athleteList.length} athlete{athleteList.length !== 1 ? 's' : ''}
+                  </span>
+                )}
+                {club.is_claimed && managerFirstName && (
+                  <span className="flex items-center gap-1.5 text-emerald-400 text-xs font-semibold">
+                    <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+                    Managed by {managerFirstName}
+                  </span>
+                )}
+                {!club.is_claimed && (
+                  <span className="flex items-center gap-1.5 text-amber-400 text-xs font-semibold">
+                    Unclaimed profile
                   </span>
                 )}
               </div>

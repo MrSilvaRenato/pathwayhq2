@@ -29,6 +29,19 @@ class ClubClaimController extends Controller
             return response()->json(['message' => 'You already have a pending claim for this club.'], 422);
         }
 
+        // Prevent users who already manage a different club from submitting
+        $existingManager = User::where('email', $request->input('email'))
+            ->whereNotNull('club_id')
+            ->where('role', 'club_admin')
+            ->first();
+
+        if ($existingManager && $existingManager->club_id !== $club->id) {
+            $managedClub = Club::find($existingManager->club_id);
+            return response()->json([
+                'message' => 'This email already manages ' . ($managedClub?->name ?? 'another club') . '. A manager can only manage one club.',
+            ], 422);
+        }
+
         $data = $request->validate([
             'name'         => 'required|string|max:100',
             'email'        => 'required|email|max:150',
@@ -85,7 +98,13 @@ class ClubClaimController extends Controller
         $tempPassword = null;
 
         if ($existing) {
-            // Just upgrade their role and link to club
+            // Block if they already manage a different club
+            if ($existing->club_id && $existing->club_id !== $claim->club_id) {
+                $managedClub = Club::find($existing->club_id);
+                return response()->json([
+                    'message' => 'This user already manages ' . ($managedClub?->name ?? 'another club') . '. A manager can only manage one club.',
+                ], 422);
+            }
             $existing->update([
                 'role'    => 'club_admin',
                 'club_id' => $claim->club_id,

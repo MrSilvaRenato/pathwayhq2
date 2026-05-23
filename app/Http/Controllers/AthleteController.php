@@ -251,6 +251,7 @@ class AthleteController extends Controller
     {
         $athlete = Athlete::where('user_id', $request->user()->id)
             ->where('invite_status', 'accepted')
+            ->where('is_active', true)
             ->with('squads:id,name')
             ->first();
 
@@ -284,7 +285,7 @@ class AthleteController extends Controller
         return response()->json($pending);
     }
 
-    // Athlete accepts a club invite
+    // Athlete accepts a club invite — deactivates any previous club membership
     public function acceptInvite(Request $request, $id)
     {
         $athlete = Athlete::where('id', $id)
@@ -292,7 +293,36 @@ class AthleteController extends Controller
             ->where('invite_status', 'pending')
             ->firstOrFail();
 
-        $athlete->update(['invite_status' => 'accepted']);
+        // Deactivate existing accepted memberships at other clubs
+        $previous = Athlete::where('user_id', $request->user()->id)
+            ->where('invite_status', 'accepted')
+            ->where('is_active', true)
+            ->where('id', '!=', $id)
+            ->get();
+
+        foreach ($previous as $prev) {
+            $prev->squads()->detach();
+            $prev->update(['is_active' => false]);
+
+            // Notify old club
+            $clubAdmins = User::where('club_id', $prev->club_id)
+                ->whereIn('role', ['club_admin', 'coach'])
+                ->get();
+            $athleteName = "{$prev->first_name} {$prev->last_name}";
+            foreach ($clubAdmins as $admin) {
+                Notification::create([
+                    'id'      => (string) Str::uuid(),
+                    'user_id' => $admin->id,
+                    'title'   => "🚪 {$athleteName} has left your club",
+                    'body'    => 'They joined another club. Their profile has been deactivated from your roster.',
+                    'link'    => '/athletes',
+                    'is_read' => false,
+                    'at'      => now()->toDateTimeString(),
+                ]);
+            }
+        }
+
+        $athlete->update(['invite_status' => 'accepted', 'is_active' => true]);
 
         return response()->json(['ok' => true]);
     }
@@ -399,9 +429,36 @@ class AthleteController extends Controller
             return response()->json(['message' => 'This profile has already been claimed.'], 409);
         }
 
-        // Link the currently authenticated user to this athlete profile
+        // Deactivate existing accepted memberships at other clubs
+        $previous = Athlete::where('user_id', $request->user()->id)
+            ->where('invite_status', 'accepted')
+            ->where('is_active', true)
+            ->get();
+
+        foreach ($previous as $prev) {
+            $prev->squads()->detach();
+            $prev->update(['is_active' => false]);
+
+            $clubAdmins = User::where('club_id', $prev->club_id)
+                ->whereIn('role', ['club_admin', 'coach'])
+                ->get();
+            $athleteName = "{$prev->first_name} {$prev->last_name}";
+            foreach ($clubAdmins as $admin) {
+                Notification::create([
+                    'id'      => (string) Str::uuid(),
+                    'user_id' => $admin->id,
+                    'title'   => "🚪 {$athleteName} has left your club",
+                    'body'    => 'They joined another club. Their profile has been deactivated from your roster.',
+                    'link'    => '/athletes',
+                    'is_read' => false,
+                    'at'      => now()->toDateTimeString(),
+                ]);
+            }
+        }
+
         $athlete->user_id      = $request->user()->id;
-        $athlete->invite_token = null; // consume the token
+        $athlete->invite_token = null;
+        $athlete->is_active    = true;
         $athlete->save();
 
         return response()->json(['ok' => true, 'athlete_id' => $athlete->id]);

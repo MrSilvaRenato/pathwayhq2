@@ -15,6 +15,8 @@ use App\Http\Controllers\UploadController;
 use App\Http\Controllers\ClubTrophyController;
 use App\Http\Controllers\SquadRequestController;
 use App\Http\Controllers\ClubClaimController;
+use App\Http\Controllers\CoachController;
+use App\Http\Controllers\ParentController;
 
 // ─── Health check ────────────────────────────────────────────────────────────
 Route::get('/health', fn() => response()->json([
@@ -123,6 +125,17 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/club-claims',                  [ClubClaimController::class, 'index']);
     Route::put('/club-claims/{id}/approve',     [ClubClaimController::class, 'approve']);
     Route::put('/club-claims/{id}/reject',      [ClubClaimController::class, 'reject']);
+
+    // Coaches (club_admin manages coaches for their club)
+    Route::get('/club/coaches',         [CoachController::class, 'index']);
+    Route::post('/club/coaches',        [CoachController::class, 'store']);
+    Route::delete('/club/coaches/{id}', [CoachController::class, 'destroy']);
+
+    // Parents / guardians
+    Route::get('/athletes/{id}/parents',                    [ParentController::class, 'listParents']);
+    Route::post('/athletes/{id}/parents',                   [ParentController::class, 'addParent']);
+    Route::delete('/athletes/{id}/parents/{parentUserId}',  [ParentController::class, 'removeParent']);
+    Route::get('/parent/my-athletes',                       [ParentController::class, 'myAthletes']);
 
     // File uploads
     Route::post('/upload/image', [UploadController::class, 'image']);

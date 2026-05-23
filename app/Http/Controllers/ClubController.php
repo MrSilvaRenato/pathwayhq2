@@ -9,6 +9,7 @@ use App\Models\Milestone;
 use App\Models\Event;
 use App\Models\Announcement;
 use App\Models\ClubTrophy;
+use App\Models\User;
 
 class ClubController extends Controller
 {
@@ -17,7 +18,7 @@ class ClubController extends Controller
     {
         return response()->json(
             Club::where('is_public', true)
-                ->select('id','name','sport','city','state','slug','description','logo_url','is_public')
+                ->select('id','name','sport','city','state','slug','description','logo_url','is_public','is_claimed','founded_year')
                 ->orderBy('name')
                 ->get()
         );
@@ -89,7 +90,22 @@ class ClubController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        return response()->json(compact('club','athletes','ftemDist','milestones','events','announcements','clubTrophies'));
+        // Club manager first name (only when claimed)
+        $managerFirstName = null;
+        if ($club->is_claimed) {
+            $mgr = User::where('club_id', $club->id)
+                ->where('role', 'club_admin')
+                ->select('full_name')
+                ->first();
+            if ($mgr) {
+                $managerFirstName = explode(' ', trim($mgr->full_name))[0];
+            }
+        }
+
+        return response()->json(array_merge(
+            compact('club','athletes','ftemDist','milestones','events','announcements','clubTrophies'),
+            ['managerFirstName' => $managerFirstName]
+        ));
     }
 
     // Auth: get my club
