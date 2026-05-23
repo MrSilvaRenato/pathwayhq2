@@ -13,16 +13,23 @@ class TestAccountsSeeder extends Seeder
     public function run(): void
     {
         // 1. Site admin — renatoleite.log@gmail.com
-        User::updateOrCreate(
-            ['email' => 'renatoleite.log@gmail.com'],
-            [
+        $admin = User::where('email', 'renatoleite.log@gmail.com')->first();
+        if ($admin) {
+            $admin->update([
+                'password_hash' => Hash::make('12345678'),
+                'role'          => 'site_admin',
+                'club_id'       => null,
+            ]);
+        } else {
+            User::create([
                 'id'            => (string) Str::uuid(),
+                'email'         => 'renatoleite.log@gmail.com',
                 'full_name'     => 'Renato Leite',
                 'password_hash' => Hash::make('12345678'),
                 'role'          => 'site_admin',
                 'club_id'       => null,
-            ]
-        );
+            ]);
+        }
 
         // 2. Club manager for North Brisbane FC
         $club = Club::where('slug', 'north-brisbane-fc')->first();
@@ -32,16 +39,23 @@ class TestAccountsSeeder extends Seeder
             return;
         }
 
-        User::updateOrCreate(
-            ['email' => 'clubmanager@test.com'],
-            [
+        $manager = User::where('email', 'clubmanager@test.com')->first();
+        if ($manager) {
+            $manager->update([
+                'password_hash' => Hash::make('12345678'),
+                'role'          => 'club_admin',
+                'club_id'       => $club->id,
+            ]);
+        } else {
+            User::create([
                 'id'            => (string) Str::uuid(),
+                'email'         => 'clubmanager@test.com',
                 'full_name'     => 'Club Manager',
                 'password_hash' => Hash::make('12345678'),
                 'role'          => 'club_admin',
                 'club_id'       => $club->id,
-            ]
-        );
+            ]);
+        }
 
         // Mark the club as claimed
         $club->update(['is_claimed' => true]);
