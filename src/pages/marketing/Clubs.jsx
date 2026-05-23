@@ -1,33 +1,64 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { Zap, Search, X, MapPin } from 'lucide-react'
+import { Zap, Search, X, MapPin, SortAsc, SortDesc } from 'lucide-react'
 import api from '../../lib/api'
 import { SPORTS, STATES } from '../../lib/constants'
 
 const OLYMPIC_SPORTS = SPORTS.filter(s => s.in2032)
 
 export default function Clubs() {
-  const [clubs, setClubs] = useState([])
-  const [q, setQ]         = useState('')
-  const [sport, setSport] = useState('')
-  const [state, setState] = useState('')
+  const [clubs,  setClubs]  = useState([])
+  const [q,      setQ]      = useState('')
+  const [sport,  setSport]  = useState('')
+  const [suburb, setSuburb] = useState('')
+  const [sort,   setSort]   = useState('az') // az | za | oldest | newest
 
   useEffect(() => { api.get('/clubs/public').then(r => setClubs(r.data)) }, [])
 
+  // Derive available suburbs from the sport-filtered set (before suburb filter applied)
+  const availableSuburbs = useMemo(() => {
+    const base = clubs.filter(c => !sport || c.sport === sport)
+    const cities = [...new Set(base.map(c => c.city).filter(Boolean))].sort()
+    return cities
+  }, [clubs, sport])
+
   const filtered = useMemo(() => {
     const ql = q.toLowerCase()
-    return clubs.filter(c => {
-      if (q && !c.name.toLowerCase().includes(ql) && !(c.description ?? '').toLowerCase().includes(ql)) return false
-      if (sport && c.sport !== sport) return false
-      if (state && c.state !== state) return false
-      return true
-    })
-  }, [clubs, q, sport, state])
+    return clubs
+      .filter(c => {
+        if (q && !c.name.toLowerCase().includes(ql) && !(c.city ?? '').toLowerCase().includes(ql) && !(c.description ?? '').toLowerCase().includes(ql)) return false
+        if (sport  && c.sport !== sport)  return false
+        if (suburb && c.city  !== suburb) return false
+        return true
+      })
+      .sort((a, b) => {
+        if (sort === 'za')     return b.name.localeCompare(a.name)
+        if (sort === 'oldest') return (a.founded_year ?? 9999) - (b.founded_year ?? 9999)
+        if (sort === 'newest') return (b.founded_year ?? 0) - (a.founded_year ?? 0)
+        return a.name.localeCompare(b.name) // az default
+      })
+  }, [clubs, q, sport, suburb, sort])
 
-  const hasFilters = q || sport || state
+  // A-Z groups — only when not searching/filtering
+  const useGroups = !q && !suburb
+  const groups = useMemo(() => {
+    if (!useGroups) return null
+    return filtered.reduce((acc, c) => {
+      const letter = c.name[0].toUpperCase()
+      if (!acc[letter]) acc[letter] = []
+      acc[letter].push(c)
+      return acc
+    }, {})
+  }, [filtered, useGroups])
+
+  const hasFilters = q || sport || suburb
+  const letters = groups ? Object.keys(groups).sort() : []
+
+  function clearAll() { setQ(''); setSport(''); setSuburb('') }
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
+      {/* Nav */}
       <nav className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/95 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
           <Link to="/" className="flex items-center gap-2.5">
@@ -37,7 +68,7 @@ export default function Clubs() {
             <span className="text-lg font-extrabold tracking-tight">PathwayHQ</span>
           </Link>
           <div className="hidden md:flex items-center gap-8">
-            <Link to="/#features"    className="text-sm font-medium text-slate-400 hover:text-white transition-colors">Features</Link>
+            <Link to="/#features"     className="text-sm font-medium text-slate-400 hover:text-white transition-colors">Features</Link>
             <Link to="/brisbane-2032" className="text-sm font-medium text-slate-400 hover:text-white transition-colors">Brisbane 2032</Link>
             <Link to="/clubs"         className="text-sm font-medium text-white">Clubs</Link>
           </div>
@@ -50,99 +81,149 @@ export default function Clubs() {
         </div>
       </nav>
 
+      {/* Hero */}
       <section className="relative overflow-hidden border-b border-white/5">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute inset-0 opacity-[0.03]"
             style={{ backgroundImage: 'repeating-linear-gradient(45deg,white 0px,white 1px,transparent 1px,transparent 60px)' }} />
           <div className="absolute top-0 left-1/4 h-[300px] w-[500px] rounded-full bg-emerald-600/15 blur-[100px]" />
         </div>
-        <div className="relative mx-auto max-w-7xl px-6 py-16">
-          <div className="flex items-center gap-2 mb-4">
+        <div className="relative mx-auto max-w-7xl px-6 py-12">
+          <div className="flex items-center gap-2 mb-3">
             <Zap className="h-4 w-4 text-emerald-400" />
             <span className="text-emerald-400 text-sm font-semibold tracking-wide">Brisbane 2032 Pathway</span>
           </div>
-          <h1 className="text-5xl lg:text-6xl font-black tracking-tight mb-4">
+          <h1 className="text-4xl lg:text-5xl font-black tracking-tight mb-3">
             Find your <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">club.</span>
           </h1>
-          <p className="text-slate-400 text-lg max-w-xl">
-            Discover clubs across Australia developing the next generation of athletes for Brisbane 2032 and beyond.
+          <p className="text-slate-400 max-w-xl text-sm sm:text-base">
+            {clubs.length > 0
+              ? `${clubs.length} clubs listed across Brisbane and Queensland.`
+              : 'Discover clubs developing the next generation of athletes.'}
           </p>
         </div>
       </section>
 
-      {/* Search bar */}
-      <div className="sticky top-16 z-10 border-b border-white/5 bg-slate-900/90 backdrop-blur-md px-6 py-4">
-        <div className="mx-auto max-w-7xl flex gap-3 flex-wrap items-center">
-          <div className="relative flex-1 min-w-[240px] max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search clubs..."
-              className="h-10 w-full rounded-lg border border-white/10 bg-white/5 pl-9 pr-8 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent" />
-            {q && <button onClick={() => setQ('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"><X className="h-3.5 w-3.5" /></button>}
+      {/* Sticky filter bar */}
+      <div className="sticky top-16 z-10 border-b border-white/5 bg-slate-900/95 backdrop-blur-md">
+
+        {/* Row 1: search + sport + sort */}
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 pt-3 pb-2 flex gap-2 flex-wrap items-center">
+          {/* Search */}
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
+            <input
+              value={q}
+              onChange={e => setQ(e.target.value)}
+              placeholder="Search by club name or suburb…"
+              className="h-10 w-full rounded-xl border border-white/10 bg-white/5 pl-9 pr-8 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+            />
+            {q && (
+              <button onClick={() => setQ('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200 transition-colors">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
-          <select value={sport} onChange={e => setSport(e.target.value)}
-            className="h-10 rounded-lg border border-white/10 bg-slate-900 px-3 text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+
+          {/* Sport */}
+          <select
+            value={sport}
+            onChange={e => { setSport(e.target.value); setSuburb('') }}
+            className="h-10 rounded-xl border border-white/10 bg-slate-900 px-3 text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+          >
             <option value="">All sports</option>
             {OLYMPIC_SPORTS.map(s => <option key={s.value} value={s.value}>{s.emoji} {s.label}</option>)}
           </select>
-          <select value={state} onChange={e => setState(e.target.value)}
-            className="h-10 rounded-lg border border-white/10 bg-slate-900 px-3 text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500">
-            <option value="">All states</option>
-            {STATES.map(s => <option key={s} value={s}>{s}</option>)}
+
+          {/* Sort */}
+          <select
+            value={sort}
+            onChange={e => setSort(e.target.value)}
+            className="h-10 rounded-xl border border-white/10 bg-slate-900 px-3 text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+          >
+            <option value="az">A → Z</option>
+            <option value="za">Z → A</option>
+            <option value="oldest">Oldest first</option>
+            <option value="newest">Newest first</option>
           </select>
+
           {hasFilters && (
-            <button onClick={() => { setQ(''); setSport(''); setState('') }}
-              className="flex items-center gap-1.5 h-10 px-3 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-sm text-slate-400 hover:text-white transition-colors">
+            <button onClick={clearAll}
+              className="flex items-center gap-1.5 h-10 px-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-sm text-slate-400 hover:text-white transition-colors shrink-0">
               <X className="h-3.5 w-3.5" /> Clear
             </button>
           )}
-          <span className="ml-auto text-sm text-slate-500 shrink-0">{filtered.length} club{filtered.length !== 1 ? 's' : ''}</span>
+
+          <span className="ml-auto text-sm text-slate-500 shrink-0 tabular-nums">
+            {filtered.length} club{filtered.length !== 1 ? 's' : ''}
+          </span>
         </div>
+
+        {/* Row 2: suburb pills */}
+        {availableSuburbs.length > 0 && (
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 pb-3">
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5">
+              <button
+                onClick={() => setSuburb('')}
+                className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold border transition-all ${
+                  !suburb
+                    ? 'bg-emerald-500 border-emerald-500 text-white'
+                    : 'border-white/10 bg-white/5 text-slate-400 hover:text-white hover:border-white/20'
+                }`}
+              >
+                All suburbs
+              </button>
+              {availableSuburbs.map(s => (
+                <button
+                  key={s}
+                  onClick={() => setSuburb(prev => prev === s ? '' : s)}
+                  className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold border transition-all ${
+                    suburb === s
+                      ? 'bg-emerald-500 border-emerald-500 text-white'
+                      : 'border-white/10 bg-white/5 text-slate-400 hover:text-white hover:border-white/20'
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Grid */}
-      <div className="mx-auto max-w-7xl px-6 py-10">
+      {/* Results */}
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
         {filtered.length === 0 ? (
           <div className="text-center py-24">
             <div className="text-6xl mb-4">🏟️</div>
             <p className="text-lg font-bold text-slate-400">No clubs found</p>
-            <p className="text-sm text-slate-500 mt-1">{hasFilters ? 'Try adjusting your filters' : 'No public clubs yet.'}</p>
+            <p className="text-sm text-slate-500 mt-1">
+              {hasFilters ? 'Try adjusting your search or filters' : 'No public clubs yet.'}
+            </p>
+            {hasFilters && (
+              <button onClick={clearAll} className="mt-4 text-sm text-emerald-400 hover:text-emerald-300 underline">Clear filters</button>
+            )}
+          </div>
+        ) : useGroups ? (
+          // A-Z grouped view
+          <div className="space-y-8">
+            {letters.map(letter => (
+              <div key={letter}>
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="text-2xl font-black text-emerald-400">{letter}</span>
+                  <div className="flex-1 h-px bg-white/5" />
+                  <span className="text-xs text-slate-600">{groups[letter].length}</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  {groups[letter].map(club => <ClubCard key={club.id} club={club} />)}
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {filtered.map(club => {
-              const sportMeta = SPORTS.find(s => s.value === club.sport)
-              return (
-                <Link key={club.id} to={`/club/${club.slug}`}>
-                  <div className="group rounded-2xl border border-white/5 bg-white/[0.03] hover:bg-white/[0.07] hover:border-emerald-500/30 transition-all p-5 h-full cursor-pointer">
-                    <div className="flex items-start gap-4">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-2xl border border-emerald-500/10">
-                        {sportMeta?.emoji ?? '🏅'}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h2 className="font-bold text-white truncate group-hover:text-emerald-400 transition-colors">{club.name}</h2>
-                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                          {sportMeta && <span className="text-slate-400">{sportMeta.label}</span>}
-                          {club.city && <span className="flex items-center gap-0.5"><MapPin className="h-3 w-3" />{club.city}{club.state ? `, ${club.state}` : ''}</span>}
-                        </div>
-                        {club.description && <p className="mt-2 text-xs text-slate-500 line-clamp-2">{club.description}</p>}
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          {sportMeta?.in2032 && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-400">
-                              <Zap className="h-3 w-3" /> 2032 sport
-                            </span>
-                          )}
-                          {!club.is_claimed && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-xs font-semibold text-amber-400">
-                              Unclaimed
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              )
-            })}
+          // Flat grid when filtering/searching
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {filtered.map(club => <ClubCard key={club.id} club={club} />)}
           </div>
         )}
       </div>
@@ -157,5 +238,57 @@ export default function Clubs() {
         </div>
       </footer>
     </div>
+  )
+}
+
+function ClubCard({ club }) {
+  const sportMeta = SPORTS.find(s => s.value === club.sport)
+  return (
+    <Link to={`/club/${club.slug}`}>
+      <div className="group rounded-2xl border border-white/5 bg-white/[0.03] hover:bg-white/[0.07] hover:border-emerald-500/30 transition-all p-4 h-full cursor-pointer">
+        <div className="flex items-start gap-3">
+          {/* Logo / emoji */}
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/15 to-teal-500/10 text-xl border border-emerald-500/10">
+            {club.logo_url
+              ? <img src={club.logo_url} alt={club.name} className="w-full h-full object-cover rounded-xl" onError={e => { e.target.style.display = 'none' }} />
+              : sportMeta?.emoji ?? '🏅'
+            }
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <h2 className="font-bold text-white text-sm leading-tight group-hover:text-emerald-400 transition-colors line-clamp-2">
+              {club.name}
+            </h2>
+
+            {/* Suburb prominent */}
+            {club.city && (
+              <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-slate-400">
+                <MapPin className="h-3 w-3 shrink-0 text-slate-500" />
+                {club.city}
+              </p>
+            )}
+
+            {/* Founded year */}
+            {club.founded_year && (
+              <p className="text-[11px] text-slate-600 mt-0.5">Est. {club.founded_year}</p>
+            )}
+
+            {/* Badges */}
+            <div className="mt-2 flex flex-wrap gap-1">
+              {sportMeta?.in2032 && (
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+                  <Zap className="h-2.5 w-2.5" /> 2032
+                </span>
+              )}
+              {!club.is_claimed && (
+                <span className="inline-flex rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-semibold text-amber-400">
+                  Unclaimed
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </Link>
   )
 }
