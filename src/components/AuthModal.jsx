@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Zap, Eye, EyeOff, AlertCircle, CheckCircle, X, Building2, Dumbbell } from 'lucide-react'
+import { useNavigate, Link } from 'react-router-dom'
+import { Zap, Eye, EyeOff, AlertCircle, CheckCircle, X, Dumbbell } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { SPORTS, STATES } from '../lib/constants'
 
 const inputCls = "w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
 
@@ -82,31 +81,29 @@ function LoginForm({ onSwitch, claimToken }) {
 function SignupForm({ onSwitch, claimToken }) {
   const { register } = useAuth()
   const navigate = useNavigate()
-  const [role, setRole] = useState(claimToken ? 'athlete' : 'club_admin')
-  const [form, setForm] = useState({ full_name: '', email: '', password: '', club_name: '', sport: 'soccer', city: '', state: 'QLD' })
+  const [form, setForm]   = useState({ full_name: '', email: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [showPw, setShowPw] = useState(false)
+  const [showPw, setShowPw]   = useState(false)
 
   const set = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
 
   const pwStrength = (() => {
     const p = form.password
     if (!p) return null
-    if (p.length < 6)  return { label: 'Too short', color: 'bg-red-500',    width: '25%' }
-    if (p.length < 8)  return { label: 'Weak',       color: 'bg-orange-500', width: '50%' }
-    if (p.length < 12) return { label: 'Good',        color: 'bg-emerald-500',width: '75%' }
-    return                     { label: 'Strong',      color: 'bg-emerald-400',width: '100%' }
+    if (p.length < 6)  return { label: 'Too short', color: 'bg-red-500',     width: '25%' }
+    if (p.length < 8)  return { label: 'Weak',      color: 'bg-orange-500',  width: '50%' }
+    if (p.length < 12) return { label: 'Good',      color: 'bg-emerald-500', width: '75%' }
+    return                    { label: 'Strong',    color: 'bg-emerald-400', width: '100%' }
   })()
 
   async function handleSubmit(e) {
     e.preventDefault()
     if (form.password.length < 6) { setError('Password must be at least 6 characters'); return }
-    if (role === 'club_admin' && !form.club_name.trim()) { setError('Club name is required'); return }
     setLoading(true)
     setError('')
     try {
-      await register({ ...form, role })
+      await register({ ...form, role: 'athlete' })
       navigate(claimToken ? `/claim/${claimToken}` : '/dashboard')
     } catch (err) {
       setError(err.response?.data?.message ?? err.response?.data?.error ?? 'Registration failed. Please try again.')
@@ -118,20 +115,11 @@ function SignupForm({ onSwitch, claimToken }) {
   return (
     <div className="w-full">
       <div className="text-center mb-6">
+        <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 mb-3">
+          <Dumbbell className="h-6 w-6 text-emerald-400" />
+        </div>
         <h2 className="text-2xl font-black text-white">Create your account</h2>
         <p className="text-slate-400 text-sm mt-1">Free forever · No credit card needed</p>
-      </div>
-
-      {/* Role selector */}
-      <div className="grid grid-cols-2 gap-2 mb-6 p-1 rounded-xl bg-white/5 border border-white/10">
-        <button type="button" onClick={() => setRole('club_admin')}
-          className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${role === 'club_admin' ? 'bg-emerald-500 text-white shadow' : 'text-slate-400 hover:text-white'}`}>
-          <Building2 className="h-4 w-4" /> Club / Coach
-        </button>
-        <button type="button" onClick={() => setRole('athlete')}
-          className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${role === 'athlete' ? 'bg-emerald-500 text-white shadow' : 'text-slate-400 hover:text-white'}`}>
-          <Dumbbell className="h-4 w-4" /> Athlete
-        </button>
       </div>
 
       {error && (
@@ -144,7 +132,7 @@ function SignupForm({ onSwitch, claimToken }) {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-slate-300 mb-2">Full name</label>
-          <input required value={form.full_name} onChange={set('full_name')} className={inputCls} placeholder="Renato Silva" />
+          <input required value={form.full_name} onChange={set('full_name')} className={inputCls} placeholder="Your name" />
         </div>
         <div>
           <label className="block text-sm font-medium text-slate-300 mb-2">Email address</label>
@@ -171,55 +159,35 @@ function SignupForm({ onSwitch, claimToken }) {
           )}
         </div>
 
-        {/* Club fields — only for club_admin */}
-        {role === 'club_admin' && (
-          <>
-            <div className="pt-1 border-t border-white/10">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 mt-3 flex items-center gap-2">
-                <span className="h-px flex-1 bg-white/10" />Club details<span className="h-px flex-1 bg-white/10" />
-              </p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Club name</label>
-              <input value={form.club_name} onChange={set('club_name')} className={inputCls} placeholder="North Brisbane FC" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Primary sport</label>
-              <select value={form.sport} onChange={set('sport')} className={inputCls + ' bg-slate-900 cursor-pointer'}>
-                {SPORTS.map(s => <option key={s.value} value={s.value}>{s.emoji} {s.label}</option>)}
-              </select>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">City</label>
-                <input value={form.city} onChange={set('city')} className={inputCls} placeholder="Brisbane" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">State</label>
-                <select value={form.state} onChange={set('state')} className={inputCls + ' bg-slate-900 cursor-pointer'}>
-                  {STATES.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-            </div>
-          </>
-        )}
-
-        {role === 'athlete' && (
-          <p className="text-xs text-slate-500 bg-white/5 border border-white/10 rounded-xl px-4 py-3">
-            If a club has already invited you, your profile will be linked automatically after you sign up.
-          </p>
-        )}
+        <p className="text-xs text-slate-500 bg-white/5 border border-white/10 rounded-xl px-4 py-3 leading-relaxed">
+          If a club has already invited you, your profile will be linked automatically after you sign up.
+        </p>
 
         <button type="submit" disabled={loading}
           className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed py-3.5 text-sm font-bold transition-all shadow-lg shadow-emerald-500/25 mt-2">
           {loading
             ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />Creating account…</span>
-            : <span className="flex items-center justify-center gap-2"><CheckCircle className="h-4 w-4" />{role === 'athlete' ? 'Create athlete account' : 'Create club & account'}</span>}
+            : <span className="flex items-center justify-center gap-2"><CheckCircle className="h-4 w-4" />Create account</span>}
         </button>
         <p className="text-center text-xs text-slate-500">By registering you agree to our terms of service.</p>
       </form>
 
-      <p className="text-center text-sm text-slate-500 mt-6">
+      {/* Club manager callout */}
+      <div className="mt-5 rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3.5">
+        <p className="text-xs font-semibold text-slate-300 mb-0.5">Managing a club?</p>
+        <p className="text-xs text-slate-500 leading-relaxed">
+          Find your club in the{' '}
+          <Link to="/clubs" onClick={() => {}} className="text-emerald-400 hover:text-emerald-300 font-semibold">
+            club directory
+          </Link>{' '}
+          and submit a claim request, or contact us at{' '}
+          <a href="mailto:renatoleite.log@gmail.com" className="text-emerald-400 hover:text-emerald-300 font-semibold">
+            renatoleite.log@gmail.com
+          </a>
+        </p>
+      </div>
+
+      <p className="text-center text-sm text-slate-500 mt-5">
         Already registered?{' '}
         <button onClick={onSwitch} className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">
           Sign in →
