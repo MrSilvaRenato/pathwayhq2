@@ -32,7 +32,7 @@ function SeasonModal({ season, onSave, onClose }) {
     start_date: season?.start_date ?? '',
     end_date: season?.end_date ?? '',
     registration_deadline: season?.registration_deadline ?? '',
-    fee_cents: season ? season.fee_cents : 0,
+    fee: season ? (season.fee_cents / 100).toFixed(2) : '',
     status: season?.status ?? 'draft',
   })
   const [saving, setSaving] = useState(false)
@@ -42,7 +42,8 @@ function SeasonModal({ season, onSave, onClose }) {
     e.preventDefault()
     setSaving(true)
     try {
-      const payload = { ...form, fee_cents: Math.round(parseFloat(form.fee_cents) * 100) || 0 }
+      const { fee, ...rest } = form
+      const payload = { ...rest, fee_cents: Math.round(parseFloat(fee || 0) * 100) }
       if (season) {
         await api.put(`/seasons/${season.id}`, payload)
       } else {
@@ -91,7 +92,7 @@ function SeasonModal({ season, onSave, onClose }) {
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-500 mb-1 block">Fee (AUD $)</label>
-              <input type="number" min="0" step="0.01" value={form.fee_cents / 100} onChange={e => setForm(p => ({ ...p, fee_cents: Math.round(parseFloat(e.target.value || 0) * 100) }))} className={inputCls} placeholder="0.00" />
+              <input type="number" min="0" step="0.01" value={form.fee} onChange={set('fee')} className={inputCls} placeholder="0.00" />
             </div>
           </div>
           <div>
