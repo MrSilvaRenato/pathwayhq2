@@ -6,7 +6,6 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use App\Models\User;
-use App\Models\Club;
 
 class TestAccountsSeeder extends Seeder
 {
@@ -31,20 +30,13 @@ class TestAccountsSeeder extends Seeder
             ]);
         }
 
-        // 2. Club manager for North Brisbane FC
-        $club = Club::where('slug', 'north-brisbane-fc')->first();
-
-        if (!$club) {
-            $this->command->warn('North Brisbane FC not found — run BrisbaneClubsSeeder first.');
-            return;
-        }
-
+        // 2. Test athlete account (no club — will claim via directory)
         $manager = User::where('email', 'clubmanager@test.com')->first();
         if ($manager) {
             $manager->update([
                 'password_hash' => Hash::make('12345678'),
-                'role'          => 'club_admin',
-                'club_id'       => $club->id,
+                'role'          => 'athlete',
+                'club_id'       => null,
             ]);
         } else {
             User::create([
@@ -52,15 +44,12 @@ class TestAccountsSeeder extends Seeder
                 'email'         => 'clubmanager@test.com',
                 'full_name'     => 'Club Manager',
                 'password_hash' => Hash::make('12345678'),
-                'role'          => 'club_admin',
-                'club_id'       => $club->id,
+                'role'          => 'athlete',
+                'club_id'       => null,
             ]);
         }
 
-        // Mark the club as claimed
-        $club->update(['is_claimed' => true]);
-
         $this->command->info('Done: renatoleite.log@gmail.com → site_admin');
-        $this->command->info('Done: clubmanager@test.com → club_admin for ' . $club->name);
+        $this->command->info('Done: clubmanager@test.com → athlete (no club)');
     }
 }
