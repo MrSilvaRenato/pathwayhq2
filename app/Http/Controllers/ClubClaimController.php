@@ -93,12 +93,12 @@ class ClubClaimController extends Controller
         } else {
             $tempPassword = Str::random(12);
             User::create([
-                'id'       => (string) Str::uuid(),
-                'email'    => $claim->email,
-                'password' => bcrypt($tempPassword),
-                'full_name'=> $claim->name,
-                'role'     => 'club_admin',
-                'club_id'  => $claim->club_id,
+                'id'            => (string) Str::uuid(),
+                'email'         => $claim->email,
+                'password_hash' => bcrypt($tempPassword),
+                'full_name'     => $claim->name,
+                'role'          => 'club_admin',
+                'club_id'       => $claim->club_id,
             ]);
         }
 
