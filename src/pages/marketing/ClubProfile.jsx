@@ -4,7 +4,7 @@ import {
   Zap, MapPin, Users, Trophy, ArrowLeft, ArrowRight,
   Globe, Mail, Phone, Calendar, Clock, Megaphone,
   Instagram, Facebook, Twitter, ChevronDown, ChevronUp,
-  ShieldCheck, X, Loader2, UserPlus,
+  ShieldCheck, X, Loader2, UserPlus, CheckCircle2,
 } from 'lucide-react'
 import api from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
@@ -238,7 +238,16 @@ function JoinRequestModal({ club, onClose }) {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-            <p className="text-sm text-slate-400">Leave a message for the club manager (optional).</p>
+            <div className="flex items-center gap-3 rounded-xl bg-white/5 border border-white/10 px-4 py-3">
+              <div className="h-9 w-9 rounded-full bg-blue-500/20 flex items-center justify-center text-sm font-black text-blue-400 shrink-0">
+                {user.full_name?.[0]?.toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-white truncate">{user.full_name}</p>
+                <p className="text-xs text-slate-400 truncate">{user.email}</p>
+              </div>
+              <span className="shrink-0 text-[10px] font-bold text-slate-500 bg-white/5 rounded-full px-2 py-0.5 border border-white/10">Sending as</span>
+            </div>
             <textarea value={message} onChange={e => setMessage(e.target.value)} rows={3}
               placeholder="Introduce yourself, your experience, position..."
               className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 resize-none" />
@@ -448,6 +457,40 @@ export default function ClubProfile() {
 
               {club.description && (
                 <p className="mt-4 text-slate-400 leading-relaxed max-w-2xl text-sm sm:text-base">{club.description}</p>
+              )}
+
+              {club.is_claimed && (
+                <div className="mt-5 pt-5 border-t border-white/10 flex flex-wrap items-center gap-3">
+                  {joinStatus === 'member' && (
+                    <span className="inline-flex items-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-4 py-2.5 text-sm font-bold text-emerald-400">
+                      <CheckCircle2 className="h-4 w-4" /> You're on the roster
+                    </span>
+                  )}
+                  {joinStatus === 'pending' && (
+                    <span className="inline-flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-2.5 text-sm font-bold text-amber-400">
+                      <Clock className="h-4 w-4" /> Request pending review
+                    </span>
+                  )}
+                  {joinStatus === 'approved' && (
+                    <span className="inline-flex items-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-4 py-2.5 text-sm font-bold text-emerald-400">
+                      <CheckCircle2 className="h-4 w-4" /> Request approved
+                    </span>
+                  )}
+                  {joinStatus === 'rejected' && (
+                    <span className="inline-flex items-center gap-2 rounded-xl bg-slate-500/10 border border-slate-500/20 px-4 py-2.5 text-sm font-semibold text-slate-500">
+                      Request not accepted · contact the club directly
+                    </span>
+                  )}
+                  {!joinStatus && (
+                    <button onClick={() => setShowJoin(true)}
+                      className="inline-flex items-center gap-2 rounded-xl bg-blue-500 hover:bg-blue-400 active:scale-95 px-5 py-2.5 text-sm font-bold text-white transition-all shadow-lg shadow-blue-500/25">
+                      <UserPlus className="h-4 w-4" /> Request to join
+                    </button>
+                  )}
+                  {!joinStatus && !user && (
+                    <p className="text-xs text-slate-500">You'll need to sign in first.</p>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -736,6 +779,18 @@ export default function ClubProfile() {
                   Browse all clubs
                 </Link>
               </div>
+              {club.is_claimed && joinStatus === null && (
+                <button onClick={() => setShowJoin(true)}
+                  className="w-full mt-3 inline-flex items-center justify-center gap-2 rounded-xl border border-blue-500/20 bg-blue-500/10 hover:bg-blue-500/20 active:scale-95 px-6 py-3.5 text-sm font-bold text-blue-400 transition-all">
+                  <UserPlus className="h-4 w-4" /> Request to join {club.name}
+                </button>
+              )}
+              {club.is_claimed && joinStatus === 'pending' && (
+                <p className="mt-3 text-sm font-semibold text-amber-400 text-center">⏳ Your join request is pending review</p>
+              )}
+              {club.is_claimed && (joinStatus === 'approved' || joinStatus === 'member') && (
+                <p className="mt-3 text-sm font-semibold text-emerald-400 text-center">✓ You're on the roster</p>
+              )}
               {!club.is_claimed && (
                 <button onClick={() => setShowClaim(true)}
                   className="mt-4 w-full rounded-xl border border-white/10 hover:border-emerald-500/30 py-3 text-sm font-semibold text-slate-400 hover:text-emerald-400 transition-all">

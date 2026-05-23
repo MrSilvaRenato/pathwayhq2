@@ -1,17 +1,189 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { Zap, Search, X, MapPin, SortAsc, SortDesc } from 'lucide-react'
+import { Zap, Search, X, MapPin, SortAsc, SortDesc, UserPlus, Loader2 } from 'lucide-react'
 import api from '../../lib/api'
+import { useAuth } from '../../contexts/AuthContext'
 import { SPORTS, STATES } from '../../lib/constants'
 
 const OLYMPIC_SPORTS = SPORTS.filter(s => s.in2032)
 
+function JoinModal({ club, onClose }) {
+  const { user } = useAuth()
+  const [message, setMessage] = useState('')
+  const [saving,  setSaving]  = useState(false)
+  const [done,    setDone]    = useState(false)
+  const [error,   setError]   = useState('')
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setSaving(true)
+    setError('')
+    try {
+      await api.post(`/clubs/public/${club.slug}/join-request`, { message })
+      setDone(true)
+    } catch (err) {
+      setError(err?.response?.data?.message ?? 'Something went wrong.')
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-3xl bg-slate-900 border border-white/10 shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 border border-blue-500/20">
+              <UserPlus className="h-5 w-5 text-blue-400" />
+            </div>
+            <div>
+              <h2 className="font-black text-white text-base">Request to join</h2>
+              <p className="text-xs text-slate-400">{club.name}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {!user ? (
+          <div className="px-6 py-8 text-center">
+            <UserPlus className="h-10 w-10 text-blue-400 mx-auto mb-3" />
+            <h3 className="font-black text-white text-lg mb-2">Sign in to request</h3>
+            <p className="text-slate-400 text-sm mb-6 leading-relaxed">
+              Create an account or sign in to request to join {club.name}.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={onClose}
+                className="flex-1 rounded-xl border border-white/10 py-3 text-sm font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition-colors">
+                Cancel
+              </button>
+              <Link to="/?modal=signup"
+                className="flex-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 py-3 text-sm font-bold text-white text-center transition-colors">
+                Create account
+              </Link>
+            </div>
+            <p className="mt-3 text-xs text-slate-600">
+              Already have an account?{' '}
+              <Link to="/?modal=login" className="text-slate-400 hover:text-white underline transition-colors">Sign in</Link>
+            </p>
+          </div>
+        ) : done ? (
+          <div className="px-6 py-10 text-center">
+            <div className="text-4xl mb-4">🙌</div>
+            <h3 className="text-lg font-black text-white mb-2">Request sent!</h3>
+            <p className="text-sm text-slate-400 leading-relaxed">The club manager will review your request and get back to you.</p>
+            <button onClick={onClose}
+              className="mt-6 rounded-xl bg-emerald-500 hover:bg-emerald-400 px-6 py-2.5 text-sm font-bold text-white transition-colors">
+              Done
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+            <div className="flex items-center gap-3 rounded-xl bg-white/5 border border-white/10 px-4 py-3">
+              <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center text-xs font-black text-blue-400 shrink-0">
+                {user.full_name?.[0]?.toUpperCase() ?? '?'}
+              </div>
+              <p className="text-sm text-slate-400 min-w-0 truncate">
+                <span className="text-slate-300 font-semibold">Sending as:</span>{' '}
+                {user.full_name} · {user.email}
+              </p>
+            </div>
+            <textarea
+              value={message}
+              onChange={e => setMessage(e.target.value.slice(0, 500))}
+              rows={4}
+              placeholder="Introduce yourself — position, age group, experience…"
+              className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 resize-none"
+            />
+            <p className="text-right text-xs text-slate-600">{message.length}/500</p>
+            {error && <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{error}</p>}
+            <div className="flex gap-3 pt-1">
+              <button type="button" onClick={onClose}
+                className="flex-1 rounded-xl border border-white/10 py-3 text-sm font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition-colors">
+                Cancel
+              </button>
+              <button type="submit" disabled={saving}
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-blue-500 hover:bg-blue-400 disabled:opacity-60 py-3 text-sm font-bold text-white transition-colors">
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+                Send request
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ClubCard({ club, onRequestJoin }) {
+  const sportMeta = SPORTS.find(s => s.value === club.sport)
+  return (
+    <div className="flex flex-col">
+      <Link to={`/club/${club.slug}`} className="flex-1">
+        <div className="group rounded-2xl border border-white/5 bg-white/[0.03] hover:bg-white/[0.07] hover:border-emerald-500/30 transition-all p-4 h-full cursor-pointer">
+          <div className="flex items-start gap-3">
+            {/* Logo / emoji */}
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/15 to-teal-500/10 text-xl border border-emerald-500/10">
+              {club.logo_url
+                ? <img src={club.logo_url} alt={club.name} className="w-full h-full object-cover rounded-xl" onError={e => { e.target.style.display = 'none' }} />
+                : sportMeta?.emoji ?? '🏅'
+              }
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <h2 className="font-bold text-white text-sm leading-tight group-hover:text-emerald-400 transition-colors line-clamp-2">
+                {club.name}
+              </h2>
+
+              {/* Suburb prominent */}
+              {club.city && (
+                <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-slate-400">
+                  <MapPin className="h-3 w-3 shrink-0 text-slate-500" />
+                  {club.city}
+                </p>
+              )}
+
+              {/* Founded year */}
+              {club.founded_year && (
+                <p className="text-[11px] text-slate-600 mt-0.5">Est. {club.founded_year}</p>
+              )}
+
+              {/* Badges */}
+              <div className="mt-2 flex flex-wrap gap-1">
+                {sportMeta?.in2032 && (
+                  <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+                    <Zap className="h-2.5 w-2.5" /> 2032
+                  </span>
+                )}
+                {!club.is_claimed && (
+                  <span className="inline-flex rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-semibold text-amber-400">
+                    Unclaimed
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </Link>
+
+      {club.is_claimed && (
+        <button
+          onClick={() => onRequestJoin(club)}
+          className="w-full mt-3 rounded-xl border border-blue-500/20 bg-blue-500/10 hover:bg-blue-500/20 py-2 text-xs font-bold text-blue-400 hover:text-blue-300 flex items-center justify-center gap-1.5 transition-all"
+        >
+          <UserPlus className="h-3 w-3" /> Request to Join
+        </button>
+      )}
+    </div>
+  )
+}
+
 export default function Clubs() {
-  const [clubs,  setClubs]  = useState([])
-  const [q,      setQ]      = useState('')
-  const [sport,  setSport]  = useState('')
-  const [suburb, setSuburb] = useState('')
-  const [sort,   setSort]   = useState('az') // az | za | oldest | newest
+  const [clubs,    setClubs]    = useState([])
+  const [q,        setQ]        = useState('')
+  const [sport,    setSport]    = useState('')
+  const [suburb,   setSuburb]   = useState('')
+  const [sort,     setSort]     = useState('az') // az | za | oldest | newest
+  const [joinClub, setJoinClub] = useState(null)
 
   useEffect(() => { api.get('/clubs/public').then(r => setClubs(r.data)) }, [])
 
@@ -215,7 +387,7 @@ export default function Clubs() {
                   <span className="text-xs text-slate-600">{groups[letter].length}</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                  {groups[letter].map(club => <ClubCard key={club.id} club={club} />)}
+                  {groups[letter].map(club => <ClubCard key={club.id} club={club} onRequestJoin={setJoinClub} />)}
                 </div>
               </div>
             ))}
@@ -223,7 +395,7 @@ export default function Clubs() {
         ) : (
           // Flat grid when filtering/searching
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {filtered.map(club => <ClubCard key={club.id} club={club} />)}
+            {filtered.map(club => <ClubCard key={club.id} club={club} onRequestJoin={setJoinClub} />)}
           </div>
         )}
       </div>
@@ -237,58 +409,8 @@ export default function Clubs() {
           <p className="text-xs text-slate-600">Built in Brisbane · © 2026 PathwayHQ</p>
         </div>
       </footer>
+
+      {joinClub && <JoinModal club={joinClub} onClose={() => setJoinClub(null)} />}
     </div>
-  )
-}
-
-function ClubCard({ club }) {
-  const sportMeta = SPORTS.find(s => s.value === club.sport)
-  return (
-    <Link to={`/club/${club.slug}`}>
-      <div className="group rounded-2xl border border-white/5 bg-white/[0.03] hover:bg-white/[0.07] hover:border-emerald-500/30 transition-all p-4 h-full cursor-pointer">
-        <div className="flex items-start gap-3">
-          {/* Logo / emoji */}
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/15 to-teal-500/10 text-xl border border-emerald-500/10">
-            {club.logo_url
-              ? <img src={club.logo_url} alt={club.name} className="w-full h-full object-cover rounded-xl" onError={e => { e.target.style.display = 'none' }} />
-              : sportMeta?.emoji ?? '🏅'
-            }
-          </div>
-
-          <div className="flex-1 min-w-0">
-            <h2 className="font-bold text-white text-sm leading-tight group-hover:text-emerald-400 transition-colors line-clamp-2">
-              {club.name}
-            </h2>
-
-            {/* Suburb prominent */}
-            {club.city && (
-              <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-slate-400">
-                <MapPin className="h-3 w-3 shrink-0 text-slate-500" />
-                {club.city}
-              </p>
-            )}
-
-            {/* Founded year */}
-            {club.founded_year && (
-              <p className="text-[11px] text-slate-600 mt-0.5">Est. {club.founded_year}</p>
-            )}
-
-            {/* Badges */}
-            <div className="mt-2 flex flex-wrap gap-1">
-              {sportMeta?.in2032 && (
-                <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
-                  <Zap className="h-2.5 w-2.5" /> 2032
-                </span>
-              )}
-              {!club.is_claimed && (
-                <span className="inline-flex rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-semibold text-amber-400">
-                  Unclaimed
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </Link>
   )
 }
