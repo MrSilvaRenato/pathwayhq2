@@ -871,7 +871,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-black text-slate-900">
-            {greeting}, {user?.full_name?.split(' ')[0]} 👋
+            {greeting}, {user?.full_name} 👋
           </h1>
           <p className="text-slate-400 text-xs mt-0.5">
             {new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
