@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import {
   Zap, MapPin, Users, Trophy, ArrowLeft, ArrowRight,
   Globe, Mail, Phone, Calendar, Clock, Megaphone,
   Instagram, Facebook, Twitter, ChevronDown, ChevronUp,
-  ShieldCheck, X, Loader2,
+  ShieldCheck, X, Loader2, UserPlus,
 } from 'lucide-react'
 import api from '../../lib/api'
+import { useAuth } from '../../contexts/AuthContext'
 import { SPORTS, FTEM_PHASES } from '../../lib/constants'
 
 function ClaimModal({ club, onClose }) {
@@ -175,11 +176,95 @@ function AnnouncePeek({ a }) {
   )
 }
 
+function JoinRequestModal({ club, onClose }) {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const [message, setMessage] = useState('')
+  const [saving,  setSaving]  = useState(false)
+  const [done,    setDone]    = useState(false)
+  const [error,   setError]   = useState('')
+
+  if (!user) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+        <div className="w-full max-w-sm rounded-2xl bg-slate-900 border border-white/10 shadow-2xl p-8 text-center">
+          <UserPlus className="h-10 w-10 text-emerald-400 mx-auto mb-3" />
+          <h2 className="font-black text-white text-lg mb-2">Sign in to request</h2>
+          <p className="text-slate-400 text-sm mb-5">Create an account or sign in to request to join {club.name}.</p>
+          <div className="flex gap-3">
+            <button onClick={onClose} className="flex-1 rounded-xl border border-white/10 py-3 text-sm font-semibold text-slate-400 hover:text-white transition-colors">Cancel</button>
+            <Link to="/?modal=signup" className="flex-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 py-3 text-sm font-bold text-white text-center transition-colors">Create account</Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setSaving(true)
+    setError('')
+    try {
+      await api.post(`/clubs/public/${club.slug}/join-request`, { message })
+      setDone(true)
+    } catch (err) {
+      setError(err?.response?.data?.message ?? 'Something went wrong.')
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-3xl bg-slate-900 border border-white/10 shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 border border-blue-500/20">
+              <UserPlus className="h-5 w-5 text-blue-400" />
+            </div>
+            <div>
+              <h2 className="font-black text-white text-base">Request to join</h2>
+              <p className="text-xs text-slate-400">{club.name}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        {done ? (
+          <div className="px-6 py-10 text-center">
+            <div className="text-4xl mb-4">🙌</div>
+            <h3 className="text-lg font-black text-white mb-2">Request sent!</h3>
+            <p className="text-sm text-slate-400 leading-relaxed">The club manager will review your request and get back to you.</p>
+            <button onClick={onClose} className="mt-6 rounded-xl bg-emerald-500 hover:bg-emerald-400 px-6 py-2.5 text-sm font-bold text-white transition-colors">Done</button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+            <p className="text-sm text-slate-400">Leave a message for the club manager (optional).</p>
+            <textarea value={message} onChange={e => setMessage(e.target.value)} rows={3}
+              placeholder="Introduce yourself, your experience, position..."
+              className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 resize-none" />
+            {error && <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{error}</p>}
+            <div className="flex gap-3">
+              <button type="button" onClick={onClose} className="flex-1 rounded-xl border border-white/10 py-3 text-sm font-semibold text-slate-400 hover:text-white transition-colors">Cancel</button>
+              <button type="submit" disabled={saving} className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-blue-500 hover:bg-blue-400 disabled:opacity-60 py-3 text-sm font-bold text-white transition-colors">
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+                Send request
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function ClubProfile() {
   const { slug } = useParams()
+  const { user } = useAuth()
   const [data,       setData]      = useState(null)
   const [loading,    setLoading]   = useState(true)
   const [showClaim,  setShowClaim] = useState(false)
+  const [showJoin,   setShowJoin]  = useState(false)
+  const [joinStatus, setJoinStatus]= useState(null) // null|pending|approved|rejected|member
 
   useEffect(() => {
     api.get(`/clubs/public/${slug}`)
@@ -187,6 +272,13 @@ export default function ClubProfile() {
       .catch(() => setData(null))
       .finally(() => setLoading(false))
   }, [slug])
+
+  useEffect(() => {
+    if (!user || !slug) return
+    api.get(`/clubs/public/${slug}/my-join-status`)
+      .then(r => setJoinStatus(r.data.status))
+      .catch(() => {})
+  }, [user, slug])
 
   if (loading) return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -434,6 +526,28 @@ export default function ClubProfile() {
               </Link>
             </div>
 
+            {club.is_claimed && (
+              <div className="hidden lg:block rounded-2xl border border-blue-500/20 bg-blue-500/5 p-5 text-center">
+                <UserPlus className="h-6 w-6 text-blue-400 mx-auto mb-2" />
+                <h3 className="text-sm font-bold text-slate-300 mb-1">Want to play for {club.name}?</h3>
+                <p className="text-xs text-slate-500 mb-3 leading-relaxed">Send a join request and the manager will be in touch.</p>
+                {joinStatus === 'member' ? (
+                  <p className="text-xs font-bold text-emerald-400">✓ You're in the roster</p>
+                ) : joinStatus === 'pending' ? (
+                  <p className="text-xs font-bold text-amber-400">⏳ Request pending review</p>
+                ) : joinStatus === 'approved' ? (
+                  <p className="text-xs font-bold text-emerald-400">✓ Request approved</p>
+                ) : joinStatus === 'rejected' ? (
+                  <p className="text-xs text-slate-500">Request not accepted. Contact the club directly.</p>
+                ) : (
+                  <button onClick={() => setShowJoin(true)}
+                    className="w-full rounded-xl bg-blue-500 hover:bg-blue-400 active:scale-95 py-2.5 text-sm font-bold text-white transition-all">
+                    Request to join →
+                  </button>
+                )}
+              </div>
+            )}
+
             {!club.is_claimed && (
               <div className="hidden lg:block rounded-2xl border border-white/5 bg-white/[0.02] p-5 text-center">
                 <ShieldCheck className="h-7 w-7 text-slate-500 mx-auto mb-2" />
@@ -634,6 +748,7 @@ export default function ClubProfile() {
       </div>
 
       {showClaim && <ClaimModal club={club} onClose={() => setShowClaim(false)} />}
+      {showJoin  && <JoinRequestModal club={club} onClose={() => { setShowJoin(false); if (user) api.get(`/clubs/public/${club.slug}/my-join-status`).then(r => setJoinStatus(r.data.status)).catch(() => {}) }} />}
 
       {/* Footer */}
       <footer className="border-t border-white/5 px-4 sm:px-6 py-8">

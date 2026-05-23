@@ -23,7 +23,10 @@ import ClubTrophies  from './pages/app/ClubTrophies'
 import Analytics     from './pages/app/Analytics'
 import Settings      from './pages/app/Settings'
 import SiteAdmin     from './pages/app/SiteAdmin'
-import ClaimProfile  from './pages/ClaimProfile'
+import ClaimProfile      from './pages/ClaimProfile'
+import JoinRequests     from './pages/app/JoinRequests'
+import Seasons          from './pages/app/Seasons'
+import MyRegistrations  from './pages/app/MyRegistrations'
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -69,7 +72,10 @@ export default function App() {
             <Route path="trophies"      element={<ClubTrophies />} />
             <Route path="analytics"     element={<Analytics />} />
             <Route path="settings"      element={<Settings />} />
-            <Route path="site-admin"    element={<SiteAdmin />} />
+            <Route path="site-admin"        element={<SiteAdmin />} />
+            <Route path="join-requests"     element={<JoinRequests />} />
+            <Route path="seasons"           element={<Seasons />} />
+            <Route path="my-registrations"  element={<MyRegistrations />} />
           </Route>
 
           <Route path="*" element={<SmartRedirect />} />

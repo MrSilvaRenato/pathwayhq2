@@ -17,6 +17,9 @@ use App\Http\Controllers\SquadRequestController;
 use App\Http\Controllers\ClubClaimController;
 use App\Http\Controllers\CoachController;
 use App\Http\Controllers\ParentController;
+use App\Http\Controllers\ClubJoinRequestController;
+use App\Http\Controllers\SeasonController;
+use App\Http\Controllers\SeasonRegistrationController;
 
 // ─── Health check ────────────────────────────────────────────────────────────
 Route::get('/health', fn() => response()->json([
@@ -38,6 +41,12 @@ Route::get('/athletes/public/{slug}', [AthleteController::class, 'publicShow']);
 
 // Club claiming (public submission)
 Route::post('/clubs/public/{slug}/claim', [ClubClaimController::class, 'store']);
+
+// Public seasons list for a club
+Route::get('/clubs/public/{slug}/seasons', [SeasonController::class, 'publicList']);
+
+// Stripe webhook (no auth)
+Route::post('/stripe/webhook', [SeasonRegistrationController::class, 'stripeWebhook']);
 
 // ─── Authenticated routes ─────────────────────────────────────────────────────
 Route::middleware('auth:api')->group(function () {
@@ -136,6 +145,27 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/athletes/{id}/parents',                   [ParentController::class, 'addParent']);
     Route::delete('/athletes/{id}/parents/{parentUserId}',  [ParentController::class, 'removeParent']);
     Route::get('/parent/my-athletes',                       [ParentController::class, 'myAthletes']);
+
+    // Club join requests (athlete → requests to join a club)
+    Route::post('/clubs/public/{slug}/join-request',    [ClubJoinRequestController::class, 'store']);
+    Route::get('/clubs/public/{slug}/my-join-status',   [ClubJoinRequestController::class, 'myStatus']);
+    Route::get('/club/join-requests',                    [ClubJoinRequestController::class, 'index']);
+    Route::put('/club/join-requests/{id}/approve',       [ClubJoinRequestController::class, 'approve']);
+    Route::put('/club/join-requests/{id}/reject',        [ClubJoinRequestController::class, 'reject']);
+
+    // Seasons
+    Route::get('/seasons',           [SeasonController::class, 'index']);
+    Route::post('/seasons',          [SeasonController::class, 'store']);
+    Route::get('/seasons/{id}',      [SeasonController::class, 'show']);
+    Route::put('/seasons/{id}',      [SeasonController::class, 'update']);
+    Route::delete('/seasons/{id}',   [SeasonController::class, 'destroy']);
+
+    // Season registrations
+    Route::post('/seasons/{id}/invite',               [SeasonRegistrationController::class, 'invite']);
+    Route::get('/my-registrations',                   [SeasonRegistrationController::class, 'myRegistrations']);
+    Route::post('/registrations/{id}/pay',            [SeasonRegistrationController::class, 'pay']);
+    Route::put('/registrations/{id}/mark-paid',       [SeasonRegistrationController::class, 'markPaid']);
+    Route::delete('/registrations/{id}',              [SeasonRegistrationController::class, 'destroy']);
 
     // File uploads
     Route::post('/upload/image', [UploadController::class, 'image']);

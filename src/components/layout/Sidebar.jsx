@@ -3,40 +3,44 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Layers, Calendar, Trophy, Award,
   BarChart3, Settings, LogOut, Zap, Shield, Dumbbell,
-  Megaphone, HandHeart, Globe, X,
+  Megaphone, HandHeart, Globe, X, UserPlus, CalendarDays, CreditCard,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useSidebar } from '../../contexts/SidebarContext'
 import api from '../../lib/api'
 
 const COACH_NAV = [
-  { name: 'Dashboard',     href: '/dashboard',     icon: LayoutDashboard },
-  { name: 'Athletes',      href: '/athletes',       icon: Users },
-  { name: 'Squads',        href: '/squad',          icon: Layers },
-  { name: 'Calendar',      href: '/calendar',       icon: Calendar },
-  { name: 'Announcements', href: '/announcements',  icon: Megaphone },
-  { name: 'Volunteering',  href: '/volunteering',   icon: HandHeart },
-  { name: 'Milestones',    href: '/milestones',     icon: Trophy },
-  { name: 'Trophy Cabinet', href: '/trophies',      icon: Award },
-  { name: 'Analytics',     href: '/analytics',      icon: BarChart3 },
-  { name: 'Settings',      href: '/settings',       icon: Settings },
+  { name: 'Dashboard',      href: '/dashboard',      icon: LayoutDashboard },
+  { name: 'Join Requests',  href: '/join-requests',  icon: UserPlus,      badge: 'joinRequests' },
+  { name: 'Athletes',       href: '/athletes',       icon: Users },
+  { name: 'Squads',         href: '/squad',          icon: Layers,        badge: 'squadRequests' },
+  { name: 'Seasons',        href: '/seasons',        icon: CalendarDays },
+  { name: 'Calendar',       href: '/calendar',       icon: Calendar },
+  { name: 'Announcements',  href: '/announcements',  icon: Megaphone },
+  { name: 'Volunteering',   href: '/volunteering',   icon: HandHeart },
+  { name: 'Milestones',     href: '/milestones',     icon: Trophy },
+  { name: 'Trophy Cabinet', href: '/trophies',       icon: Award },
+  { name: 'Analytics',      href: '/analytics',      icon: BarChart3 },
+  { name: 'Settings',       href: '/settings',       icon: Settings },
 ]
 const ADMIN_NAV    = COACH_NAV
 const PARENT_NAV   = [
-  { name: 'Dashboard',     href: '/dashboard',     icon: LayoutDashboard },
-  { name: 'Announcements', href: '/announcements', icon: Megaphone },
-  { name: 'Calendar',      href: '/calendar',      icon: Calendar },
-  { name: 'Milestones',    href: '/milestones',    icon: Trophy },
-  { name: 'Volunteering',  href: '/volunteering',  icon: HandHeart },
-  { name: 'Settings',      href: '/settings',      icon: Settings },
+  { name: 'Dashboard',        href: '/dashboard',       icon: LayoutDashboard },
+  { name: 'My Registrations', href: '/my-registrations',icon: CreditCard },
+  { name: 'Announcements',    href: '/announcements',   icon: Megaphone },
+  { name: 'Calendar',         href: '/calendar',        icon: Calendar },
+  { name: 'Milestones',       href: '/milestones',      icon: Trophy },
+  { name: 'Volunteering',     href: '/volunteering',    icon: HandHeart },
+  { name: 'Settings',         href: '/settings',        icon: Settings },
 ]
 const ATHLETE_NAV  = [
-  { name: 'My Dashboard',  href: '/dashboard',     icon: Dumbbell },
-  { name: 'Announcements', href: '/announcements', icon: Megaphone },
-  { name: 'Calendar',      href: '/calendar',      icon: Calendar },
-  { name: 'Milestones',    href: '/milestones',    icon: Trophy },
-  { name: 'Volunteering',  href: '/volunteering',  icon: HandHeart },
-  { name: 'Settings',      href: '/settings',      icon: Settings },
+  { name: 'My Dashboard',     href: '/dashboard',       icon: Dumbbell },
+  { name: 'My Registrations', href: '/my-registrations',icon: CreditCard },
+  { name: 'Announcements',    href: '/announcements',   icon: Megaphone },
+  { name: 'Calendar',         href: '/calendar',        icon: Calendar },
+  { name: 'Milestones',       href: '/milestones',      icon: Trophy },
+  { name: 'Volunteering',     href: '/volunteering',    icon: HandHeart },
+  { name: 'Settings',         href: '/settings',        icon: Settings },
 ]
 const SITE_ADMIN_NAV = [
   { name: 'Site Admin',    href: '/site-admin',    icon: Shield },
@@ -63,10 +67,12 @@ export default function Sidebar() {
   const navigate = useNavigate()
   const nav = getNav(user?.role)
   const [squadRequestCount, setSquadRequestCount] = useState(0)
+  const [joinRequestCount,  setJoinRequestCount]  = useState(0)
 
   useEffect(() => {
     if (user?.role !== 'club_admin' && user?.role !== 'coach') return
     api.get('/squad-requests').then(r => setSquadRequestCount(r.data?.length ?? 0)).catch(() => {})
+    api.get('/club/join-requests').then(r => setJoinRequestCount((r.data ?? []).filter(x => x.status === 'pending').length)).catch(() => {})
   }, [user?.role, location.pathname])
 
   function handleLogout() {
@@ -99,13 +105,18 @@ export default function Sidebar() {
               }`}>
               <item.icon className={`h-4 w-4 shrink-0 ${active ? 'text-emerald-600' : 'text-slate-400'}`} />
               {item.name}
-              {item.href === '/squad' && squadRequestCount > 0 && (
-                <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-400 px-1 text-[10px] font-black text-white">
-                  {squadRequestCount}
-                </span>
-              )}
-              {active && item.href !== '/squad' && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-500" />}
-              {active && item.href === '/squad' && squadRequestCount === 0 && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-500" />}
+              {(() => {
+                const count = item.badge === 'squadRequests' ? squadRequestCount
+                            : item.badge === 'joinRequests'  ? joinRequestCount
+                            : 0
+                if (count > 0) return (
+                  <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-400 px-1 text-[10px] font-black text-white">
+                    {count}
+                  </span>
+                )
+                if (active) return <span className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                return null
+              })()}
             </Link>
           )
         })}

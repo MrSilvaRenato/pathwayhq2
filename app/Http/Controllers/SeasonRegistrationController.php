@@ -1,0 +1,236 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use App\Models\Season;
+use App\Models\SeasonRegistration;
+use App\Models\Athlete;
+use App\Models\User;
+use App\Models\Notification;
+
+class SeasonRegistrationController extends Controller
+{
+    // Club admin: send registration payment request to selected athletes
+    public function invite(Request $request, $seasonId)
+    {
+        if (!in_array($request->user()->role, ['club_admin', 'site_admin'])) abort(403);
+
+        $season = Season::where('id', $seasonId)
+            ->where('club_id', $request->user()->club_id)
+            ->firstOrFail();
+
+        $data = $request->validate([
+            'athlete_ids'   => 'required|array|min:1',
+            'athlete_ids.*' => 'string',
+        ]);
+
+        $manager  = $request->user();
+        $created  = 0;
+        $skipped  = 0;
+
+        foreach ($data['athlete_ids'] as $athleteId) {
+            $athlete = Athlete::where('id', $athleteId)
+                ->where('club_id', $manager->club_id)
+                ->where('invite_status', 'accepted')
+                ->where('is_active', true)
+                ->first();
+
+            if (!$athlete || !$athlete->user_id) { $skipped++; continue; }
+
+            // Skip if already invited for this season
+            $exists = SeasonRegistration::where('season_id', $seasonId)
+                ->where('athlete_id', $athleteId)
+                ->exists();
+            if ($exists) { $skipped++; continue; }
+
+            SeasonRegistration::create([
+                'id'         => (string) Str::uuid(),
+                'season_id'  => $seasonId,
+                'athlete_id' => $athleteId,
+                'user_id'    => $athlete->user_id,
+                'invited_by' => $manager->id,
+                'status'     => 'invited',
+            ]);
+
+            $feeDollars = number_format($season->fee_cents / 100, 2);
+            Notification::create([
+                'id'      => (string) Str::uuid(),
+                'user_id' => $athlete->user_id,
+                'title'   => "💳 Registration request: {$season->name}",
+                'body'    => "You've been invited to register for {$season->name}. Fee: \${$feeDollars} AUD. Tap to pay.",
+                'link'    => '/my-registrations',
+                'is_read' => false,
+                'at'      => now()->toDateTimeString(),
+            ]);
+
+            $created++;
+        }
+
+        return response()->json(['ok' => true, 'invited' => $created, 'skipped' => $skipped]);
+    }
+
+    // Athlete: list my pending + past registration requests
+    public function myRegistrations(Request $request)
+    {
+        $regs = SeasonRegistration::where('user_id', $request->user()->id)
+            ->with('season:id,name,start_date,end_date,fee_cents,currency,club_id', 'season.club:id,name,slug,logo_url')
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(function ($r) {
+                return [
+                    'id'             => $r->id,
+                    'status'         => $r->status,
+                    'payment_method' => $r->payment_method,
+                    'paid_at'        => $r->paid_at,
+                    'season_name'    => $r->season?->name,
+                    'fee_cents'      => $r->season?->fee_cents,
+                    'currency'       => $r->season?->currency ?? 'AUD',
+                    'club_name'      => $r->season?->club?->name,
+                    'club_slug'      => $r->season?->club?->slug,
+                    'club_logo'      => $r->season?->club?->logo_url,
+                    'start_date'     => $r->season?->start_date,
+                    'end_date'       => $r->season?->end_date,
+                ];
+            });
+
+        return response()->json($regs);
+    }
+
+    // Athlete: initiate payment (Stripe or "pay at club")
+    public function pay(Request $request, $id)
+    {
+        $reg = SeasonRegistration::where('id', $id)
+            ->where('user_id', $request->user()->id)
+            ->whereIn('status', ['invited'])
+            ->with('season')
+            ->firstOrFail();
+
+        $data = $request->validate([
+            'method' => 'required|in:stripe,manual',
+        ]);
+
+        if ($data['method'] === 'manual') {
+            $reg->update([
+                'status'         => 'manual_pending',
+                'payment_method' => 'manual',
+            ]);
+
+            // Notify manager
+            $managers = User::where('club_id', $reg->season->club_id)
+                ->where('role', 'club_admin')
+                ->get();
+            $user = $request->user();
+            foreach ($managers as $mgr) {
+                Notification::create([
+                    'id'      => (string) Str::uuid(),
+                    'user_id' => $mgr->id,
+                    'title'   => "💰 {$user->full_name} will pay at club",
+                    'body'    => "For {$reg->season->name}. Mark as paid when you receive the fee.",
+                    'link'    => "/seasons/{$reg->season_id}",
+                    'is_read' => false,
+                    'at'      => now()->toDateTimeString(),
+                ]);
+            }
+
+            return response()->json(['ok' => true, 'method' => 'manual']);
+        }
+
+        // Stripe payment
+        $stripeKey = config('services.stripe.secret');
+        if (!$stripeKey) {
+            return response()->json(['message' => 'Online payment is not configured. Please select "Pay at club".'], 422);
+        }
+
+        \Stripe\Stripe::setApiKey($stripeKey);
+        $intent = \Stripe\PaymentIntent::create([
+            'amount'   => $reg->season->fee_cents,
+            'currency' => strtolower($reg->season->currency ?? 'aud'),
+            'metadata' => ['registration_id' => $reg->id],
+        ]);
+
+        $reg->update([
+            'payment_method'           => 'stripe',
+            'stripe_payment_intent_id' => $intent->id,
+        ]);
+
+        return response()->json(['client_secret' => $intent->client_secret]);
+    }
+
+    // Stripe webhook: confirm payment
+    public function stripeWebhook(Request $request)
+    {
+        $secret    = config('services.stripe.webhook_secret');
+        $payload   = $request->getContent();
+        $sigHeader = $request->header('Stripe-Signature');
+
+        try {
+            $event = \Stripe\Webhook::constructEvent($payload, $sigHeader, $secret);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Invalid signature'], 400);
+        }
+
+        if ($event->type === 'payment_intent.succeeded') {
+            $intentId = $event->data->object->id;
+            $reg = SeasonRegistration::where('stripe_payment_intent_id', $intentId)->first();
+            if ($reg) {
+                $reg->update(['status' => 'paid', 'paid_at' => now()]);
+
+                Notification::create([
+                    'id'      => (string) Str::uuid(),
+                    'user_id' => $reg->user_id,
+                    'title'   => '✅ Payment confirmed!',
+                    'body'    => "Your registration for {$reg->season?->name} is complete.",
+                    'link'    => '/my-registrations',
+                    'is_read' => false,
+                    'at'      => now()->toDateTimeString(),
+                ]);
+            }
+        }
+
+        return response()->json(['ok' => true]);
+    }
+
+    // Club admin: mark a manual payment as confirmed
+    public function markPaid(Request $request, $id)
+    {
+        if (!in_array($request->user()->role, ['club_admin', 'site_admin'])) abort(403);
+
+        $reg = SeasonRegistration::where('id', $id)
+            ->whereHas('season', fn($q) => $q->where('club_id', $request->user()->club_id))
+            ->firstOrFail();
+
+        $reg->update([
+            'status'  => 'paid',
+            'paid_at' => now(),
+            'payment_method' => $reg->payment_method ?? 'manual',
+        ]);
+
+        Notification::create([
+            'id'      => (string) Str::uuid(),
+            'user_id' => $reg->user_id,
+            'title'   => '✅ Payment confirmed!',
+            'body'    => "Your registration for {$reg->season?->name} has been confirmed.",
+            'link'    => '/my-registrations',
+            'is_read' => false,
+            'at'      => now()->toDateTimeString(),
+        ]);
+
+        return response()->json(['ok' => true]);
+    }
+
+    // Club admin: remove a registration invite
+    public function destroy(Request $request, $id)
+    {
+        if (!in_array($request->user()->role, ['club_admin', 'site_admin'])) abort(403);
+
+        SeasonRegistration::where('id', $id)
+            ->whereHas('season', fn($q) => $q->where('club_id', $request->user()->club_id))
+            ->whereNotIn('status', ['paid'])
+            ->firstOrFail()
+            ->delete();
+
+        return response()->json(['ok' => true]);
+    }
+}
