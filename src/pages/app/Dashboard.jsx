@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   Users, Trophy, Calendar, ArrowRight, Zap, Dumbbell,
   MapPin, Megaphone, CheckCircle2, XCircle, HandHeart,
-  TrendingUp, Clock, X, HelpCircle, Loader2,
+  TrendingUp, Clock, X, HelpCircle, Loader2, Building2,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
@@ -196,6 +196,7 @@ function Empty({ msg }) {
 
 // ─── CLUB ADMIN / COACH DASHBOARD ────────────────────────────────────────────
 function ClubDashboard({ user }) {
+  const [club,            setClub]            = useState(null)
   const [athletes,        setAthletes]        = useState([])
   const [milestones,      setMilestones]      = useState([])
   const [events,          setEvents]          = useState([])
@@ -206,12 +207,14 @@ function ClubDashboard({ user }) {
 
   useEffect(() => {
     Promise.all([
+      api.get('/club').catch(() => ({ data: null })),
       api.get('/athletes').catch(() => ({ data: [] })),
       api.get('/milestones').catch(() => ({ data: [] })),
       api.get('/events').catch(() => ({ data: [] })),
       api.get('/announcements').catch(() => ({ data: [] })),
       api.get('/volunteering').catch(() => ({ data: [] })),
-    ]).then(([a, m, e, ann, v]) => {
+    ]).then(([cl, a, m, e, ann, v]) => {
+      setClub(cl.data ?? null)
       setAthletes(a.data ?? [])
       setMilestones((m.data ?? []).slice(0, 4))
       const now = new Date()
@@ -238,6 +241,34 @@ function ClubDashboard({ user }) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+
+      {/* ── Club identity banner ─────────────────────────────────── */}
+      {club && (
+        <div className="col-span-full rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 p-4 md:p-5 flex items-center gap-4 shadow-sm">
+          {club.logo_url ? (
+            <img src={club.logo_url} alt={club.name} className="h-14 w-14 rounded-xl object-cover shrink-0 border-2 border-white/30 shadow" />
+          ) : (
+            <div className="h-14 w-14 rounded-xl bg-white/20 flex items-center justify-center shrink-0 border-2 border-white/20">
+              <Building2 className="h-7 w-7 text-white/80" />
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-bold text-emerald-200 uppercase tracking-widest mb-0.5">Your club</p>
+            <h2 className="text-xl font-black text-white truncate leading-tight">{club.name}</h2>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
+              {club.sport && <span className="text-xs text-emerald-100">{club.sport}</span>}
+              {club.city && (
+                <span className="text-xs text-emerald-200 flex items-center gap-1">
+                  <MapPin className="h-3 w-3" /> {club.city}{club.state ? `, ${club.state}` : ''}
+                </span>
+              )}
+            </div>
+          </div>
+          <Link to="/settings" className="shrink-0 hidden sm:flex items-center gap-1.5 rounded-xl bg-white/15 hover:bg-white/25 px-3 py-2 text-xs font-semibold text-white transition-colors">
+            Club settings <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+      )}
 
       {/* ── Row 1: stat pills — horizontal scroll on mobile ─────── */}
       <div className="col-span-full overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 md:contents">
