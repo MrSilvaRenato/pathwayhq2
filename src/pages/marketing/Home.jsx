@@ -254,7 +254,7 @@ export default function Home() {
                   <Trophy className="h-5 w-5 text-amber-400" />
                 </div>
                 <div>
-                  <p className="font-black text-white text-sm">North Brisbane F.C</p>
+                  <p className="font-black text-white text-sm">Club Brisbane F.C</p>
                   <p className="text-xs text-slate-500">⚽ Football · Brisbane, QLD</p>
                 </div>
                 <div className="ml-auto flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-xs font-bold text-emerald-400">

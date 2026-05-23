@@ -130,7 +130,7 @@ export default function Signup() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-2">Club name</label>
-                  <input required value={form.club_name} onChange={set('club_name')} className={inputCls} placeholder="North Brisbane FC" />
+                  <input required value={form.club_name} onChange={set('club_name')} className={inputCls} placeholder="Club Brisbane FC" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-2">Primary sport</label>
