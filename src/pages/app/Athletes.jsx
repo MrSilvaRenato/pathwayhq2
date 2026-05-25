@@ -252,9 +252,9 @@ export default function Athletes() {
                     </span>
                   </div>
 
-                  {/* Card footer — admin only */}
-                  {isAdmin && (
-                    <div className="flex items-center gap-3 pt-3 border-t border-slate-100">
+                  {/* Card footer */}
+                  <div className="flex items-center gap-3 pt-3 border-t border-slate-100">
+                    {isAdmin && (
                       <div className="flex-1 min-w-0 space-y-1">
                         {a.contact_phone && (
                           <a href={`tel:${a.contact_phone}`}
@@ -271,20 +271,22 @@ export default function Athletes() {
                           </a>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          onClick={e => { e.stopPropagation(); navigate(`/athletes/${a.id}`) }}
-                          className="flex items-center gap-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-2 text-xs font-bold transition-colors">
-                          <ExternalLink className="h-3.5 w-3.5" /> View profile
-                        </button>
+                    )}
+                    <div className={`flex items-center gap-2 shrink-0 ${isAdmin ? '' : 'ml-auto'}`}>
+                      <button
+                        onClick={e => { e.stopPropagation(); navigate(`/athletes/${a.id}`) }}
+                        className="flex items-center gap-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-2 text-xs font-bold transition-colors">
+                        <ExternalLink className="h-3.5 w-3.5" /> View profile
+                      </button>
+                      {isAdmin && (
                         <button
                           onClick={e => handleDelete(e, a.id)}
                           className="flex items-center justify-center h-9 w-9 rounded-xl bg-slate-100 hover:bg-red-100 hover:text-red-500 text-slate-500 transition-colors">
                           <Trash2 className="h-4 w-4" />
                         </button>
-                      </div>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
               )
             })}
@@ -300,7 +302,7 @@ export default function Athletes() {
                   <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Sport</th>
                   {isAdmin && <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Contact</th>}
                   <th className="text-right px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Status</th>
-                  {isAdmin && <th className="text-right px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide"></th>}
+                  <th className="text-right px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -365,7 +367,7 @@ export default function Athletes() {
                       <td className="px-5 py-3.5 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Link to={`/athletes/${a.id}`}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-1.5 text-xs font-bold">
+                            className="flex items-center gap-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-1.5 text-xs font-bold transition-colors">
                             <ExternalLink className="h-3.5 w-3.5" /> View profile
                           </Link>
                           {isAdmin && (

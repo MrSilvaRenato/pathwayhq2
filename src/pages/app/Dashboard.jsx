@@ -746,6 +746,12 @@ function AthleteDashboard({ user }) {
                   Request squad change →
                 </button>
               )}
+              {profile.slug && (
+                <Link to={`/athlete/${profile.slug}`} target="_blank" rel="noopener noreferrer"
+                  className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-slate-400 hover:text-emerald-600 transition-colors">
+                  <UserCircle className="h-3.5 w-3.5" /> View my profile
+                </Link>
+              )}
             </div>
           </div>
         ) : (
