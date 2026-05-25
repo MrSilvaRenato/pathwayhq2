@@ -2,10 +2,12 @@ import { useState, useEffect, useMemo } from 'react'
 import {
   Shield, Users, Building2, RefreshCw, CheckCircle, XCircle, Loader2,
   Copy, Check, RotateCcw, Plus, Search, X, Pencil, Trash2,
-  Globe, ExternalLink, Dumbbell, Activity, UserCog, TrendingUp,
+  Globe, ExternalLink, Dumbbell, Activity, UserCog, Megaphone, Clock,
+  UserCheck,
 } from 'lucide-react'
 import api from '../../lib/api'
 import { useToast } from '../../contexts/ToastContext'
+import { useAuth } from '../../contexts/AuthContext'
 import { SPORTS, FTEM_PHASES } from '../../lib/constants'
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
@@ -279,6 +281,7 @@ function ClubsTab() {
 
 function UsersTab() {
   const toast = useToast()
+  const { impersonate } = useAuth()
   const [users,    setUsers]    = useState([])
   const [clubs,    setClubs]    = useState([])
   const [loading,  setLoading]  = useState(true)
@@ -393,6 +396,13 @@ function UsersTab() {
                     <td className="px-5 py-3.5 hidden lg:table-cell text-slate-500 max-w-[160px] truncate">{u.club_name ?? '—'}</td>
                     <td className="px-5 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {u.role !== 'site_admin' && (
+                          <button onClick={() => impersonate(u.id)}
+                            title="Log in as this user"
+                            className="flex items-center gap-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 px-3 py-1.5 text-xs font-bold transition-colors">
+                            <UserCheck className="h-3.5 w-3.5" /> Impersonate
+                          </button>
+                        )}
                         <button onClick={() => openEdit(u)}
                           className="flex items-center gap-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors">
                           <Pencil className="h-3.5 w-3.5" /> Edit
@@ -582,6 +592,184 @@ function AthletesTab() {
   )
 }
 
+// ── Broadcast tab ────────────────────────────────────────────────────────────
+
+function BroadcastTab() {
+  const toast = useToast()
+  const [clubs,    setClubs]    = useState([])
+  const [form,     setForm]     = useState({ title: '', body: '', link: '', target: 'all' })
+  const [sending,  setSending]  = useState(false)
+  const [lastSent, setLastSent] = useState(null)
+
+  useEffect(() => {
+    api.get('/clubs/all').then(r => setClubs(r.data)).catch(() => {})
+  }, [])
+
+  async function handleSend(e) {
+    e.preventDefault()
+    if (!confirm(`Send this notification to the selected audience?`)) return
+    setSending(true)
+    try {
+      const { data } = await api.post('/admin/broadcast', form)
+      setLastSent({ ...form, count: data.count })
+      setForm({ title: '', body: '', link: '', target: 'all' })
+      toast.success(`Sent to ${data.count} user${data.count !== 1 ? 's' : ''}`)
+    } catch (err) {
+      toast.error(err?.response?.data?.message ?? 'Failed to send')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const targetOptions = [
+    { value: 'all',             label: 'All users' },
+    { value: 'role:athlete',    label: 'Athletes only' },
+    { value: 'role:coach',      label: 'Coaches only' },
+    { value: 'role:club_admin', label: 'Club admins only' },
+    { value: 'role:parent',     label: 'Parents only' },
+    ...clubs.map(c => ({ value: `club:${c.id}`, label: `Club: ${c.name}` })),
+  ]
+
+  return (
+    <div className="max-w-2xl">
+      {lastSent && (
+        <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+          <p className="text-sm font-bold text-emerald-800 mb-1">✅ Broadcast sent to {lastSent.count} users</p>
+          <p className="text-xs text-emerald-700 font-semibold">"{lastSent.title}"</p>
+        </div>
+      )}
+      <div className="rounded-2xl border border-slate-100 bg-white shadow-sm p-6">
+        <div className="flex items-center gap-2 mb-5">
+          <Megaphone className="h-5 w-5 text-violet-500" />
+          <h2 className="font-black text-slate-900">Send Platform Notification</h2>
+        </div>
+        <form onSubmit={handleSend} className="space-y-4">
+          <div>
+            <label className="text-xs font-semibold text-slate-500 mb-1 block uppercase tracking-wide">Audience</label>
+            <select value={form.target} onChange={e => setForm(p => ({ ...p, target: e.target.value }))} className={inputCls}>
+              {targetOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-slate-500 mb-1 block uppercase tracking-wide">Title *</label>
+            <input required value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
+              className={inputCls} placeholder="e.g. Scheduled maintenance tonight" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-slate-500 mb-1 block uppercase tracking-wide">Message *</label>
+            <textarea required rows={3} value={form.body} onChange={e => setForm(p => ({ ...p, body: e.target.value }))}
+              className={inputCls} placeholder="What do you want users to know?" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-slate-500 mb-1 block uppercase tracking-wide">Link <span className="font-normal text-slate-400">(optional)</span></label>
+            <input value={form.link} onChange={e => setForm(p => ({ ...p, link: e.target.value }))}
+              className={inputCls} placeholder="/dashboard or https://…" />
+          </div>
+          <button type="submit" disabled={sending}
+            className="w-full flex items-center justify-center gap-2 rounded-xl bg-violet-500 hover:bg-violet-400 py-3 text-sm font-bold text-white disabled:opacity-50 transition-colors">
+            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Megaphone className="h-4 w-4" />}
+            {sending ? 'Sending…' : 'Send broadcast'}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ── Activity log tab ──────────────────────────────────────────────────────────
+
+const ACTION_META = {
+  'claim.approved':    { label: 'Approved claim',    color: 'bg-emerald-100 text-emerald-700' },
+  'claim.rejected':    { label: 'Rejected claim',    color: 'bg-red-100 text-red-600' },
+  'claim.revoked':     { label: 'Revoked claim',     color: 'bg-orange-100 text-orange-700' },
+  'club.created':      { label: 'Created club',      color: 'bg-blue-100 text-blue-700' },
+  'club.updated':      { label: 'Updated club',      color: 'bg-slate-100 text-slate-600' },
+  'club.deleted':      { label: 'Deleted club',      color: 'bg-red-100 text-red-600' },
+  'user.role_changed': { label: 'Changed role',      color: 'bg-violet-100 text-violet-700' },
+  'user.deleted':      { label: 'Deleted user',      color: 'bg-red-100 text-red-600' },
+  'broadcast.sent':    { label: 'Sent broadcast',    color: 'bg-violet-100 text-violet-700' },
+  'user.impersonated': { label: 'Impersonated user', color: 'bg-amber-100 text-amber-700' },
+}
+
+function ActivityTab() {
+  const toast = useToast()
+  const [logs,    setLogs]    = useState([])
+  const [loading, setLoading] = useState(true)
+  const [filter,  setFilter]  = useState('')
+
+  useEffect(() => {
+    api.get('/admin/activity-log')
+      .then(r => setLogs(r.data))
+      .catch(() => toast.error('Failed to load activity log'))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const filtered = useMemo(() => filter ? logs.filter(l => l.action === filter) : logs, [logs, filter])
+
+  function formatTime(ts) {
+    const d = new Date(ts)
+    return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  }
+
+  function metaDescription(log) {
+    try {
+      const m = log.metadata ? JSON.parse(log.metadata) : null
+      if (!m) return null
+      if (log.action === 'user.role_changed') return `${m.from} → ${m.to}`
+      if (log.action === 'broadcast.sent') return `${m.recipients} recipients · target: ${m.target}`
+      return null
+    } catch { return null }
+  }
+
+  return (
+    <div>
+      <div className="flex items-center gap-3 mb-5">
+        <select value={filter} onChange={e => setFilter(e.target.value)}
+          className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          <option value="">All actions</option>
+          {Object.entries(ACTION_META).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
+        </select>
+        <span className="text-sm text-slate-400">{filtered.length} entries</span>
+      </div>
+
+      <div className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-emerald-500" /></div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-16 text-slate-400">
+            <Clock className="h-10 w-10 mx-auto mb-3 text-slate-300" />
+            <p>No activity recorded yet.</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-50">
+            {filtered.map(log => {
+              const meta = ACTION_META[log.action] ?? { label: log.action, color: 'bg-slate-100 text-slate-500' }
+              const desc = metaDescription(log)
+              return (
+                <div key={log.id} className="px-5 py-3.5 flex items-start gap-3">
+                  <div className="shrink-0 mt-0.5">
+                    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold ${meta.color}`}>
+                      {meta.label}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-slate-700">
+                      <span className="font-semibold">{log.admin_name}</span>
+                      {log.target_name && <> → <span className="text-slate-500">{log.target_name}</span></>}
+                    </p>
+                    {desc && <p className="text-xs text-slate-400 mt-0.5">{desc}</p>}
+                  </div>
+                  <span className="shrink-0 text-xs text-slate-400 whitespace-nowrap">{formatTime(log.created_at)}</span>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Claims panel (preserved) ──────────────────────────────────────────────────
 
 function ClaimsPanel() {
@@ -743,11 +931,13 @@ export default function SiteAdmin() {
   }, [])
 
   const TABS = [
-    { key: 'overview',  label: 'Overview' },
-    { key: 'clubs',     label: 'Clubs' },
-    { key: 'users',     label: 'Users' },
-    { key: 'athletes',  label: 'Athletes' },
-    { key: 'claims',    label: 'Claims', badge: claimBadge },
+    { key: 'overview',   label: 'Overview' },
+    { key: 'clubs',      label: 'Clubs' },
+    { key: 'users',      label: 'Users' },
+    { key: 'athletes',   label: 'Athletes' },
+    { key: 'claims',     label: 'Claims', badge: claimBadge },
+    { key: 'broadcast',  label: 'Broadcast' },
+    { key: 'activity',   label: 'Activity' },
   ]
 
   return (
@@ -804,10 +994,12 @@ export default function SiteAdmin() {
         </div>
       )}
 
-      {tab === 'clubs'    && <ClubsTab />}
-      {tab === 'users'    && <UsersTab />}
-      {tab === 'athletes' && <AthletesTab />}
-      {tab === 'claims'   && <ClaimsPanel />}
+      {tab === 'clubs'     && <ClubsTab />}
+      {tab === 'users'     && <UsersTab />}
+      {tab === 'athletes'  && <AthletesTab />}
+      {tab === 'claims'    && <ClaimsPanel />}
+      {tab === 'broadcast' && <BroadcastTab />}
+      {tab === 'activity'  && <ActivityTab />}
     </div>
   )
 }

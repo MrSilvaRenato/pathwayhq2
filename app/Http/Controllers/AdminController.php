@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 use App\Models\User;
 use App\Models\Club;
 use App\Models\Athlete;
@@ -21,6 +22,8 @@ use App\Models\ClubJoinRequest;
 use App\Models\ClubClaim;
 use App\Models\Volunteering;
 use App\Models\VolunteeringSignup;
+use App\Models\Notification;
+use App\Models\ActivityLog;
 
 class AdminController extends Controller
 {
@@ -92,6 +95,7 @@ class AdminController extends Controller
         $this->guard($request);
 
         $user = User::findOrFail($id);
+        $oldRole = $user->role;
 
         $data = $request->validate([
             'full_name' => 'nullable|string|max:255',
@@ -107,6 +111,14 @@ class AdminController extends Controller
         if (array_key_exists('club_id',   $data)) $update['club_id']   = $data['club_id'];
 
         $user->update($update);
+
+        if (isset($data['role']) && $data['role'] !== $oldRole) {
+            ActivityLog::record(
+                $request->user(), 'user.role_changed', 'user', $user->id,
+                $user->full_name ?? $user->email,
+                ['from' => $oldRole, 'to' => $data['role']]
+            );
+        }
 
         return response()->json(['ok' => true]);
     }
@@ -125,6 +137,8 @@ class AdminController extends Controller
         if ($user->role === 'site_admin' && User::where('role', 'site_admin')->count() <= 1) {
             return response()->json(['message' => 'Cannot delete the last site admin.'], 422);
         }
+
+        ActivityLog::record($request->user(), 'user.deleted', 'user', $user->id, $user->full_name ?? $user->email);
 
         $user->delete();
         return response()->json(['ok' => true]);
@@ -197,6 +211,8 @@ class AdminController extends Controller
             'slug' => $slug,
         ]));
 
+        ActivityLog::record($request->user(), 'club.created', 'club', $club->id, $club->name);
+
         return response()->json($club, 201);
     }
 
@@ -222,6 +238,8 @@ class AdminController extends Controller
 
         $club->update($data);
 
+        ActivityLog::record($request->user(), 'club.updated', 'club', $club->id, $club->name);
+
         return response()->json(['ok' => true, 'club' => $club->fresh()]);
     }
 
@@ -231,35 +249,30 @@ class AdminController extends Controller
         $this->guard($request);
 
         $club = Club::findOrFail($id);
+        $clubName = $club->name;
 
-        // Demote staff users
         User::where('club_id', $id)
             ->whereIn('role', ['club_admin', 'coach'])
             ->update(['role' => 'athlete', 'club_id' => null]);
 
-        // Athletes + squad memberships
         $athleteIds = Athlete::where('club_id', $id)->pluck('id');
         DB::table('squad_athletes')->whereIn('athlete_id', $athleteIds)->delete();
         SquadRequest::where('club_id', $id)->delete();
         Athlete::where('club_id', $id)->delete();
         Squad::where('club_id', $id)->delete();
 
-        // Seasons + registrations
         $seasonIds = Season::where('club_id', $id)->pluck('id');
         SeasonRegistration::whereIn('season_id', $seasonIds)->delete();
         Season::where('club_id', $id)->delete();
 
-        // Events + RSVPs
         $eventIds = Event::where('club_id', $id)->pluck('id');
         EventRsvp::whereIn('event_id', $eventIds)->delete();
         Event::where('club_id', $id)->delete();
 
-        // Volunteering + signups
         $volIds = Volunteering::where('club_id', $id)->pluck('id');
         VolunteeringSignup::whereIn('volunteering_id', $volIds)->delete();
         Volunteering::where('club_id', $id)->delete();
 
-        // Remaining club content
         Announcement::where('club_id', $id)->delete();
         Milestone::where('club_id', $id)->delete();
         ClubTrophy::where('club_id', $id)->delete();
@@ -268,6 +281,86 @@ class AdminController extends Controller
 
         $club->delete();
 
+        ActivityLog::record($request->user(), 'club.deleted', 'club', $id, $clubName);
+
         return response()->json(['ok' => true]);
+    }
+
+    // POST /admin/broadcast
+    public function broadcast(Request $request)
+    {
+        $this->guard($request);
+
+        $data = $request->validate([
+            'title'  => 'required|string|max:255',
+            'body'   => 'required|string|max:1000',
+            'link'   => 'nullable|string|max:255',
+            'target' => 'required|string',
+        ]);
+
+        $query = User::query();
+
+        if ($data['target'] !== 'all') {
+            if (str_starts_with($data['target'], 'role:')) {
+                $query->where('role', substr($data['target'], 5));
+            } elseif (str_starts_with($data['target'], 'club:')) {
+                $query->where('club_id', substr($data['target'], 5));
+            }
+        }
+
+        $userIds = $query->pluck('id');
+        $count   = $userIds->count();
+
+        foreach ($userIds as $userId) {
+            Notification::create([
+                'id'      => (string) Str::uuid(),
+                'user_id' => $userId,
+                'title'   => $data['title'],
+                'body'    => $data['body'],
+                'link'    => $data['link'] ?? null,
+                'is_read' => false,
+                'at'      => now()->toDateTimeString(),
+            ]);
+        }
+
+        ActivityLog::record(
+            $request->user(), 'broadcast.sent', 'broadcast', null, $data['title'],
+            ['target' => $data['target'], 'recipients' => $count]
+        );
+
+        return response()->json(['ok' => true, 'count' => $count]);
+    }
+
+    // GET /admin/activity-log
+    public function activityLog(Request $request)
+    {
+        $this->guard($request);
+
+        $logs = ActivityLog::orderByDesc('created_at')
+            ->limit(300)
+            ->get();
+
+        return response()->json($logs);
+    }
+
+    // POST /admin/impersonate/{id}
+    public function impersonate(Request $request, $id)
+    {
+        $this->guard($request);
+
+        $target = User::findOrFail($id);
+
+        if ($target->role === 'site_admin') {
+            return response()->json(['message' => 'Cannot impersonate another site admin.'], 422);
+        }
+
+        $token = JWTAuth::fromUser($target);
+
+        ActivityLog::record(
+            $request->user(), 'user.impersonated', 'user', $target->id,
+            $target->full_name ?? $target->email
+        );
+
+        return response()->json(['token' => $token, 'user' => $target]);
     }
 }

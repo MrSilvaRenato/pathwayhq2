@@ -8,6 +8,7 @@ use App\Models\Club;
 use App\Models\ClubClaim;
 use App\Models\User;
 use App\Models\Notification;
+use App\Models\ActivityLog;
 
 class ClubClaimController extends Controller
 {
@@ -141,6 +142,8 @@ class ClubClaimController extends Controller
             ]);
         }
 
+        ActivityLog::record($request->user(), 'claim.approved', 'club', $claim->club_id, $claim->club->name ?? $claim->email);
+
         return response()->json([
             'ok'           => true,
             'temp_password'=> $tempPassword,
@@ -156,6 +159,8 @@ class ClubClaimController extends Controller
 
         $claim = ClubClaim::with('club')->where('id', $id)->where('status', 'pending')->firstOrFail();
         $claim->update(['status' => 'rejected']);
+
+        ActivityLog::record($request->user(), 'claim.rejected', 'club', $claim->club_id, $claim->club->name ?? $claim->email);
 
         // Notify claimant if they have an account
         $user = User::where('email', $claim->email)->first();
@@ -205,6 +210,8 @@ class ClubClaimController extends Controller
 
         // Mark claim as revoked
         $claim->update(['status' => 'revoked']);
+
+        ActivityLog::record($request->user(), 'claim.revoked', 'club', $claim->club_id, $claim->club->name ?? $claim->email);
 
         return response()->json(['ok' => true]);
     }

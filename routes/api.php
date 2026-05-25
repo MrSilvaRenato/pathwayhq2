@@ -143,9 +143,12 @@ Route::middleware('auth:api')->group(function () {
     Route::put('/admin/users/{id}',      [AdminController::class, 'updateUser']);
     Route::delete('/admin/users/{id}',   [AdminController::class, 'deleteUser']);
     Route::get('/admin/athletes',        [AdminController::class, 'athletes']);
-    Route::post('/admin/clubs',          [AdminController::class, 'createClub']);
-    Route::put('/admin/clubs/{id}',      [AdminController::class, 'updateClub']);
-    Route::delete('/admin/clubs/{id}',   [AdminController::class, 'deleteClub']);
+    Route::post('/admin/clubs',           [AdminController::class, 'createClub']);
+    Route::put('/admin/clubs/{id}',       [AdminController::class, 'updateClub']);
+    Route::delete('/admin/clubs/{id}',    [AdminController::class, 'deleteClub']);
+    Route::post('/admin/broadcast',       [AdminController::class, 'broadcast']);
+    Route::get('/admin/activity-log',     [AdminController::class, 'activityLog']);
+    Route::post('/admin/impersonate/{id}',[AdminController::class, 'impersonate']);
 
     // Coaches (club_admin manages coaches for their club)
     Route::get('/club/coaches',         [CoachController::class, 'index']);
