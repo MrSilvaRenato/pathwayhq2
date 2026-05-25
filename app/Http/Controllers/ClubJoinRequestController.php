@@ -137,6 +137,33 @@ class ClubJoinRequestController extends Controller
             $slug = $baseSlug . '-' . $i++;
         }
 
+        // Deactivate athlete at any previous club and notify their old staff
+        $oldAthletes = Athlete::where('user_id', $jr->user_id)
+            ->where('club_id', '!=', $jr->club_id)
+            ->where('is_active', true)
+            ->get();
+
+        foreach ($oldAthletes as $old) {
+            $old->update(['is_active' => false]);
+
+            $athleteName = trim("{$old->first_name} {$old->last_name}");
+            $oldStaff = User::where('club_id', $old->club_id)
+                ->whereIn('role', ['club_admin', 'coach'])
+                ->get();
+
+            foreach ($oldStaff as $s) {
+                Notification::create([
+                    'id'      => (string) Str::uuid(),
+                    'user_id' => $s->id,
+                    'title'   => "🚪 {$athleteName} has left your club",
+                    'body'    => "They joined {$jr->club->name}. Their profile has been deactivated from your roster.",
+                    'link'    => '/athletes',
+                    'is_read' => false,
+                    'at'      => now()->toDateTimeString(),
+                ]);
+            }
+        }
+
         Athlete::create([
             'id'            => (string) Str::uuid(),
             'club_id'       => $jr->club_id,

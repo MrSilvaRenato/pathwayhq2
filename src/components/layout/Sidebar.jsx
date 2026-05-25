@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Layers, Calendar, Trophy, Award,
   BarChart3, Settings, LogOut, Zap, Shield, Dumbbell,
-  Megaphone, HandHeart, Globe, X, UserPlus, CalendarDays, CreditCard,
+  Megaphone, HandHeart, Globe, X, UserPlus, CalendarDays, CreditCard, Building2,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useSidebar } from '../../contexts/SidebarContext'
@@ -26,6 +26,7 @@ const COACH_NAV = [
 const ADMIN_NAV    = COACH_NAV
 const PARENT_NAV   = [
   { name: 'Dashboard',        href: '/dashboard',       icon: LayoutDashboard },
+  { name: 'Browse Clubs',     href: '/clubs',           icon: Building2 },
   { name: 'My Registrations', href: '/my-registrations',icon: CreditCard },
   { name: 'Announcements',    href: '/announcements',   icon: Megaphone },
   { name: 'Calendar',         href: '/calendar',        icon: Calendar },
@@ -35,6 +36,7 @@ const PARENT_NAV   = [
 ]
 const ATHLETE_NAV  = [
   { name: 'My Dashboard',     href: '/dashboard',       icon: Dumbbell },
+  { name: 'Browse Clubs',     href: '/clubs',           icon: Building2 },
   { name: 'My Registrations', href: '/my-registrations',icon: CreditCard },
   { name: 'Announcements',    href: '/announcements',   icon: Megaphone },
   { name: 'Calendar',         href: '/calendar',        icon: Calendar },
