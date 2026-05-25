@@ -44,6 +44,12 @@ export default function Topbar() {
     await api.put('/notifications/read-all')
   }
 
+  async function clearAll() {
+    setNotifications([])
+    setOpen(false)
+    await api.delete('/notifications').catch(() => {})
+  }
+
   const crumbs = segments.map((seg, i) => {
     const href  = '/' + segments.slice(0, i + 1).join('/')
     const isId  = /^[0-9a-f-]{20,}$/i.test(seg)
@@ -104,11 +110,18 @@ export default function Topbar() {
           <div className="absolute right-0 top-10 w-80 rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden animate-fade-in z-50">
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
               <h3 className="text-sm font-bold text-slate-800">Notifications</h3>
-              {unread > 0 && (
-                <button onClick={markAllRead} className="text-xs text-emerald-600 hover:text-emerald-500 font-semibold transition-colors">
-                  Mark all read
-                </button>
-              )}
+              <div className="flex items-center gap-3">
+                {unread > 0 && (
+                  <button onClick={markAllRead} className="text-xs text-emerald-600 hover:text-emerald-500 font-semibold transition-colors">
+                    Mark all read
+                  </button>
+                )}
+                {notifications.length > 0 && (
+                  <button onClick={clearAll} className="text-xs text-slate-400 hover:text-red-500 font-semibold transition-colors">
+                    Clear all
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="max-h-80 overflow-y-auto">
