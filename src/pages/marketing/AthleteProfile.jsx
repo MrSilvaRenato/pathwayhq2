@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Zap, ArrowLeft, ArrowRight, Trophy, MapPin, Star, TrendingUp, Globe } from 'lucide-react'
 import api from '../../lib/api'
+import { useAuth } from '../../contexts/AuthContext'
 import { SPORTS, FTEM_PHASES } from '../../lib/constants'
 
 function trophyTier(phase) {
@@ -19,6 +20,7 @@ const FTEM_ORDER = ['F1', 'F2', 'T1', 'T2', 'E1', 'E2', 'M']
 
 export default function AthleteProfile() {
   const { slug } = useParams()
+  const { user } = useAuth()
   const [data, setData] = useState(null)
   const [notFound, setNotFound] = useState(false)
 
@@ -71,12 +73,18 @@ export default function AthleteProfile() {
                 <ArrowLeft className="h-3.5 w-3.5" /> {club.name}
               </Link>
             )}
-            <Link to="/login"
-              className="text-sm font-medium text-slate-400 hover:text-white transition-colors">Sign in</Link>
-            <Link to="/signup"
-              className="rounded-lg bg-emerald-500 hover:bg-emerald-400 px-4 py-2 text-sm font-semibold transition-all shadow-lg shadow-emerald-500/25 active:scale-95">
-              Get started
-            </Link>
+            {user ? (
+              <Link to="/dashboard" className="rounded-lg bg-emerald-500 hover:bg-emerald-400 px-4 py-2 text-sm font-semibold transition-all shadow-lg shadow-emerald-500/25 active:scale-95">
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link to="/?modal=login" className="hidden sm:block text-sm font-medium text-slate-400 hover:text-white transition-colors">Sign in</Link>
+                <Link to="/?modal=signup" className="rounded-lg bg-emerald-500 hover:bg-emerald-400 px-4 py-2 text-sm font-semibold transition-all shadow-lg shadow-emerald-500/25 active:scale-95">
+                  Get started
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </nav>

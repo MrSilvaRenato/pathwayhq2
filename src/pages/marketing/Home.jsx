@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { useAuth } from '../../contexts/AuthContext'
 import {
   Zap, ArrowRight, Users, Trophy, Calendar, BarChart3, Megaphone, HandHeart,
   Shield, CheckCircle, Menu, X, Star, Award, Medal, TrendingUp, MapPin,
@@ -49,6 +50,7 @@ const STEPS = [
 ]
 
 export default function Home() {
+  const { user } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [modal, setModal] = useState(null) // 'login' | 'signup'
   const [searchParams] = useSearchParams()
@@ -83,10 +85,18 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button onClick={() => openModal('login')} className="hidden sm:block text-sm font-medium text-slate-400 hover:text-white transition-colors">Sign in</button>
-            <button onClick={() => openModal('signup')} className="rounded-lg bg-emerald-500 hover:bg-emerald-400 px-4 py-2 text-sm font-semibold transition-all shadow-lg shadow-emerald-500/25 active:scale-95">
-              Get started free
-            </button>
+            {user ? (
+              <Link to="/dashboard" className="rounded-lg bg-emerald-500 hover:bg-emerald-400 px-4 py-2 text-sm font-semibold transition-all shadow-lg shadow-emerald-500/25 active:scale-95">
+                Go to Dashboard
+              </Link>
+            ) : (
+              <>
+                <button onClick={() => openModal('login')} className="hidden sm:block text-sm font-medium text-slate-400 hover:text-white transition-colors">Sign in</button>
+                <button onClick={() => openModal('signup')} className="rounded-lg bg-emerald-500 hover:bg-emerald-400 px-4 py-2 text-sm font-semibold transition-all shadow-lg shadow-emerald-500/25 active:scale-95">
+                  Get started free
+                </button>
+              </>
+            )}
             <button onClick={() => setMobileOpen(o => !o)}
               className="md:hidden rounded-lg border border-white/10 bg-white/5 p-2 text-slate-400 hover:text-white transition-colors">
               {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
@@ -101,7 +111,11 @@ export default function Home() {
               : <a    key={l.label} href={l.href} onClick={() => setMobileOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors">{l.label}</a>
             )}
             <div className="pt-2 border-t border-white/10">
-              <button onClick={() => openModal('login')} className="block w-full text-left rounded-lg px-3 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors">Sign in</button>
+              {user ? (
+                <Link to="/dashboard" onClick={() => setMobileOpen(false)} className="block w-full text-left rounded-lg px-3 py-2.5 text-sm font-medium text-emerald-400 hover:bg-white/5 transition-colors">Go to Dashboard</Link>
+              ) : (
+                <button onClick={() => openModal('login')} className="block w-full text-left rounded-lg px-3 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors">Sign in</button>
+              )}
             </div>
           </div>
         )}

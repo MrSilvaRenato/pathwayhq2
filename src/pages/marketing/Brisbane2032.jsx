@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Zap, ArrowRight } from 'lucide-react'
+import { useAuth } from '../../contexts/AuthContext'
 import OlympicsCountdown from '../../components/OlympicsCountdown'
 import { SPORTS } from '../../lib/constants'
 
@@ -16,6 +17,7 @@ const TIMELINE = [
 ]
 
 export default function Brisbane2032() {
+  const { user } = useAuth()
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <nav className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/95 backdrop-blur-md">
@@ -32,10 +34,18 @@ export default function Brisbane2032() {
             <Link to="/brisbane-2032" className="text-sm font-medium text-white">Brisbane 2032</Link>
           </div>
           <div className="flex items-center gap-3">
-            <Link to="/login"  className="hidden sm:block text-sm font-medium text-slate-400 hover:text-white transition-colors">Sign in</Link>
-            <Link to="/signup" className="rounded-lg bg-emerald-500 hover:bg-emerald-400 px-4 py-2 text-sm font-semibold transition-colors shadow-lg shadow-emerald-500/25">
-              Get started free
-            </Link>
+            {user ? (
+              <Link to="/dashboard" className="rounded-lg bg-emerald-500 hover:bg-emerald-400 px-4 py-2 text-sm font-semibold transition-colors shadow-lg shadow-emerald-500/25">
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link to="/?modal=login"  className="hidden sm:block text-sm font-medium text-slate-400 hover:text-white transition-colors">Sign in</Link>
+                <Link to="/?modal=signup" className="rounded-lg bg-emerald-500 hover:bg-emerald-400 px-4 py-2 text-sm font-semibold transition-colors shadow-lg shadow-emerald-500/25">
+                  Get started free
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </nav>

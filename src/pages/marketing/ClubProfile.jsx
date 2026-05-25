@@ -355,10 +355,18 @@ export default function ClubProfile() {
             <Link to="/clubs" className="hidden sm:flex items-center gap-1 text-sm font-medium text-slate-400 hover:text-white transition-colors">
               <ArrowLeft className="h-4 w-4" /> All clubs
             </Link>
-            <Link to="/?modal=login"  className="hidden sm:block text-sm font-medium text-slate-400 hover:text-white transition-colors">Sign in</Link>
-            <Link to="/?modal=signup" className="rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 px-4 py-2 text-sm font-bold transition-all shadow-lg shadow-emerald-500/25">
-              Get started free
-            </Link>
+            {user ? (
+              <Link to="/dashboard" className="rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 px-4 py-2 text-sm font-bold transition-all shadow-lg shadow-emerald-500/25">
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link to="/?modal=login"  className="hidden sm:block text-sm font-medium text-slate-400 hover:text-white transition-colors">Sign in</Link>
+                <Link to="/?modal=signup" className="rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 px-4 py-2 text-sm font-bold transition-all shadow-lg shadow-emerald-500/25">
+                  Get started free
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </nav>

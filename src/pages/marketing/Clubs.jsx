@@ -251,10 +251,18 @@ export default function Clubs() {
             <Link to="/clubs"         className="text-sm font-medium text-white">Clubs</Link>
           </div>
           <div className="flex items-center gap-3">
-            <Link to="/?modal=login"  className="hidden sm:block text-sm font-medium text-slate-400 hover:text-white transition-colors">Sign in</Link>
-            <Link to="/?modal=signup" className="rounded-lg bg-emerald-500 hover:bg-emerald-400 px-4 py-2 text-sm font-semibold transition-colors shadow-lg shadow-emerald-500/25">
-              Get started free
-            </Link>
+            {user ? (
+              <Link to="/dashboard" className="rounded-lg bg-emerald-500 hover:bg-emerald-400 px-4 py-2 text-sm font-semibold transition-colors shadow-lg shadow-emerald-500/25">
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link to="/?modal=login"  className="hidden sm:block text-sm font-medium text-slate-400 hover:text-white transition-colors">Sign in</Link>
+                <Link to="/?modal=signup" className="rounded-lg bg-emerald-500 hover:bg-emerald-400 px-4 py-2 text-sm font-semibold transition-colors shadow-lg shadow-emerald-500/25">
+                  Get started free
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </nav>
