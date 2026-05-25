@@ -748,7 +748,7 @@ function AthleteDashboard({ user }) {
               )}
               {profile.slug && (
                 <Link to={`/athlete/${profile.slug}`} target="_blank" rel="noopener noreferrer"
-                  className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-slate-400 hover:text-emerald-600 transition-colors">
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-1.5 text-xs font-bold transition-colors border border-emerald-100">
                   <UserCircle className="h-3.5 w-3.5" /> View my profile
                 </Link>
               )}
