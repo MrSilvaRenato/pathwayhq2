@@ -225,11 +225,25 @@ class SeasonRegistrationController extends Controller
     {
         if (!in_array($request->user()->role, ['club_admin', 'site_admin'])) abort(403);
 
-        SeasonRegistration::where('id', $id)
+        $reg = SeasonRegistration::where('id', $id)
             ->whereHas('season', fn($q) => $q->where('club_id', $request->user()->club_id))
             ->whereNotIn('status', ['paid'])
-            ->firstOrFail()
-            ->delete();
+            ->with('season')
+            ->firstOrFail();
+
+        $reg->delete();
+
+        if ($reg->user_id) {
+            Notification::create([
+                'id'      => (string) Str::uuid(),
+                'user_id' => $reg->user_id,
+                'title'   => "Registration invite withdrawn",
+                'body'    => "Your registration invite for {$reg->season->name} has been withdrawn by the club.",
+                'link'    => '/my-registrations',
+                'is_read' => false,
+                'at'      => now()->toDateTimeString(),
+            ]);
+        }
 
         return response()->json(['ok' => true]);
     }

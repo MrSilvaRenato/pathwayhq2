@@ -127,6 +127,20 @@ class ClubClaimController extends Controller
         // Mark claim approved
         $claim->update(['status' => 'approved']);
 
+        // Notify the claimant
+        $notifyUser = $existing ?? User::where('email', $claim->email)->first();
+        if ($notifyUser) {
+            Notification::create([
+                'id'      => (string) Str::uuid(),
+                'user_id' => $notifyUser->id,
+                'title'   => "🎉 Your club claim was approved!",
+                'body'    => "You are now the manager of {$claim->club->name}. Log in to access your club dashboard.",
+                'link'    => '/dashboard',
+                'is_read' => false,
+                'at'      => now()->toDateTimeString(),
+            ]);
+        }
+
         return response()->json([
             'ok'           => true,
             'temp_password'=> $tempPassword,
@@ -140,8 +154,22 @@ class ClubClaimController extends Controller
     {
         if ($request->user()->role !== 'site_admin') abort(403);
 
-        $claim = ClubClaim::where('id', $id)->where('status', 'pending')->firstOrFail();
+        $claim = ClubClaim::with('club')->where('id', $id)->where('status', 'pending')->firstOrFail();
         $claim->update(['status' => 'rejected']);
+
+        // Notify claimant if they have an account
+        $user = User::where('email', $claim->email)->first();
+        if ($user) {
+            Notification::create([
+                'id'      => (string) Str::uuid(),
+                'user_id' => $user->id,
+                'title'   => "Your club claim was not approved",
+                'body'    => "Your request to manage {$claim->club->name} was not approved. Contact support if you have questions.",
+                'link'    => '/clubs',
+                'is_read' => false,
+                'at'      => now()->toDateTimeString(),
+            ]);
+        }
 
         return response()->json(['ok' => true]);
     }
@@ -159,6 +187,16 @@ class ClubClaimController extends Controller
             $user->update([
                 'role'    => 'athlete',
                 'club_id' => null,
+            ]);
+
+            Notification::create([
+                'id'      => (string) Str::uuid(),
+                'user_id' => $user->id,
+                'title'   => "Your club manager access has been revoked",
+                'body'    => "Your manager role for {$claim->club->name} has been removed by the platform admin.",
+                'link'    => '/dashboard',
+                'is_read' => false,
+                'at'      => now()->toDateTimeString(),
             ]);
         }
 

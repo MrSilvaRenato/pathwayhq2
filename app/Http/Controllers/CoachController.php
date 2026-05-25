@@ -94,7 +94,18 @@ class CoachController extends Controller
             ->where('role', 'coach')
             ->firstOrFail();
 
+        $clubName = Club::find($request->user()->club_id)?->name ?? 'your club';
         $coach->update(['role' => 'athlete', 'club_id' => null]);
+
+        Notification::create([
+            'id'      => (string) Str::uuid(),
+            'user_id' => $coach->id,
+            'title'   => "Your coach role has been removed",
+            'body'    => "You have been removed as a coach from {$clubName}.",
+            'link'    => '/dashboard',
+            'is_read' => false,
+            'at'      => now()->toDateTimeString(),
+        ]);
 
         return response()->json(['ok' => true]);
     }
