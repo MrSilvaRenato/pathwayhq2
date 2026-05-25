@@ -372,7 +372,7 @@ export default function Athletes() {
                           </Link>
                           {isAdmin && (
                             <button onClick={e => handleDelete(e, a.id)}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity rounded-lg border border-red-200 text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5">
+                              className="rounded-lg border border-red-200 text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 transition-colors">
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
                           )}
