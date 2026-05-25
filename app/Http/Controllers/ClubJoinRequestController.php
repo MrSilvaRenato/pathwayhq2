@@ -36,6 +36,41 @@ class ClubJoinRequestController extends Controller
             ->first();
 
         if ($existing) {
+            // Approved but athlete was removed — allow re-request
+            if ($existing->status === 'approved') {
+                $stillActive = Athlete::where('user_id', $user->id)
+                    ->where('club_id', $club->id)
+                    ->where('is_active', true)
+                    ->exists();
+
+                if (!$stillActive) {
+                    $data = $request->validate(['message' => 'nullable|string|max:500']);
+                    $existing->update([
+                        'status'       => 'pending',
+                        'message'      => $data['message'] ?? null,
+                        'responded_at' => null,
+                    ]);
+
+                    $name = $user->full_name ?? $user->email;
+                    $staff = User::where('club_id', $club->id)
+                        ->whereIn('role', ['club_admin', 'coach'])
+                        ->get();
+                    foreach ($staff as $s) {
+                        Notification::create([
+                            'id'      => (string) Str::uuid(),
+                            'user_id' => $s->id,
+                            'title'   => "🙋 {$name} wants to join {$club->name}",
+                            'body'    => 'Review their request and approve or reject.',
+                            'link'    => '/join-requests',
+                            'is_read' => false,
+                            'at'      => now()->toDateTimeString(),
+                        ]);
+                    }
+
+                    return response()->json(['ok' => true], 201);
+                }
+            }
+
             return response()->json([
                 'message' => match($existing->status) {
                     'pending'  => 'You already have a pending request for this club.',
