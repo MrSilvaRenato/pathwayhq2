@@ -20,6 +20,7 @@ use App\Http\Controllers\ParentController;
 use App\Http\Controllers\ClubJoinRequestController;
 use App\Http\Controllers\SeasonController;
 use App\Http\Controllers\SeasonRegistrationController;
+use App\Http\Controllers\AdminController;
 
 // ─── Health check ────────────────────────────────────────────────────────────
 Route::get('/health', fn() => response()->json([
@@ -135,6 +136,16 @@ Route::middleware('auth:api')->group(function () {
     Route::put('/club-claims/{id}/approve',     [ClubClaimController::class, 'approve']);
     Route::put('/club-claims/{id}/reject',      [ClubClaimController::class, 'reject']);
     Route::put('/club-claims/{id}/revoke',      [ClubClaimController::class, 'revoke']);
+
+    // Site admin — platform CRUD
+    Route::get('/admin/stats',           [AdminController::class, 'stats']);
+    Route::get('/admin/users',           [AdminController::class, 'users']);
+    Route::put('/admin/users/{id}',      [AdminController::class, 'updateUser']);
+    Route::delete('/admin/users/{id}',   [AdminController::class, 'deleteUser']);
+    Route::get('/admin/athletes',        [AdminController::class, 'athletes']);
+    Route::post('/admin/clubs',          [AdminController::class, 'createClub']);
+    Route::put('/admin/clubs/{id}',      [AdminController::class, 'updateClub']);
+    Route::delete('/admin/clubs/{id}',   [AdminController::class, 'deleteClub']);
 
     // Coaches (club_admin manages coaches for their club)
     Route::get('/club/coaches',         [CoachController::class, 'index']);
