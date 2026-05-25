@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useLocation, useNavigate, Link } from 'react-router-dom'
-import { ChevronRight, Bell, Menu } from 'lucide-react'
+import { ChevronRight, Bell, Menu, X, Megaphone, ExternalLink } from 'lucide-react'
 import api from '../../lib/api'
 import { useSidebar } from '../../contexts/SidebarContext'
 
@@ -18,6 +18,7 @@ export default function Topbar() {
   const segments = pathname.split('/').filter(Boolean)
   const [notifications, setNotifications] = useState([])
   const [open, setOpen] = useState(false)
+  const [broadcastModal, setBroadcastModal] = useState(null)
   const ref = useRef(null)
 
   const unread = notifications.filter(n => !n.is_read).length
@@ -37,6 +38,18 @@ export default function Topbar() {
     api.put(`/notifications/${id}/read`).catch(() => {})
     setOpen(false)
     if (link) navigate(link)
+  }
+
+  function handleNotificationClick(n) {
+    setNotifications(p => p.map(x => x.id === n.id ? { ...x, is_read: true } : x))
+    api.put(`/notifications/${n.id}/read`).catch(() => {})
+    if (n.type === 'broadcast') {
+      setOpen(false)
+      setBroadcastModal(n)
+    } else {
+      setOpen(false)
+      if (n.link) navigate(n.link)
+    }
   }
 
   async function markAllRead() {
@@ -133,8 +146,8 @@ export default function Topbar() {
                 notifications.map(n => (
                   <div
                     key={n.id}
-                    onClick={() => markRead(n.id, n.link)}
-                    className={`flex items-start gap-3 px-4 py-3 border-b border-slate-50 transition-colors ${n.link ? 'cursor-pointer hover:bg-slate-50' : 'cursor-default'} ${!n.is_read ? 'bg-emerald-50/50' : ''}`}>
+                    onClick={() => handleNotificationClick(n)}
+                    className={`flex items-start gap-3 px-4 py-3 border-b border-slate-50 transition-colors cursor-pointer hover:bg-slate-50 ${!n.is_read ? 'bg-emerald-50/50' : ''}`}>
                     <div className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${!n.is_read ? 'bg-emerald-500' : 'bg-transparent'}`} />
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm leading-snug line-clamp-2 ${!n.is_read ? 'font-semibold text-slate-800' : 'font-medium text-slate-600'}`}>
@@ -149,6 +162,49 @@ export default function Topbar() {
           </div>
         )}
       </div>
+
+      {broadcastModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setBroadcastModal(null)}>
+          <div className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 px-5 py-4 bg-emerald-500">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20 shrink-0">
+                <Megaphone className="h-5 w-5 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-semibold text-emerald-100 uppercase tracking-wider">Platform Announcement</p>
+                <h2 className="text-base font-bold text-white leading-snug">{broadcastModal.title}</h2>
+              </div>
+              <button onClick={() => setBroadcastModal(null)} className="flex h-8 w-8 items-center justify-center rounded-full text-white/70 hover:text-white hover:bg-white/20 transition-colors shrink-0">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="px-5 py-5">
+              <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{broadcastModal.body}</p>
+            </div>
+
+            {broadcastModal.link && (
+              <div className="px-5 pb-5">
+                <a
+                  href={broadcastModal.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white py-2.5 text-sm font-bold transition-colors"
+                  onClick={() => setBroadcastModal(null)}
+                >
+                  <ExternalLink className="h-4 w-4" /> Learn more
+                </a>
+              </div>
+            )}
+
+            <div className="px-5 pb-4 flex justify-end">
+              <button onClick={() => setBroadcastModal(null)} className="text-sm text-slate-400 hover:text-slate-600 font-semibold transition-colors">
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
