@@ -293,7 +293,7 @@ class AdminController extends Controller
 
         $data = $request->validate([
             'title'  => 'required|string|max:255',
-            'body'   => 'required|string|max:1000',
+            'body'   => 'required|string|max:5000',
             'link'   => 'nullable|string|max:255',
             'target' => 'required|string',
         ]);
