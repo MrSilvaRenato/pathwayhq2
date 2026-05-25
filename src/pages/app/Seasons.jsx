@@ -58,15 +58,15 @@ function SeasonModal({ season, onSave, onClose }) {
   const inputCls = "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/50 backdrop-blur-sm">
+      <div className="w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl flex flex-col max-h-[92vh]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
           <h2 className="font-black text-slate-900">{season ? 'Edit Season' : 'New Season'}</h2>
           <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
             <X className="h-4 w-4" />
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
           <div>
             <label className="text-xs font-semibold text-slate-500 mb-1 block">Season name *</label>
             <input required value={form.name} onChange={set('name')} className={inputCls} placeholder="e.g. Winter 2025, Season 1" />
@@ -75,7 +75,7 @@ function SeasonModal({ season, onSave, onClose }) {
             <label className="text-xs font-semibold text-slate-500 mb-1 block">Description</label>
             <textarea value={form.description} onChange={set('description')} rows={2} className={inputCls + ' resize-none'} placeholder="Optional notes about this season" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-slate-500 mb-1 block">Start date</label>
               <input type="date" value={form.start_date} onChange={set('start_date')} className={inputCls} />
@@ -85,7 +85,7 @@ function SeasonModal({ season, onSave, onClose }) {
               <input type="date" value={form.end_date} onChange={set('end_date')} className={inputCls} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-slate-500 mb-1 block">Registration deadline</label>
               <input type="date" value={form.registration_deadline} onChange={set('registration_deadline')} className={inputCls} />
@@ -103,9 +103,9 @@ function SeasonModal({ season, onSave, onClose }) {
               <option value="closed">Closed — registration complete</option>
             </select>
           </div>
-          <div className="flex gap-3 pt-1">
-            <button type="button" onClick={onClose} className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
-            <button type="submit" disabled={saving} className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-60 py-2.5 text-sm font-bold text-white transition-colors">
+          <div className="flex gap-3 pt-1 pb-2">
+            <button type="button" onClick={onClose} className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
+            <button type="submit" disabled={saving} className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-60 py-3 text-sm font-bold text-white transition-colors">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
               {season ? 'Save changes' : 'Create season'}
             </button>
@@ -251,55 +251,94 @@ function SeasonDetail({ seasonId, onBack, athletes }) {
         {registrations.length === 0 ? (
           <p className="text-center text-slate-400 py-8 text-sm">No registrations yet. Select athletes above to send payment requests.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 border-b border-slate-100">
-                <tr>
-                  <th className="text-left px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Athlete</th>
-                  <th className="text-left px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide hidden sm:table-cell">Contact</th>
-                  <th className="text-left px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Status</th>
-                  <th className="text-left px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide hidden md:table-cell">Paid at</th>
-                  <th className="px-6 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {registrations.map(r => {
-                  const s = REG_STATUS[r.status] ?? { label: r.status, color: 'bg-slate-100 text-slate-500' }
-                  const canMarkPaid = ['invited', 'manual_pending'].includes(r.status)
-                  const canRemove  = !['paid', 'manual_confirmed'].includes(r.status)
-                  return (
-                    <tr key={r.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-3 font-semibold text-slate-800">{r.athlete_name}</td>
-                      <td className="px-6 py-3 hidden sm:table-cell text-slate-500 text-xs">{r.email}</td>
-                      <td className="px-6 py-3">
-                        <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold ${s.color}`}>{s.label}</span>
-                      </td>
-                      <td className="px-6 py-3 hidden md:table-cell text-slate-400 text-xs">
-                        {r.paid_at ? new Date(r.paid_at).toLocaleDateString('en-AU') : '—'}
-                      </td>
-                      <td className="px-6 py-3">
-                        <div className="flex gap-2 justify-end">
-                          {canMarkPaid && (
-                            <button onClick={() => markPaid(r.id)} disabled={acting === r.id}
-                              className="flex items-center gap-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-2.5 py-1.5 text-xs font-bold transition-colors">
-                              {acting === r.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <DollarSign className="h-3 w-3" />}
-                              Mark paid
-                            </button>
-                          )}
-                          {canRemove && (
-                            <button onClick={() => removeReg(r.id)} disabled={acting === r.id + 'd'}
-                              className="flex items-center gap-1 rounded-lg text-slate-400 hover:text-red-500 px-2 py-1.5 text-xs transition-colors">
-                              {acting === r.id + 'd' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+          <>
+            {/* Mobile card view */}
+            <div className="divide-y divide-slate-50 sm:hidden">
+              {registrations.map(r => {
+                const s = REG_STATUS[r.status] ?? { label: r.status, color: 'bg-slate-100 text-slate-500' }
+                const canMarkPaid = ['invited', 'manual_pending'].includes(r.status)
+                const canRemove  = !['paid', 'manual_confirmed'].includes(r.status)
+                return (
+                  <div key={r.id} className="px-4 py-3.5 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-semibold text-slate-800 text-sm">{r.athlete_name}</p>
+                      <span className={`shrink-0 inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold ${s.color}`}>{s.label}</span>
+                    </div>
+                    {r.email && <p className="text-xs text-slate-400">{r.email}</p>}
+                    {r.paid_at && <p className="text-xs text-slate-400">Paid {new Date(r.paid_at).toLocaleDateString('en-AU')}</p>}
+                    {(canMarkPaid || canRemove) && (
+                      <div className="flex gap-2 pt-1">
+                        {canMarkPaid && (
+                          <button onClick={() => markPaid(r.id)} disabled={acting === r.id}
+                            className="flex items-center gap-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-2 text-xs font-bold transition-colors">
+                            {acting === r.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <DollarSign className="h-3 w-3" />}
+                            Mark paid
+                          </button>
+                        )}
+                        {canRemove && (
+                          <button onClick={() => removeReg(r.id)} disabled={acting === r.id + 'd'}
+                            className="flex items-center gap-1.5 rounded-lg text-slate-400 hover:text-red-500 border border-slate-200 px-3 py-2 text-xs transition-colors">
+                            {acting === r.id + 'd' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+            {/* Desktop table */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 border-b border-slate-100">
+                  <tr>
+                    <th className="text-left px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Athlete</th>
+                    <th className="text-left px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Contact</th>
+                    <th className="text-left px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Status</th>
+                    <th className="text-left px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide hidden md:table-cell">Paid at</th>
+                    <th className="px-6 py-3" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {registrations.map(r => {
+                    const s = REG_STATUS[r.status] ?? { label: r.status, color: 'bg-slate-100 text-slate-500' }
+                    const canMarkPaid = ['invited', 'manual_pending'].includes(r.status)
+                    const canRemove  = !['paid', 'manual_confirmed'].includes(r.status)
+                    return (
+                      <tr key={r.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-6 py-3 font-semibold text-slate-800">{r.athlete_name}</td>
+                        <td className="px-6 py-3 text-slate-500 text-xs">{r.email}</td>
+                        <td className="px-6 py-3">
+                          <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold ${s.color}`}>{s.label}</span>
+                        </td>
+                        <td className="px-6 py-3 hidden md:table-cell text-slate-400 text-xs">
+                          {r.paid_at ? new Date(r.paid_at).toLocaleDateString('en-AU') : '—'}
+                        </td>
+                        <td className="px-6 py-3">
+                          <div className="flex gap-2 justify-end">
+                            {canMarkPaid && (
+                              <button onClick={() => markPaid(r.id)} disabled={acting === r.id}
+                                className="flex items-center gap-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-2.5 py-1.5 text-xs font-bold transition-colors">
+                                {acting === r.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <DollarSign className="h-3 w-3" />}
+                                Mark paid
+                              </button>
+                            )}
+                            {canRemove && (
+                              <button onClick={() => removeReg(r.id)} disabled={acting === r.id + 'd'}
+                                className="flex items-center gap-1 rounded-lg text-slate-400 hover:text-red-500 px-2 py-1.5 text-xs transition-colors">
+                                {acting === r.id + 'd' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>

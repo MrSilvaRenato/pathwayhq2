@@ -173,7 +173,7 @@ export default function Topbar() {
         </button>
 
         {open && (
-          <div className="absolute right-0 top-10 w-80 rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden animate-fade-in z-50">
+          <div className="absolute right-0 top-10 w-80 max-w-[calc(100vw-1rem)] rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden animate-fade-in z-50">
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
               <h3 className="text-sm font-bold text-slate-800">Notifications</h3>
               <div className="flex items-center gap-3">

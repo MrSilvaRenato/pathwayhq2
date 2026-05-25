@@ -80,7 +80,7 @@ export default function ImageUpload({
 
       {/* Preview */}
       {value && (
-        <div className="relative group w-full">
+        <div className="relative w-full">
           <img
             src={value}
             alt="Preview"
@@ -89,7 +89,7 @@ export default function ImageUpload({
           <button
             type="button"
             onClick={() => onChange(null)}
-            className="absolute top-2 right-2 flex items-center justify-center h-7 w-7 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/80"
+            className="absolute top-2 right-2 flex items-center justify-center h-8 w-8 rounded-full bg-black/60 text-white hover:bg-red-500/80 transition-colors"
           >
             <X className="h-4 w-4" />
           </button>

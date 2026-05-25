@@ -204,18 +204,18 @@ function ClubsTab() {
       {modal && (
         <>
           <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" onClick={closeModal} />
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-y-auto max-h-[90vh]">
-              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
+            <div className="w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl flex flex-col max-h-[92vh]">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
                 <h2 className="text-lg font-black text-slate-900">{modal === 'add' ? 'Add Club' : 'Edit Club'}</h2>
                 <button onClick={closeModal} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
               </div>
-              <form onSubmit={handleSave} className="px-6 py-5 space-y-3">
+              <form onSubmit={handleSave} className="px-6 py-5 space-y-3 overflow-y-auto flex-1">
                 <div>
                   <label className="text-xs font-semibold text-slate-500 mb-1 block">Club name *</label>
                   <input required value={form.name ?? ''} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className={inputCls} />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-semibold text-slate-500 mb-1 block">Sport *</label>
                     <select required value={form.sport ?? 'soccer'} onChange={e => setForm(p => ({ ...p, sport: e.target.value }))} className={inputCls}>
@@ -258,7 +258,7 @@ function ClubsTab() {
                     </label>
                   ))}
                 </div>
-                <div className="flex gap-3 pt-2">
+                <div className="flex gap-3 pt-2 pb-2">
                   <button type="button" onClick={closeModal}
                     className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
                     Cancel
@@ -424,13 +424,13 @@ function UsersTab() {
       {editUser && (
         <>
           <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" onClick={closeEdit} />
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
-              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
+            <div className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl flex flex-col max-h-[92vh]">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
                 <h2 className="text-lg font-black text-slate-900">Edit User</h2>
                 <button onClick={closeEdit} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
               </div>
-              <form onSubmit={handleSave} className="px-6 py-5 space-y-4">
+              <form onSubmit={handleSave} className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
                 <div>
                   <label className="text-xs font-semibold text-slate-500 mb-1 block">Full name</label>
                   <input value={form.full_name} onChange={e => setForm(p => ({ ...p, full_name: e.target.value }))} className={inputCls} />
@@ -456,7 +456,7 @@ function UsersTab() {
                     </select>
                   </div>
                 )}
-                <div className="flex gap-3 pt-2">
+                <div className="flex gap-3 pt-2 pb-2">
                   <button type="button" onClick={closeEdit}
                     className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
                     Cancel
@@ -755,11 +755,12 @@ function ActivityTab() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-slate-700">
                       <span className="font-semibold">{log.admin_name}</span>
-                      {log.target_name && <> → <span className="text-slate-500">{log.target_name}</span></>}
+                      {log.target_name && <> → <span className="text-slate-500 break-words">{log.target_name}</span></>}
                     </p>
                     {desc && <p className="text-xs text-slate-400 mt-0.5">{desc}</p>}
+                    <p className="text-xs text-slate-400 mt-0.5 sm:hidden">{formatTime(log.created_at)}</p>
                   </div>
-                  <span className="shrink-0 text-xs text-slate-400 whitespace-nowrap">{formatTime(log.created_at)}</span>
+                  <span className="hidden sm:block shrink-0 text-xs text-slate-400 whitespace-nowrap">{formatTime(log.created_at)}</span>
                 </div>
               )
             })}
@@ -852,12 +853,12 @@ function ClaimsPanel() {
           </div>
           <div className="divide-y divide-slate-50">
             {pending.map(c => (
-              <div key={c.id} className="px-6 py-4 flex items-start gap-4">
+              <div key={c.id} className="px-6 py-4 flex flex-col sm:flex-row sm:items-start gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2 mb-1">
                     <p className="font-bold text-slate-800">{c.name}</p>
                     <span className="text-xs text-slate-400">·</span>
-                    <p className="text-sm text-slate-500">{c.email}</p>
+                    <p className="text-sm text-slate-500 truncate">{c.email}</p>
                     {c.phone && <p className="text-sm text-slate-400">{c.phone}</p>}
                   </div>
                   <p className="text-sm font-semibold text-emerald-700 mb-1">
@@ -869,11 +870,11 @@ function ClaimsPanel() {
                 </div>
                 <div className="flex gap-2 shrink-0">
                   <button onClick={() => approve(c.id)} disabled={!!acting}
-                    className="flex items-center gap-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 px-3 py-2 text-sm font-bold text-white transition-colors">
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 px-3 py-2.5 text-sm font-bold text-white transition-colors">
                     {acting === c.id + 'approve' ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />} Approve
                   </button>
                   <button onClick={() => reject(c.id)} disabled={!!acting}
-                    className="flex items-center gap-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 disabled:opacity-50 px-3 py-2 text-sm font-bold text-slate-600 transition-colors">
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 disabled:opacity-50 px-3 py-2.5 text-sm font-bold text-slate-600 transition-colors">
                     {acting === c.id + 'reject' ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />} Reject
                   </button>
                 </div>

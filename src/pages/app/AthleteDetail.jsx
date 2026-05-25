@@ -93,7 +93,7 @@ export default function AthleteDetail() {
           {editing ? (
             /* Edit mode */
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-semibold text-slate-500 mb-1 block">First name</label>
                   <input value={form.first_name} onChange={e => setForm(p => ({ ...p, first_name: e.target.value }))} className={inputCls} placeholder="First name" />
@@ -104,7 +104,7 @@ export default function AthleteDetail() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-semibold text-slate-500 mb-1 block">FTEM Phase</label>
                   <select value={form.ftem_phase} onChange={e => setForm(p => ({ ...p, ftem_phase: e.target.value }))} className={inputCls}>
