@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Trophy, Save, Trash2, Phone, Mail, Globe, Lock, Copy, Check } from 'lucide-react'
+import { ArrowLeft, Trophy, Save, Trash2, Phone, Mail, Globe, Lock, Copy, Check, ExternalLink } from 'lucide-react'
 import api from '../../lib/api'
 import { FTEM_PHASES, SPORTS } from '../../lib/constants'
 import { useAuth } from '../../contexts/AuthContext'
@@ -252,6 +252,14 @@ export default function AthleteDetail() {
                     </div>
                   )}
                 </div>
+              )}
+
+              {/* Visit public profile */}
+              {athlete.slug && (
+                <a href={`/athlete/${athlete.slug}`} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-3 text-sm font-bold transition-colors mb-3">
+                  <ExternalLink className="h-4 w-4" /> Visit Athlete Profile Page
+                </a>
               )}
 
               {/* Admin actions */}
