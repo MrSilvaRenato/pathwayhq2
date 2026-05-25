@@ -7,23 +7,29 @@ import { SPORTS, STATES, SUBSCRIPTION_TIERS } from '../../lib/constants'
 import ImageUpload from '../../components/ImageUpload'
 
 // ── Avatar initials circle ────────────────────────────────────────────────────
-function AvatarCircle({ name, role }) {
+function AvatarCircle({ name, role, imageUrl }) {
   const initials = name
     ? name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()
     : '?'
 
   const roleLabel = {
-    admin:   { label: 'Admin',   cls: 'bg-purple-100 text-purple-700' },
-    coach:   { label: 'Coach',   cls: 'bg-blue-100 text-blue-700' },
-    athlete: { label: 'Athlete', cls: 'bg-emerald-100 text-emerald-700' },
-    parent:  { label: 'Parent',  cls: 'bg-amber-100 text-amber-700' },
+    admin:      { label: 'Admin',   cls: 'bg-purple-100 text-purple-700' },
+    club_admin: { label: 'Manager', cls: 'bg-violet-100 text-violet-700' },
+    coach:      { label: 'Coach',   cls: 'bg-blue-100 text-blue-700' },
+    athlete:    { label: 'Athlete', cls: 'bg-emerald-100 text-emerald-700' },
+    parent:     { label: 'Parent',  cls: 'bg-amber-100 text-amber-700' },
   }[role] ?? { label: role ?? 'Member', cls: 'bg-slate-100 text-slate-600' }
 
   return (
     <div className="flex flex-col items-center py-6 border-b border-slate-100 mb-6">
-      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500 text-white text-2xl font-black shadow-lg shadow-emerald-500/20 mb-3">
-        {initials}
-      </div>
+      {imageUrl ? (
+        <img src={imageUrl} alt={name}
+          className="h-20 w-20 rounded-full object-cover shadow-lg mb-3 border-2 border-slate-100" />
+      ) : (
+        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500 text-white text-2xl font-black shadow-lg shadow-emerald-500/20 mb-3">
+          {initials}
+        </div>
+      )}
       <p className="font-bold text-slate-900 text-base">{name || 'Your account'}</p>
       <span className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-bold capitalize ${roleLabel.cls}`}>
         {roleLabel.label}
@@ -56,8 +62,13 @@ export default function Settings() {
   const [savingProfile, setSavingProfile] = useState(false)
   const [savingClub,    setSavingClub]    = useState(false)
   const [showPw,   setShowPw]   = useState(false)
+  const [athleteProfile, setAthleteProfile] = useState(null)
+  const [savingAthlete,  setSavingAthlete]  = useState(false)
 
   useEffect(() => {
+    if (user?.role === 'athlete') {
+      api.get('/athletes/me').then(r => setAthleteProfile(r.data)).catch(() => {})
+    }
     api.get('/profile').then(r => {
       const d = r.data
       setProfile({ full_name: d.full_name ?? '', phone: d.phone ?? '', password: '' })
@@ -116,6 +127,19 @@ export default function Settings() {
     }
   }
 
+  async function saveAthleteProfile(patch) {
+    setSavingAthlete(true)
+    try {
+      await api.put('/athletes/me', patch)
+      setAthleteProfile(p => ({ ...p, ...patch }))
+      toast.success('Athlete profile saved')
+    } catch {
+      toast.error('Failed to save athlete profile')
+    } finally {
+      setSavingAthlete(false)
+    }
+  }
+
   const inputCls = "w-full rounded-xl border border-slate-200 px-3.5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all min-h-[48px]"
   const labelCls = "block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide"
 
@@ -125,8 +149,43 @@ export default function Settings() {
 
       {/* Avatar + name + role badge */}
       <div className="rounded-2xl border border-slate-100 bg-white shadow-sm mb-4">
-        <AvatarCircle name={profile.full_name || user?.full_name} role={user?.role} />
+        <AvatarCircle name={profile.full_name || user?.full_name} role={user?.role} imageUrl={athleteProfile?.avatar_url} />
       </div>
+
+      {/* ── Athlete profile photo ────────────────────────────────── */}
+      {user?.role === 'athlete' && athleteProfile !== undefined && (
+        <SectionCard title="Athlete Profile Photo">
+          <div className="mt-4 space-y-4">
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Your photo is shown to your club manager, coaches, and on your public profile if enabled.
+            </p>
+            <div className="flex items-start gap-5">
+              {/* Current avatar preview */}
+              <div className="shrink-0">
+                {athleteProfile?.avatar_url ? (
+                  <img src={athleteProfile.avatar_url} alt="Your photo"
+                    className="h-20 w-20 rounded-full object-cover border-2 border-slate-200 shadow" />
+                ) : (
+                  <div className="h-20 w-20 rounded-full bg-emerald-100 border-2 border-slate-200 flex items-center justify-center text-2xl font-black text-emerald-600">
+                    {athleteProfile ? `${athleteProfile.first_name?.[0] ?? ''}${athleteProfile.last_name?.[0] ?? ''}`.toUpperCase() : '?'}
+                  </div>
+                )}
+              </div>
+              {/* Upload control */}
+              <div className="flex-1 min-w-0">
+                <ImageUpload
+                  value={athleteProfile?.avatar_url || null}
+                  onChange={url => saveAthleteProfile({ avatar_url: url ?? '' })}
+                  type="avatar"
+                  aspectHint="Square photo recommended"
+                  previewClass="max-h-40 w-auto rounded-full mx-auto"
+                />
+                {savingAthlete && <p className="text-xs text-slate-400 mt-1">Saving…</p>}
+              </div>
+            </div>
+          </div>
+        </SectionCard>
+      )}
 
       {/* ── Profile section ───────────────────────────────────────── */}
       <SectionCard title="Profile">

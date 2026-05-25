@@ -149,8 +149,10 @@ export default function AthleteDetail() {
             <>
               {/* Avatar + name — centered mobile, left on desktop */}
               <div className="flex flex-col items-center text-center md:flex-row md:items-center md:text-left gap-4 mb-5">
-                <div className="flex h-20 w-20 md:h-16 md:w-16 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white text-2xl md:text-xl font-black">
-                  {initials(athlete)}
+                <div className="h-20 w-20 md:h-16 md:w-16 shrink-0 rounded-full overflow-hidden flex items-center justify-center bg-emerald-500 text-white text-2xl md:text-xl font-black">
+                  {athlete.avatar_url
+                    ? <img src={athlete.avatar_url} alt={athlete.first_name} className="h-full w-full object-cover" />
+                    : initials(athlete)}
                 </div>
                 <div>
                   <h1 className="text-2xl font-black text-slate-900">{athlete.first_name} {athlete.last_name}</h1>

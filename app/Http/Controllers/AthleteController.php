@@ -420,8 +420,9 @@ class AthleteController extends Controller
         if (!$athlete) return response()->json(['error' => 'No athlete profile found'], 404);
 
         $data = $request->validate([
-            'is_public' => 'boolean',
-            'slug'      => "nullable|string|max:80|unique:athletes,slug,{$athlete->id}",
+            'is_public'  => 'boolean',
+            'slug'       => "nullable|string|max:80|unique:athletes,slug,{$athlete->id}",
+            'avatar_url' => 'nullable|string|max:500',
         ]);
 
         $athlete->update($data);

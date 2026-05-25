@@ -724,8 +724,10 @@ function AthleteDashboard({ user }) {
       <div className="col-span-full md:col-span-4 rounded-2xl border border-slate-100 bg-white p-4 md:p-5">
         {profile ? (
           <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 border border-emerald-100 text-2xl">
-              {sport?.emoji ?? '🏅'}
+            <div className="h-14 w-14 shrink-0 rounded-2xl overflow-hidden border border-emerald-100 flex items-center justify-center bg-emerald-50 text-2xl">
+              {profile.avatar_url
+                ? <img src={profile.avatar_url} alt={profile.first_name} className="h-full w-full object-cover" />
+                : (sport?.emoji ?? '🏅')}
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-black text-slate-900 text-base truncate">{profile.first_name} {profile.last_name}</p>

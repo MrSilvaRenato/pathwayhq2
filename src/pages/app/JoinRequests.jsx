@@ -103,8 +103,10 @@ export default function JoinRequests() {
                       <div className="flex items-start gap-4">
 
                         {/* Avatar */}
-                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100 text-blue-700 font-black text-lg select-none">
-                          {initials(r.user?.full_name)}
+                        <div className="h-14 w-14 shrink-0 rounded-2xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-blue-100 to-indigo-100 text-blue-700 font-black text-lg select-none">
+                          {r.user?.avatar_url
+                            ? <img src={r.user.avatar_url} alt={r.user?.full_name} className="h-full w-full object-cover" />
+                            : initials(r.user?.full_name)}
                         </div>
 
                         {/* Info */}

@@ -210,8 +210,10 @@ export default function Athletes() {
 
                   {/* Card header */}
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white text-sm font-black">
-                      {initials(a)}
+                    <div className="h-11 w-11 shrink-0 rounded-full overflow-hidden flex items-center justify-center bg-emerald-500 text-white text-sm font-black">
+                      {a.avatar_url
+                        ? <img src={a.avatar_url} alt={a.first_name} className="h-full w-full object-cover" />
+                        : initials(a)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -307,9 +309,16 @@ export default function Athletes() {
                   return (
                     <tr key={a.id} className="hover:bg-slate-50 transition-colors group">
                       <td className="px-5 py-3.5">
-                        <Link to={`/athletes/${a.id}`} className="font-semibold text-slate-800 hover:text-emerald-600 transition-colors">
-                          {a.first_name} {a.last_name}
-                        </Link>
+                        <div className="flex items-center gap-2.5">
+                          <div className="h-8 w-8 shrink-0 rounded-full overflow-hidden flex items-center justify-center bg-emerald-500 text-white text-xs font-black">
+                            {a.avatar_url
+                              ? <img src={a.avatar_url} alt={a.first_name} className="h-full w-full object-cover" />
+                              : initials(a)}
+                          </div>
+                          <Link to={`/athletes/${a.id}`} className="font-semibold text-slate-800 hover:text-emerald-600 transition-colors">
+                            {a.first_name} {a.last_name}
+                          </Link>
+                        </div>
                         {a.invite_status === 'pending' && (
                           <span className="ml-2 inline-flex rounded-full px-2 py-0.5 text-xs font-bold bg-amber-100 text-amber-700">
                             Pending invite

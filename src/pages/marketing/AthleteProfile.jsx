@@ -97,13 +97,15 @@ export default function AthleteProfile() {
 
             {/* Avatar */}
             <div className="relative shrink-0">
-              <div className={`flex h-32 w-32 lg:h-40 lg:w-40 items-center justify-center rounded-3xl text-5xl lg:text-6xl font-black text-white shadow-2xl ${tier.glow} ${
+              <div className={`relative h-32 w-32 lg:h-40 lg:w-40 rounded-3xl overflow-hidden flex items-center justify-center text-5xl lg:text-6xl font-black text-white shadow-2xl ${tier.glow} ${
                 athlete.ftem_phase === 'M' ? 'bg-gradient-to-br from-amber-400 to-yellow-600' :
                 athlete.ftem_phase?.startsWith('E') ? 'bg-gradient-to-br from-slate-400 to-slate-600' :
                 athlete.ftem_phase?.startsWith('T') ? 'bg-gradient-to-br from-orange-400 to-amber-600' :
                 'bg-gradient-to-br from-emerald-400 to-emerald-700'
               }`}>
-                {initials}
+                {athlete.avatar_url
+                  ? <img src={athlete.avatar_url} alt={`${athlete.first_name} ${athlete.last_name}`} className="h-full w-full object-cover" />
+                  : initials}
               </div>
               {/* Tier icon badge */}
               <div className="absolute -bottom-2 -right-2 text-3xl">{tier.icon}</div>

@@ -144,7 +144,19 @@ class ClubJoinRequestController extends Controller
             ->with('user:id,full_name,email,phone')
             ->orderByRaw("CASE status WHEN 'pending' THEN 0 WHEN 'approved' THEN 1 ELSE 2 END")
             ->orderByDesc('created_at')
-            ->get();
+            ->get()
+            ->map(function ($jr) {
+                // Attach the athlete's avatar if they have one
+                if ($jr->user_id) {
+                    $athlete = \App\Models\Athlete::where('user_id', $jr->user_id)
+                        ->where('club_id', $jr->club_id)
+                        ->value('avatar_url');
+                    if ($jr->user && $athlete) {
+                        $jr->user->avatar_url = $athlete;
+                    }
+                }
+                return $jr;
+            });
 
         return response()->json($requests);
     }
