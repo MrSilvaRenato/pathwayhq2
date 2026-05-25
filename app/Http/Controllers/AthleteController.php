@@ -415,6 +415,7 @@ class AthleteController extends Controller
     {
         $athlete = Athlete::where('user_id', $request->user()->id)
             ->where('invite_status', 'accepted')
+            ->where('is_active', true)
             ->first();
 
         if (!$athlete) return response()->json(['error' => 'No athlete profile found'], 404);
