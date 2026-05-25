@@ -164,9 +164,10 @@ export default function Topbar() {
       </div>
 
       {broadcastModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setBroadcastModal(null)}>
-          <div className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-3 px-5 py-4 bg-emerald-500">
+        <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center sm:p-4 bg-black/40 backdrop-blur-sm" onClick={() => setBroadcastModal(null)}>
+          <div className="relative w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+            {/* Sticky header */}
+            <div className="flex items-center gap-3 px-5 py-4 bg-emerald-500 rounded-t-2xl shrink-0">
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20 shrink-0">
                 <Megaphone className="h-5 w-5 text-white" />
               </div>
@@ -179,26 +180,25 @@ export default function Topbar() {
               </button>
             </div>
 
-            <div className="px-5 py-5">
+            {/* Scrollable body */}
+            <div className="px-5 py-5 overflow-y-auto flex-1">
               <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{broadcastModal.body}</p>
             </div>
 
-            {broadcastModal.link && (
-              <div className="px-5 pb-5">
+            {/* Footer */}
+            <div className="px-5 pb-5 pt-2 shrink-0 border-t border-slate-100">
+              {broadcastModal.link && (
                 <a
                   href={broadcastModal.link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white py-2.5 text-sm font-bold transition-colors"
+                  className="flex items-center justify-center gap-2 w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white py-2.5 text-sm font-bold transition-colors mb-3"
                   onClick={() => setBroadcastModal(null)}
                 >
                   <ExternalLink className="h-4 w-4" /> Learn more
                 </a>
-              </div>
-            )}
-
-            <div className="px-5 pb-4 flex justify-end">
-              <button onClick={() => setBroadcastModal(null)} className="text-sm text-slate-400 hover:text-slate-600 font-semibold transition-colors">
+              )}
+              <button onClick={() => setBroadcastModal(null)} className="w-full text-sm text-slate-400 hover:text-slate-600 font-semibold transition-colors py-1">
                 Dismiss
               </button>
             </div>
