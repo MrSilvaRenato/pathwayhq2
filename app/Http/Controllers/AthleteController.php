@@ -404,6 +404,7 @@ class AthleteController extends Controller
                 'ftem_phase' => $athlete->ftem_phase,
                 'dob_year'   => $dobYear,
                 'slug'       => $athlete->slug,
+                'avatar_url' => $athlete->avatar_url,
             ],
             'club'       => $athlete->club,
             'milestones' => $milestones,
