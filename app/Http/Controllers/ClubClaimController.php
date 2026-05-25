@@ -145,4 +145,29 @@ class ClubClaimController extends Controller
 
         return response()->json(['ok' => true]);
     }
+
+    // Site admin: revoke an approved claim → strip club_admin role, set club back to unclaimed
+    public function revoke(Request $request, $id)
+    {
+        if ($request->user()->role !== 'site_admin') abort(403);
+
+        $claim = ClubClaim::with('club')->where('id', $id)->where('status', 'approved')->firstOrFail();
+
+        // Downgrade the user back to athlete and remove club link
+        $user = User::where('email', $claim->email)->first();
+        if ($user) {
+            $user->update([
+                'role'    => 'athlete',
+                'club_id' => null,
+            ]);
+        }
+
+        // Set club back to unclaimed
+        $claim->club->update(['is_claimed' => false]);
+
+        // Mark claim as revoked
+        $claim->update(['status' => 'revoked']);
+
+        return response()->json(['ok' => true]);
+    }
 }

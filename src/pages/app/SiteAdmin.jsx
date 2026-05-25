@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Shield, Users, Building2, RefreshCw, CheckCircle, XCircle, Loader2, Copy, Check } from 'lucide-react'
+import { Shield, Users, Building2, RefreshCw, CheckCircle, XCircle, Loader2, Copy, Check, RotateCcw } from 'lucide-react'
 import api from '../../lib/api'
 import { useToast } from '../../contexts/ToastContext'
 
@@ -58,6 +58,19 @@ function ClaimsPanel() {
       toast.success('Claim rejected')
     } catch {
       toast.error('Failed to reject claim')
+    } finally {
+      setActing(null)
+    }
+  }
+
+  async function revoke(id) {
+    setActing(id + 'revoke')
+    try {
+      await api.put(`/club-claims/${id}/revoke`)
+      setClaims(p => p.map(c => c.id === id ? { ...c, status: 'revoked' } : c))
+      toast.success('Manager access revoked — club set back to unclaimed')
+    } catch {
+      toast.error('Failed to revoke claim')
     } finally {
       setActing(null)
     }
@@ -165,11 +178,26 @@ function ClaimsPanel() {
                   <p className="text-sm font-semibold text-slate-700">{c.name} <span className="font-normal text-slate-400">— {c.club?.name}</span></p>
                   <p className="text-xs text-slate-400">{c.email}</p>
                 </div>
-                <span className={`text-xs font-bold rounded-full px-2.5 py-0.5 ${
-                  c.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
-                }`}>
-                  {c.status}
-                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`text-xs font-bold rounded-full px-2.5 py-0.5 ${
+                    c.status === 'approved' ? 'bg-emerald-100 text-emerald-700'
+                    : c.status === 'revoked' ? 'bg-red-100 text-red-600'
+                    : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {c.status}
+                  </span>
+                  {c.status === 'approved' && (
+                    <button
+                      onClick={() => revoke(c.id)}
+                      disabled={!!acting}
+                      title="Revoke manager access and set club back to unclaimed"
+                      className="flex items-center gap-1 rounded-lg border border-red-200 hover:bg-red-50 disabled:opacity-50 px-2.5 py-1 text-xs font-bold text-red-600 transition-colors"
+                    >
+                      {acting === c.id + 'revoke' ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+                      Revoke
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

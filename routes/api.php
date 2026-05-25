@@ -134,6 +134,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/club-claims',                  [ClubClaimController::class, 'index']);
     Route::put('/club-claims/{id}/approve',     [ClubClaimController::class, 'approve']);
     Route::put('/club-claims/{id}/reject',      [ClubClaimController::class, 'reject']);
+    Route::put('/club-claims/{id}/revoke',      [ClubClaimController::class, 'revoke']);
 
     // Coaches (club_admin manages coaches for their club)
     Route::get('/club/coaches',         [CoachController::class, 'index']);
