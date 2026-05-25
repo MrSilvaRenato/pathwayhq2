@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Search, X, Plus, Users, CheckCircle2, Loader2, UserCheck, Mail, Phone, Pencil, Trash2 } from 'lucide-react'
+import { Search, X, Plus, Users, CheckCircle2, Loader2, UserCheck, Mail, Phone, Pencil, Trash2, ExternalLink } from 'lucide-react'
 import api from '../../lib/api'
 import { FTEM_PHASES, SPORTS } from '../../lib/constants'
 import { useAuth } from '../../contexts/AuthContext'
@@ -271,11 +271,11 @@ export default function Athletes() {
                           </a>
                         )}
                       </div>
-                      <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0">
                         <button
                           onClick={e => { e.stopPropagation(); navigate(`/athletes/${a.id}`) }}
-                          className="flex items-center justify-center h-9 w-9 rounded-xl bg-slate-100 hover:bg-emerald-100 hover:text-emerald-600 text-slate-500 transition-colors">
-                          <Pencil className="h-4 w-4" />
+                          className="flex items-center gap-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-2 text-xs font-bold transition-colors">
+                          <ExternalLink className="h-3.5 w-3.5" /> View profile
                         </button>
                         <button
                           onClick={e => handleDelete(e, a.id)}
@@ -362,14 +362,20 @@ export default function Athletes() {
                           </span>
                         )}
                       </td>
-                      {isAdmin && (
-                        <td className="px-5 py-3.5 text-right">
-                          <button onClick={e => handleDelete(e, a.id)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity rounded-lg border border-red-200 text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5">
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </td>
-                      )}
+                      <td className="px-5 py-3.5 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Link to={`/athletes/${a.id}`}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-1.5 text-xs font-bold">
+                            <ExternalLink className="h-3.5 w-3.5" /> View profile
+                          </Link>
+                          {isAdmin && (
+                            <button onClick={e => handleDelete(e, a.id)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity rounded-lg border border-red-200 text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   )
                 })}
