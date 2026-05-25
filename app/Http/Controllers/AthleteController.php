@@ -252,14 +252,31 @@ class AthleteController extends Controller
         $athlete = Athlete::where('user_id', $request->user()->id)
             ->where('invite_status', 'accepted')
             ->where('is_active', true)
-            ->with('squads:id,name')
+            ->with(['squads:id,name', 'club:id,name,logo_url,slug,sport,city,state'])
             ->first();
 
         if (!$athlete) return response()->json(null);
 
         $athlete->squad_names = $athlete->squads->pluck('name')->join(', ');
         $athlete->is_claimed  = true;
-        unset($athlete->squads);
+
+        // Club details
+        $athlete->club_name  = $athlete->club?->name;
+        $athlete->club_logo  = $athlete->club?->logo_url;
+        $athlete->club_slug  = $athlete->club?->slug;
+        $athlete->club_sport = $athlete->club?->sport;
+        $athlete->club_city  = $athlete->club?->city;
+        $athlete->club_state = $athlete->club?->state;
+
+        // Manager contact
+        $manager = User::where('club_id', $athlete->club_id)
+            ->where('role', 'club_admin')
+            ->select('full_name', 'email')
+            ->first();
+        $athlete->manager_name  = $manager?->full_name;
+        $athlete->manager_email = $manager?->email;
+
+        unset($athlete->squads, $athlete->club);
 
         return response()->json($athlete);
     }

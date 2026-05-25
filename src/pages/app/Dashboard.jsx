@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   Users, Trophy, Calendar, ArrowRight, Zap, Dumbbell,
   MapPin, Megaphone, CheckCircle2, XCircle, HandHeart,
-  TrendingUp, Clock, X, HelpCircle, Loader2, Building2,
+  TrendingUp, Clock, X, HelpCircle, Loader2, Building2, Mail, UserCircle,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
@@ -632,6 +632,68 @@ function AthleteDashboard({ user }) {
     <>
     {showSquadRequest && <SquadRequestModal onClose={() => setShowSquadRequest(false)} />}
     <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+
+      {/* ── Club banner ──────────────────────────────────────────────────── */}
+      {profile?.club_name && (
+        <div className="col-span-full rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 p-4 md:p-5 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            {/* Logo + club info */}
+            <div className="flex items-center gap-4 flex-1 min-w-0">
+              {profile.club_logo ? (
+                <img src={profile.club_logo} alt={profile.club_name}
+                  className="h-14 w-14 rounded-xl object-cover shrink-0 border-2 border-white/30 shadow" />
+              ) : (
+                <div className="h-14 w-14 rounded-xl bg-white/20 flex items-center justify-center shrink-0 border-2 border-white/20">
+                  <Building2 className="h-7 w-7 text-white/80" />
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-emerald-200 uppercase tracking-widest mb-0.5">Your club</p>
+                <h2 className="text-xl font-black text-white truncate leading-tight">{profile.club_name}</h2>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
+                  {profile.club_sport && <span className="text-xs text-emerald-100 capitalize">{profile.club_sport}</span>}
+                  {profile.club_city && (
+                    <span className="text-xs text-emerald-200 flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      {profile.club_city}{profile.club_state ? `, ${profile.club_state}` : ''}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="hidden sm:block w-px self-stretch bg-white/20" />
+
+            {/* Manager info */}
+            {profile.manager_name && (
+              <div className="flex items-center gap-3 sm:shrink-0">
+                <div className="h-10 w-10 rounded-full bg-white/20 border border-white/30 flex items-center justify-center shrink-0">
+                  <UserCircle className="h-5 w-5 text-white/80" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold text-emerald-200 uppercase tracking-widest">Club manager</p>
+                  <p className="text-sm font-bold text-white truncate">{profile.manager_name}</p>
+                  {profile.manager_email && (
+                    <a href={`mailto:${profile.manager_email}`}
+                      className="flex items-center gap-1 text-xs text-emerald-200 hover:text-white transition-colors mt-0.5">
+                      <Mail className="h-3 w-3" />{profile.manager_email}
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* View club link */}
+            {profile.club_slug && (
+              <Link to={`/clubs/${profile.club_slug}`}
+                className="shrink-0 sm:ml-2 flex items-center gap-1.5 rounded-xl bg-white/15 hover:bg-white/25 px-3 py-2 text-xs font-semibold text-white transition-colors self-start sm:self-center">
+                View club <ArrowRight className="h-3 w-3" />
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Pending invites (full-width alert — very prominent on mobile) ── */}
       {invites.map(inv => (
