@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Link, useParams, useNavigate } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Zap, MapPin, Users, Trophy, ArrowLeft, ArrowRight,
   Globe, Mail, Phone, Calendar, Clock, Megaphone,
@@ -184,6 +184,11 @@ function JoinRequestModal({ club, onClose }) {
   const [done,    setDone]    = useState(false)
   const [error,   setError]   = useState('')
 
+  function goAuth(modal) {
+    sessionStorage.setItem('pendingJoin', club.slug)
+    navigate(`/?modal=${modal}`)
+  }
+
   if (!user) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
@@ -193,8 +198,12 @@ function JoinRequestModal({ club, onClose }) {
           <p className="text-slate-400 text-sm mb-5">Create an account or sign in to request to join {club.name}.</p>
           <div className="flex gap-3">
             <button onClick={onClose} className="flex-1 rounded-xl border border-white/10 py-3 text-sm font-semibold text-slate-400 hover:text-white transition-colors">Cancel</button>
-            <Link to="/?modal=signup" className="flex-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 py-3 text-sm font-bold text-white text-center transition-colors">Create account</Link>
+            <button onClick={() => goAuth('signup')} className="flex-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 py-3 text-sm font-bold text-white transition-colors">Create account</button>
           </div>
+          <p className="mt-3 text-xs text-slate-600">
+            Already have an account?{' '}
+            <button onClick={() => goAuth('login')} className="text-slate-400 hover:text-white underline transition-colors">Sign in</button>
+          </p>
         </div>
       </div>
     )
@@ -269,6 +278,8 @@ function JoinRequestModal({ club, onClose }) {
 export default function ClubProfile() {
   const { slug } = useParams()
   const { user } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const joinIntentHandled = useRef(false)
   const [data,       setData]      = useState(null)
   const [loading,    setLoading]   = useState(true)
   const [showClaim,  setShowClaim] = useState(false)
@@ -288,6 +299,16 @@ export default function ClubProfile() {
       .then(r => setJoinStatus(r.data.status))
       .catch(() => {})
   }, [user, slug])
+
+  // Auto-open join modal when returning from login with ?join=1
+  useEffect(() => {
+    if (joinIntentHandled.current) return
+    if (searchParams.get('join') === '1' && user && data) {
+      joinIntentHandled.current = true
+      setShowJoin(true)
+      setSearchParams({}, { replace: true })
+    }
+  }, [user, data])
 
   if (loading) return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center">

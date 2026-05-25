@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Zap, Search, X, MapPin, SortAsc, SortDesc, UserPlus, Loader2 } from 'lucide-react'
 import api from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
@@ -9,10 +9,16 @@ const OLYMPIC_SPORTS = SPORTS.filter(s => s.in2032)
 
 function JoinModal({ club, onClose }) {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [message, setMessage] = useState('')
   const [saving,  setSaving]  = useState(false)
   const [done,    setDone]    = useState(false)
   const [error,   setError]   = useState('')
+
+  function goAuth(modal) {
+    sessionStorage.setItem('pendingJoin', club.slug)
+    navigate(`/?modal=${modal}`)
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -56,14 +62,14 @@ function JoinModal({ club, onClose }) {
                 className="flex-1 rounded-xl border border-white/10 py-3 text-sm font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition-colors">
                 Cancel
               </button>
-              <Link to="/?modal=signup"
-                className="flex-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 py-3 text-sm font-bold text-white text-center transition-colors">
+              <button onClick={() => goAuth('signup')}
+                className="flex-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 py-3 text-sm font-bold text-white transition-colors">
                 Create account
-              </Link>
+              </button>
             </div>
             <p className="mt-3 text-xs text-slate-600">
               Already have an account?{' '}
-              <Link to="/?modal=login" className="text-slate-400 hover:text-white underline transition-colors">Sign in</Link>
+              <button onClick={() => goAuth('login')} className="text-slate-400 hover:text-white underline transition-colors">Sign in</button>
             </p>
           </div>
         ) : done ? (

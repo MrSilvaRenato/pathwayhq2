@@ -19,7 +19,13 @@ function LoginForm({ onSwitch, claimToken }) {
     setError('')
     try {
       await login(form.email, form.password)
-      navigate(claimToken ? `/claim/${claimToken}` : '/dashboard')
+      const pending = sessionStorage.getItem('pendingJoin')
+      if (pending) {
+        sessionStorage.removeItem('pendingJoin')
+        navigate(`/clubs/${pending}?join=1`)
+      } else {
+        navigate(claimToken ? `/claim/${claimToken}` : '/dashboard')
+      }
     } catch (err) {
       setError(err.response?.data?.error ?? 'Invalid email or password. Please try again.')
     } finally {
@@ -104,7 +110,13 @@ function SignupForm({ onSwitch, claimToken }) {
     setError('')
     try {
       await register({ ...form, role: 'athlete' })
-      navigate(claimToken ? `/claim/${claimToken}` : '/dashboard')
+      const pending = sessionStorage.getItem('pendingJoin')
+      if (pending) {
+        sessionStorage.removeItem('pendingJoin')
+        navigate(`/clubs/${pending}?join=1`)
+      } else {
+        navigate(claimToken ? `/claim/${claimToken}` : '/dashboard')
+      }
     } catch (err) {
       setError(err.response?.data?.message ?? err.response?.data?.error ?? 'Registration failed. Please try again.')
     } finally {
