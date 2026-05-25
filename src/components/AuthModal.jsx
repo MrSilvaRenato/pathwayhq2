@@ -22,7 +22,7 @@ function LoginForm({ onSwitch, claimToken }) {
       const pending = sessionStorage.getItem('pendingJoin')
       if (pending) {
         sessionStorage.removeItem('pendingJoin')
-        navigate(`/clubs/${pending}?join=1`)
+        navigate(`/club/${pending}?join=1`)
       } else {
         navigate(claimToken ? `/claim/${claimToken}` : '/dashboard')
       }
@@ -113,7 +113,7 @@ function SignupForm({ onSwitch, claimToken }) {
       const pending = sessionStorage.getItem('pendingJoin')
       if (pending) {
         sessionStorage.removeItem('pendingJoin')
-        navigate(`/clubs/${pending}?join=1`)
+        navigate(`/club/${pending}?join=1`)
       } else {
         navigate(claimToken ? `/claim/${claimToken}` : '/dashboard')
       }
