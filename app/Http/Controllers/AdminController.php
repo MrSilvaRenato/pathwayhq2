@@ -318,6 +318,7 @@ class AdminController extends Controller
                 'title'   => $data['title'],
                 'body'    => $data['body'],
                 'link'    => $data['link'] ?? null,
+                'type'    => 'broadcast',
                 'is_read' => false,
                 'at'      => now()->toDateTimeString(),
             ]);
