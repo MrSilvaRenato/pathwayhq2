@@ -137,7 +137,7 @@ export default function Topbar() {
                     className={`flex items-start gap-3 px-4 py-3 border-b border-slate-50 transition-colors ${n.link ? 'cursor-pointer hover:bg-slate-50' : 'cursor-default'} ${!n.is_read ? 'bg-emerald-50/50' : ''}`}>
                     <div className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${!n.is_read ? 'bg-emerald-500' : 'bg-transparent'}`} />
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm leading-snug ${!n.is_read ? 'font-semibold text-slate-800' : 'font-medium text-slate-600'}`}>
+                      <p className={`text-sm leading-snug line-clamp-2 ${!n.is_read ? 'font-semibold text-slate-800' : 'font-medium text-slate-600'}`}>
                         {n.title}
                       </p>
                       {n.body && <p className="text-xs text-slate-400 mt-0.5 leading-relaxed line-clamp-2">{n.body}</p>}
