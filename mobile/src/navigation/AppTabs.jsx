@@ -25,6 +25,7 @@ import CalendarScreen from '../screens/manager/CalendarScreen'
 import AnalyticsScreen from '../screens/manager/AnalyticsScreen'
 import ClubBroadcastScreen from '../screens/manager/ClubBroadcastScreen'
 import MoreScreen from '../screens/manager/MoreScreen'
+import TrophyCabinetScreen from '../screens/manager/TrophyCabinetScreen'
 
 // Shared screens
 import SettingsScreen from '../screens/shared/SettingsScreen'
@@ -107,9 +108,10 @@ function MoreManagerStack({ pendingCount }) {
       <S.Screen name="SeasonsList"        component={SeasonsScreen}          options={{ title: 'Seasons' }} />
       <S.Screen name="AnnouncementsList"  component={AnnouncementsScreen}    options={{ title: 'Announcements' }} />
       <S.Screen name="BroadcastScreen"    component={ClubBroadcastScreen}    options={{ title: 'Broadcast' }} />
-      <S.Screen name="AnalyticsScreen"    component={AnalyticsScreen}        options={{ title: 'Analytics' }} />
-      <S.Screen name="SettingsList"       component={SettingsScreen}         options={{ title: 'Settings' }} />
-      <S.Screen name="NotificationsList"  component={NotificationsScreen}    options={{ title: 'Notifications' }} />
+      <S.Screen name="AnalyticsScreen"      component={AnalyticsScreen}        options={{ title: 'Analytics' }} />
+      <S.Screen name="TrophyCabinetScreen" component={TrophyCabinetScreen}    options={{ title: 'Trophy Cabinet' }} />
+      <S.Screen name="SettingsList"        component={SettingsScreen}         options={{ title: 'Settings' }} />
+      <S.Screen name="NotificationsList"   component={NotificationsScreen}    options={{ title: 'Notifications' }} />
     </S.Navigator>
   )
 }

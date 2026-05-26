@@ -11,6 +11,7 @@ const SECTIONS = [
       { label: 'Join Requests', icon: 'person-add-outline',   screen: 'JoinRequestsList',  badgeKey: 'joinRequests' },
       { label: 'Squads',        icon: 'layers-outline',        screen: 'SquadsList'         },
       { label: 'Seasons',       icon: 'calendar-outline',      screen: 'SeasonsList'        },
+      { label: 'Trophy Cabinet', icon: 'trophy-outline',        screen: 'TrophyCabinetScreen' },
     ],
   },
   {
