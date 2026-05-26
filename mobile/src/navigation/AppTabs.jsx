@@ -1,6 +1,7 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { View, Text, StyleSheet } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   Dumbbell,
   Megaphone,
@@ -12,6 +13,7 @@ import {
   Layers,
   CalendarDays,
   Shield,
+  Bell,
 } from 'lucide-react-native'
 import { useAuth } from '../contexts/AuthContext'
 import { colors } from '../lib/theme'
@@ -34,6 +36,7 @@ import SeasonsScreen from '../screens/manager/SeasonsScreen'
 // Shared screens
 import SettingsScreen from '../screens/shared/SettingsScreen'
 import NotificationsScreen from '../screens/shared/NotificationsScreen'
+import AdminDashboardScreen from '../screens/shared/AdminDashboardScreen'
 
 const Tab = createBottomTabNavigator()
 const Stack = createNativeStackNavigator()
@@ -132,7 +135,13 @@ function SettingsStack() {
 
 function AdminDashboardStack() {
   return (
-    <SimpleStack screen={NotificationsScreen} name="AdminDashboard" title="Admin" />
+    <SimpleStack screen={AdminDashboardScreen} name="AdminDashboard" title="Admin" />
+  )
+}
+
+function NotificationsStack() {
+  return (
+    <SimpleStack screen={NotificationsScreen} name="NotificationsList" title="Notifications" />
   )
 }
 
@@ -157,6 +166,7 @@ export default function AppTabs() {
   const { user } = useAuth()
   const role = user?.role
   const [pendingCount, setPendingCount] = useState(0)
+  const insets = useSafeAreaInsets()
 
   useEffect(() => {
     if (role === 'club_admin' || role === 'coach') {
@@ -175,8 +185,8 @@ export default function AppTabs() {
       backgroundColor: '#fff',
       borderTopColor: colors.border,
       borderTopWidth: 1,
-      height: 60,
-      paddingBottom: 8,
+      height: 60 + insets.bottom,
+      paddingBottom: 8 + insets.bottom,
       paddingTop: 4,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: -2 },
@@ -200,6 +210,16 @@ export default function AppTabs() {
             title: 'Dashboard',
             tabBarIcon: ({ color, size }) => (
               <TabIcon Icon={Shield} color={color} size={size} />
+            ),
+          }}
+        />
+        <Tab.Screen
+          name="Notifications"
+          component={NotificationsStack}
+          options={{
+            title: 'Notifications',
+            tabBarIcon: ({ color, size }) => (
+              <TabIcon Icon={Bell} color={color} size={size} />
             ),
           }}
         />
