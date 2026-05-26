@@ -576,10 +576,12 @@ export default function CalendarScreen() {
   const [rsvping, setRsvping]       = useState({})
 
   // Modal state
-  const [showAdd, setShowAdd]       = useState(false)
-  const [editingEv, setEditingEv]   = useState(null)
-  const [editScope, setEditScope]   = useState('one') // 'choose' | 'one' | 'series'
-  const [showScopeSheet, setShowScopeSheet] = useState(false)
+  const [showAdd, setShowAdd]           = useState(false)
+  const [editingEv, setEditingEv]       = useState(null)
+  const [editScope, setEditScope]       = useState('one')
+  const [showScopeSheet, setShowScopeSheet]   = useState(false)
+  const [showSeriesSheet, setShowSeriesSheet] = useState(false)
+  const [seriesConfirm, setSeriesConfirm]     = useState(null) // 'one' | 'all' | null
 
   const year  = currentMonth.getFullYear()
   const month = currentMonth.getMonth()
@@ -638,11 +640,37 @@ export default function CalendarScreen() {
 
   function openEdit(ev) {
     setEditingEv(ev)
-    setEditScope(ev.series_id ? 'choose' : 'one')
+    setSeriesConfirm(null)
     if (ev.series_id) {
+      setEditScope('one')
       setShowScopeSheet(true)
+    } else {
+      setEditScope('one')
     }
-    // else scope = 'one', open form directly via editingEv
+  }
+
+  function recurrenceLabel(r) {
+    if (!r || r === 'none') return ''
+    if (r === 'daily')    return 'Repeats daily'
+    if (r === 'weekly')   return 'Repeats weekly'
+    if (r === 'biweekly') return 'Repeats every 2 weeks'
+    if (r === 'monthly')  return 'Repeats monthly'
+    return ''
+  }
+
+  function closeScopeSheet() {
+    setShowScopeSheet(false)
+    setShowSeriesSheet(false)
+    setSeriesConfirm(null)
+    setEditingEv(null)
+  }
+
+  async function handleDeleteFromSheet(seriesMode) {
+    if (!editingEv) return
+    setShowScopeSheet(false)
+    setSeriesConfirm(null)
+    await handleDelete(editingEv.id, seriesMode)
+    setEditingEv(null)
   }
 
   async function handleSave(form) {
@@ -665,6 +693,8 @@ export default function CalendarScreen() {
       setShowAdd(false)
       setEditingEv(null)
       setShowScopeSheet(false)
+      setShowSeriesSheet(false)
+      setSeriesConfirm(null)
       load()
     } catch (e) {
       Alert.alert('Error', e?.response?.data?.message ?? 'Failed to save.')
@@ -843,37 +873,157 @@ export default function CalendarScreen() {
         </View>
       </Modal>
 
-      {/* Series scope chooser */}
-      {editingEv && showScopeSheet && (
-        <Modal visible transparent animationType="slide" onRequestClose={() => { setShowScopeSheet(false); setEditingEv(null) }}>
-          <Pressable style={styles.overlay} onPress={() => { setShowScopeSheet(false); setEditingEv(null) }} />
+      {/* Series action sheet */}
+      {editingEv && showScopeSheet && !showSeriesSheet && (
+        <Modal visible transparent animationType="slide" onRequestClose={closeScopeSheet}>
+          <Pressable style={styles.overlay} onPress={closeScopeSheet} />
           <View style={styles.sheet}>
             <View style={styles.sheetHandle} />
             <View style={{ padding: spacing.md }}>
-              <Text style={styles.scopeTitle}>Edit recurring event</Text>
-              <Text style={styles.scopeSubtitle}>This event is part of a repeating series. Which sessions do you want to edit?</Text>
-              <TouchableOpacity style={styles.scopeOption} onPress={() => { setEditScope('one'); setShowScopeSheet(false) }}>
-                <View style={[styles.scopeIcon, { backgroundColor: '#dbeafe' }]}>
-                  <Ionicons name="calendar-outline" size={20} color="#2563eb" />
+              {/* Header */}
+              <View style={styles.seriesSheetHeader}>
+                <View style={styles.seriesSheetIcon}>
+                  <Ionicons name="repeat-outline" size={22} color="#7c3aed" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.scopeOptionTitle}>This session only</Text>
-                  <Text style={styles.scopeOptionDesc}>Edit the date, time, and details of just this occurrence.</Text>
+                  <Text style={styles.scopeTitle} numberOfLines={1}>{editingEv.title}</Text>
+                  <Text style={styles.seriesSheetSub}>{recurrenceLabel(editingEv.recurrence)}</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.scopeOption, { marginBottom: 0 }]} onPress={() => { setEditScope('series'); setShowScopeSheet(false) }}>
-                <View style={[styles.scopeIcon, { backgroundColor: '#ede9fe' }]}>
-                  <Ionicons name="repeat-outline" size={20} color="#7c3aed" />
+              </View>
+
+              {seriesConfirm ? (
+                /* Confirm delete panel */
+                <View style={styles.seriesConfirmBox}>
+                  <Text style={styles.seriesConfirmTitle}>
+                    {seriesConfirm === 'all' ? 'Cancel all sessions?' : 'Cancel this session?'}
+                  </Text>
+                  <Text style={styles.seriesConfirmDesc}>
+                    {seriesConfirm === 'all'
+                      ? 'This will permanently delete every event in this series.'
+                      : 'This will permanently delete just this one occurrence.'}
+                  </Text>
+                  <View style={{ flexDirection: 'row', gap: 10, marginTop: spacing.sm }}>
+                    <TouchableOpacity style={styles.confirmCancelBtn} onPress={() => setSeriesConfirm(null)}>
+                      <Text style={styles.confirmCancelText}>Go back</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.confirmDeleteBtn}
+                      onPress={() => handleDeleteFromSheet(seriesConfirm === 'all')}
+                    >
+                      <Ionicons name="trash-outline" size={14} color="#fff" />
+                      <Text style={styles.confirmDeleteText}>
+                        {seriesConfirm === 'all' ? 'Delete all' : 'Delete this'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.scopeOptionTitle}>All sessions in series</Text>
-                  <Text style={styles.scopeOptionDesc}>Update title, type, squad, location across every session.</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-              </TouchableOpacity>
+              ) : (
+                <>
+                  {/* View series */}
+                  <TouchableOpacity style={styles.scopeOption} onPress={() => setShowSeriesSheet(true)}>
+                    <View style={[styles.scopeIcon, { backgroundColor: '#f0fdf4' }]}>
+                      <Ionicons name="list-outline" size={20} color="#059669" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.scopeOptionTitle}>View series</Text>
+                      <Text style={styles.scopeOptionDesc}>See all upcoming sessions in this series.</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+                  </TouchableOpacity>
+
+                  {/* Edit this session */}
+                  <TouchableOpacity style={styles.scopeOption} onPress={() => { setEditScope('one'); setShowScopeSheet(false) }}>
+                    <View style={[styles.scopeIcon, { backgroundColor: '#dbeafe' }]}>
+                      <Ionicons name="calendar-outline" size={20} color="#2563eb" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.scopeOptionTitle}>Edit this session</Text>
+                      <Text style={styles.scopeOptionDesc}>Change date, time, or details for this occurrence only.</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+                  </TouchableOpacity>
+
+                  {/* Edit all sessions */}
+                  <TouchableOpacity style={styles.scopeOption} onPress={() => { setEditScope('series'); setShowScopeSheet(false) }}>
+                    <View style={[styles.scopeIcon, { backgroundColor: '#ede9fe' }]}>
+                      <Ionicons name="repeat-outline" size={20} color="#7c3aed" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.scopeOptionTitle}>Update all sessions</Text>
+                      <Text style={styles.scopeOptionDesc}>Apply title, type, squad, or location to every session.</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+                  </TouchableOpacity>
+
+                  {/* Cancel this session */}
+                  <TouchableOpacity style={[styles.scopeOption, styles.scopeOptionDanger]} onPress={() => setSeriesConfirm('one')}>
+                    <View style={[styles.scopeIcon, { backgroundColor: '#fef2f2' }]}>
+                      <Ionicons name="close-circle-outline" size={20} color="#ef4444" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.scopeOptionTitle, { color: '#b91c1c' }]}>Cancel this session</Text>
+                      <Text style={styles.scopeOptionDesc}>Remove only this occurrence from the calendar.</Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  {/* Cancel all sessions */}
+                  <TouchableOpacity style={[styles.scopeOption, styles.scopeOptionDanger, { marginBottom: 0 }]} onPress={() => setSeriesConfirm('all')}>
+                    <View style={[styles.scopeIcon, { backgroundColor: '#fef2f2' }]}>
+                      <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.scopeOptionTitle, { color: '#b91c1c' }]}>Cancel all sessions</Text>
+                      <Text style={styles.scopeOptionDesc}>Delete every event in this repeating series.</Text>
+                    </View>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
-            <View style={{ height: spacing.lg }} />
+            <View style={{ height: spacing.xl }} />
+          </View>
+        </Modal>
+      )}
+
+      {/* Series list sheet */}
+      {editingEv && showScopeSheet && showSeriesSheet && (
+        <Modal visible transparent animationType="slide" onRequestClose={() => setShowSeriesSheet(false)}>
+          <Pressable style={styles.overlay} onPress={() => setShowSeriesSheet(false)} />
+          <View style={[styles.sheet, { maxHeight: '80%' }]}>
+            <View style={styles.sheetHandle} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: 4 }}>
+              <TouchableOpacity onPress={() => setShowSeriesSheet(false)} style={{ marginRight: 10 }}>
+                <Ionicons name="arrow-back" size={20} color={colors.text} />
+              </TouchableOpacity>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.scopeTitle} numberOfLines={1}>{editingEv.title}</Text>
+                <Text style={styles.seriesSheetSub}>
+                  {recurrenceLabel(editingEv.recurrence)} · {events.filter(e => e.series_id === editingEv.series_id).length} sessions
+                </Text>
+              </View>
+            </View>
+            <ScrollView style={{ paddingHorizontal: spacing.md }} contentContainerStyle={{ paddingBottom: spacing.xl }}>
+              {events
+                .filter(e => e.series_id === editingEv.series_id)
+                .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
+                .map(ev => {
+                  const isThis = ev.id === editingEv.id
+                  const d = new Date(ev.start_time)
+                  const isPast = d < new Date()
+                  return (
+                    <View key={ev.id} style={[styles.seriesListRow, isThis && styles.seriesListRowActive, isPast && { opacity: 0.45 }]}>
+                      <View style={[styles.seriesListDot, { backgroundColor: isThis ? '#7c3aed' : colors.textMuted }]} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.seriesListDate, isThis && { color: '#7c3aed', fontWeight: '900' }]}>
+                          {d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                          {isThis ? '  ← this session' : ''}
+                        </Text>
+                        <Text style={styles.seriesListTime}>{fmtTime(ev.start_time)}{ev.end_time ? ` – ${fmtTime(ev.end_time)}` : ''}</Text>
+                      </View>
+                      {isPast && <Text style={styles.seriesListPast}>Past</Text>}
+                    </View>
+                  )
+                })}
+            </ScrollView>
           </View>
         </Modal>
       )}
@@ -1115,17 +1265,46 @@ const styles = StyleSheet.create({
   },
   rsvpBtnText: { fontSize: font.sm, fontWeight: '700', color: colors.textSecondary },
 
-  // Scope chooser
-  scopeTitle: { fontSize: font.lg, fontWeight: '900', color: colors.text, marginBottom: 4 },
+  // Scope / series sheet
+  seriesSheetHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: spacing.md },
+  seriesSheetIcon: { width: 48, height: 48, borderRadius: 14, backgroundColor: '#ede9fe', justifyContent: 'center', alignItems: 'center' },
+  seriesSheetSub: { fontSize: font.xs, color: '#7c3aed', marginTop: 2, fontWeight: '600' },
+  scopeTitle: { fontSize: font.lg, fontWeight: '900', color: colors.text },
   scopeSubtitle: { fontSize: font.sm, color: colors.textMuted, marginBottom: spacing.md, lineHeight: 20 },
   scopeOption: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
     borderWidth: 1.5, borderColor: colors.border, borderRadius: 14,
     padding: spacing.md, marginBottom: spacing.sm, backgroundColor: colors.surface,
   },
+  scopeOptionDanger: { borderColor: '#fecaca', backgroundColor: '#fff5f5' },
   scopeIcon: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
   scopeOptionTitle: { fontSize: font.base, fontWeight: '700', color: colors.text },
   scopeOptionDesc: { fontSize: font.xs, color: colors.textMuted, marginTop: 2, lineHeight: 16 },
+  seriesConfirmBox: {
+    borderWidth: 1.5, borderColor: '#fecaca', borderRadius: 14,
+    backgroundColor: '#fff5f5', padding: spacing.md,
+  },
+  seriesConfirmTitle: { fontSize: font.base, fontWeight: '900', color: '#b91c1c', marginBottom: 6 },
+  seriesConfirmDesc: { fontSize: font.sm, color: '#ef4444', lineHeight: 18 },
+  confirmCancelBtn: {
+    flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 10,
+    paddingVertical: 11, alignItems: 'center', backgroundColor: colors.surface,
+  },
+  confirmCancelText: { fontSize: font.sm, fontWeight: '600', color: colors.textSecondary },
+  confirmDeleteBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, backgroundColor: '#ef4444', borderRadius: 10, paddingVertical: 11,
+  },
+  confirmDeleteText: { fontSize: font.sm, fontWeight: '700', color: '#fff' },
+  seriesListRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.borderLight,
+  },
+  seriesListRowActive: { backgroundColor: '#faf5ff', marginHorizontal: -spacing.md, paddingHorizontal: spacing.md, borderRadius: 10 },
+  seriesListDot: { width: 10, height: 10, borderRadius: 5 },
+  seriesListDate: { fontSize: font.sm, fontWeight: '700', color: colors.text },
+  seriesListTime: { fontSize: font.xs, color: colors.textMuted, marginTop: 2 },
+  seriesListPast: { fontSize: 10, color: colors.textMuted, fontWeight: '600', backgroundColor: colors.borderLight, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
 
   // Modal
   modalSafe: { flex: 1, backgroundColor: colors.background },
