@@ -109,6 +109,7 @@ class ClubJoinRequestController extends Controller
                 'is_read' => false,
                 'at'      => now()->toDateTimeString(),
             ]);
+            MailService::joinRequestToManagers($s, $user, $club);
         }
 
         return response()->json(['ok' => true], 201);
@@ -239,6 +240,9 @@ class ClubJoinRequestController extends Controller
             'is_read' => false,
             'at'      => now()->toDateTimeString(),
         ]);
+
+        $athleteUser = \App\Models\User::find($jr->user_id);
+        if ($athleteUser) MailService::joinRequestApproved($athleteUser, $jr->club);
 
         return response()->json(['ok' => true]);
     }

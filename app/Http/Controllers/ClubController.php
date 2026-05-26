@@ -12,6 +12,7 @@ use App\Models\ClubTrophy;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Support\Str;
+use App\Services\MailService;
 
 class ClubController extends Controller
 {
@@ -217,6 +218,11 @@ class ClubController extends Controller
                 'is_read' => false,
                 'at'      => now()->toDateTimeString(),
             ]);
+        }
+
+        $users = \App\Models\User::whereIn('id', $userIds)->get();
+        foreach ($users as $u) {
+            MailService::broadcastToAthlete($u, $user->full_name, $data['title'], $data['body'], $data['link'] ?? null);
         }
 
         return response()->json(['ok' => true, 'count' => $count]);

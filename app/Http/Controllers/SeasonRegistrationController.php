@@ -9,6 +9,7 @@ use App\Models\SeasonRegistration;
 use App\Models\Athlete;
 use App\Models\User;
 use App\Models\Notification;
+use App\Services\MailService;
 
 class SeasonRegistrationController extends Controller
 {
@@ -25,6 +26,8 @@ class SeasonRegistrationController extends Controller
             'athlete_ids'   => 'required|array|min:1',
             'athlete_ids.*' => 'string',
         ]);
+
+        $season->load('club');
 
         $manager  = $request->user();
         $created  = 0;
@@ -64,6 +67,9 @@ class SeasonRegistrationController extends Controller
                 'is_read' => false,
                 'at'      => now()->toDateTimeString(),
             ]);
+
+            $athleteUser = User::find($athlete->user_id);
+            if ($athleteUser) MailService::seasonInviteToAthlete($athleteUser, $season->club?->name ?? '', $season->name, $season->fee_cents);
 
             $created++;
         }
@@ -132,6 +138,10 @@ class SeasonRegistrationController extends Controller
                     'is_read' => false,
                     'at'      => now()->toDateTimeString(),
                 ]);
+            }
+
+            foreach ($managers as $mgr) {
+                MailService::seasonRsvpToManager($mgr, $user, $reg->season->name);
             }
 
             return response()->json(['ok' => true, 'method' => 'manual']);

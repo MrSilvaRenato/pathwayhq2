@@ -9,6 +9,8 @@ use App\Models\VolunteeringSignup;
 use App\Models\Notification;
 use App\Models\User;
 use App\Models\Athlete;
+use App\Models\Club;
+use App\Services\MailService;
 
 class VolunteeringController extends Controller
 {
@@ -116,6 +118,14 @@ class VolunteeringController extends Controller
                 $body ?: 'Head to the Volunteering page to sign up.',
                 '/volunteering'
             );
+        }
+
+        $club = Club::find($clubId);
+        $clubName = $club?->name ?? 'Your club';
+        $allMembers = \App\Models\User::whereIn('id', $this->allClubMembers($clubId))->get();
+        foreach ($allMembers as $member) {
+            if ($member->id === $request->user()->id) continue;
+            MailService::volunteeringCreatedToMember($member, $clubName, $data['title'], $data['date'] ?? null, $data['location'] ?? null);
         }
 
         return response()->json($volunteering, 201);
@@ -239,6 +249,10 @@ class VolunteeringController extends Controller
                 $staffBody,
                 '/volunteering'
             );
+        }
+
+        foreach ($this->clubStaff($clubId) as $staff) {
+            MailService::volunteeringSignupToManager($staff, $user, $volunteering->title, $volunteering->date);
         }
 
         // 3. If now full, send a "full" notification to admins

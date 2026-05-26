@@ -24,6 +24,7 @@ use App\Models\Volunteering;
 use App\Models\VolunteeringSignup;
 use App\Models\Notification;
 use App\Models\ActivityLog;
+use App\Services\MailService;
 
 class AdminController extends Controller
 {
@@ -322,6 +323,12 @@ class AdminController extends Controller
                 'is_read' => false,
                 'at'      => now()->toDateTimeString(),
             ]);
+        }
+
+        $adminUser = $request->user();
+        $broadcastUsers = User::whereIn('id', $userIds)->get();
+        foreach ($broadcastUsers as $u) {
+            MailService::broadcastToAthlete($u, $adminUser->full_name, $data['title'], $data['body'], $data['link'] ?? null);
         }
 
         ActivityLog::record(

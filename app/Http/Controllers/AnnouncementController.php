@@ -7,6 +7,9 @@ use Illuminate\Support\Str;
 use App\Models\Announcement;
 use App\Models\Athlete;
 use App\Models\Notification;
+use App\Models\Club;
+use App\Models\User;
+use App\Services\MailService;
 
 class AnnouncementController extends Controller
 {
@@ -91,6 +94,9 @@ class AnnouncementController extends Controller
         ];
         $notifEmoji = $data['emoji'] ?? $categoryEmojis[$data['category'] ?? 'general'] ?? '📢';
 
+        $club = Club::find($clubId);
+        $clubName = $club?->name ?? 'Your club';
+
         foreach ($athletes as $athlete) {
             Notification::create([
                 'id'      => (string) Str::uuid(),
@@ -101,6 +107,8 @@ class AnnouncementController extends Controller
                 'is_read' => false,
                 'at'      => now()->toDateTimeString(),
             ]);
+            $athleteUser = User::find($athlete->user_id);
+            if ($athleteUser) MailService::announcementToAthlete($athleteUser, $clubName, $data['title'], $data['body']);
         }
 
         return response()->json($announcement, 201);
