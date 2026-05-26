@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useAuth } from '../../contexts/AuthContext'
 import api from '../../lib/api'
 import { colors, font, spacing, radius } from '../../lib/theme'
+import ImageUpload from '../../components/ImageUpload'
 
 // ── Category config ────────────────────────────────────────────────────────────
 const CATEGORIES = {
@@ -308,23 +309,19 @@ function ComposeModal({ initial, onClose, onSave }) {
               placeholderTextColor={colors.textMuted}
             />
 
-            {/* Hero image URL */}
+            {/* Hero image upload */}
             <TouchableOpacity style={styles.imageToggleRow} onPress={() => setShowImage(v => !v)}>
               <Ionicons name="image-outline" size={16} color={colors.textSecondary} />
               <Text style={styles.imageToggleText}>
-                {showImage ? 'Remove hero image' : 'Add hero image'}
+                {showImage ? 'Hide hero image' : 'Add hero image'}
               </Text>
               <Ionicons name={showImage ? 'chevron-up' : 'chevron-down'} size={14} color={colors.textMuted} />
             </TouchableOpacity>
             {showImage && (
-              <TextInput
-                style={styles.input}
-                value={form.image_url}
-                onChangeText={v => setForm(p => ({ ...p, image_url: v }))}
-                placeholder="https://…"
-                placeholderTextColor={colors.textMuted}
-                autoCapitalize="none"
-                keyboardType="url"
+              <ImageUpload
+                type="announcement"
+                value={form.image_url || null}
+                onChange={url => setForm(p => ({ ...p, image_url: url ?? '' }))}
               />
             )}
 
