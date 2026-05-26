@@ -15,16 +15,26 @@ class MailService
     {
         $key = config('services.resend.key');
         if (empty($key)) {
+            Log::warning('[MailService] RESEND_API_KEY is not set — email skipped', compact('to', 'subject'));
             return;
         }
 
         try {
-            Http::withToken($key)->post('https://api.resend.com/emails', [
+            $response = Http::withToken($key)->post('https://api.resend.com/emails', [
                 'from'    => config('mail.from.name') . ' <' . config('mail.from.address') . '>',
                 'to'      => ["{$toName} <{$to}>"],
                 'subject' => $subject,
                 'html'    => $html,
             ]);
+
+            if ($response->failed()) {
+                Log::error('[MailService] Resend API error', [
+                    'to'      => $to,
+                    'subject' => $subject,
+                    'status'  => $response->status(),
+                    'body'    => $response->body(),
+                ]);
+            }
         } catch (\Throwable $e) {
             Log::error('[MailService] Failed to send email', [
                 'to'      => $to,
