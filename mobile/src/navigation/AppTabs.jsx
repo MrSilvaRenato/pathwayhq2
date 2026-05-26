@@ -224,12 +224,21 @@ export default function AppTabs() {
           title: 'Awards',
           tabBarIcon: ({ color, size }) => <TabIcon name="trophy-outline" color={color} size={size} />,
         }} />
-        <Tab.Screen name="More" options={{
-          title: 'More',
-          tabBarIcon: ({ color, size }) => (
-            <BadgeIcon name="ellipsis-horizontal-outline" color={color} size={size} count={pendingCount} />
-          ),
-        }}>
+        <Tab.Screen
+          name="More"
+          options={{
+            title: 'More',
+            tabBarIcon: ({ color, size }) => (
+              <BadgeIcon name="ellipsis-horizontal-outline" color={color} size={size} count={pendingCount} />
+            ),
+          }}
+          listeners={({ navigation }) => ({
+            tabPress: (e) => {
+              e.preventDefault()
+              navigation.navigate('More', { screen: 'MoreList' })
+            },
+          })}
+        >
           {() => <MoreManagerStack pendingCount={pendingCount} />}
         </Tab.Screen>
       </Tab.Navigator>
