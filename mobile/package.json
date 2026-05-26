@@ -1,7 +1,7 @@
 {
   "name": "pathwayhq-mobile",
   "version": "1.0.0",
-  "main": "App.jsx",
+  "main": "index.js",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
