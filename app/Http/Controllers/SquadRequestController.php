@@ -20,7 +20,7 @@ class SquadRequestController extends Controller
             SquadRequest::where('club_id', $clubId)
                 ->where('status', 'pending')
                 ->with([
-                    'athlete:id,first_name,last_name,ftem_phase',
+                    'athlete:id,first_name,last_name,ftem_phase,avatar_url',
                     'squad:id,name',
                 ])
                 ->orderByDesc('created_at')

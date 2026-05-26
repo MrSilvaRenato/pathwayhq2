@@ -36,8 +36,10 @@ function AttendanceModal({ event, onClose }) {
       <div className="space-y-1.5">
         {people.map((p, i) => (
           <div key={i} className="flex items-center gap-2.5 min-h-[40px]">
-            <div className={`h-9 w-9 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${bg} ${iconColor}`}>
-              {initials(p.name)}
+            <div className={`h-9 w-9 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${bg} ${iconColor} overflow-hidden`}>
+              {p.avatar_url
+                ? <img src={p.avatar_url} alt={p.name} className="h-full w-full object-cover" />
+                : initials(p.name)}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-slate-800 truncate leading-tight">{p.name}</p>
@@ -55,8 +57,10 @@ function AttendanceModal({ event, onClose }) {
       <div className="grid grid-cols-2 gap-1.5">
         {people.map((p, i) => (
           <div key={i} className={`flex items-center gap-2 rounded-xl px-2.5 py-2 ${bg} min-w-0`}>
-            <div className={`h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 bg-white/60 ${iconColor}`}>
-              {initials(p.name)}
+            <div className={`h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 bg-white/60 ${iconColor} overflow-hidden`}>
+              {p.avatar_url
+                ? <img src={p.avatar_url} alt={p.name} className="h-full w-full object-cover" />
+                : initials(p.name)}
             </div>
             <span className={`text-xs font-semibold truncate ${iconColor.replace('text-', 'text-').replace('-600','-800').replace('-500','-700').replace('-500','-700')}`}>
               {p.name.split(' ')[0]}

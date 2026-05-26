@@ -215,14 +215,22 @@ class EventController extends Controller
             ->with('user:id,full_name,email')
             ->get();
 
+        // Pre-fetch avatars for all users in one query
+        $userIds = $rsvps->pluck('user_id')->filter()->unique()->values();
+        $avatars = \App\Models\Athlete::whereIn('user_id', $userIds)
+            ->whereNotNull('avatar_url')
+            ->get(['user_id', 'avatar_url'])
+            ->keyBy('user_id');
+
         $grouped = ['yes' => [], 'maybe' => [], 'no' => []];
         foreach ($rsvps as $r) {
             $status = $r->status;
             if (!isset($grouped[$status])) continue;
             $grouped[$status][] = [
-                'name'  => $r->user?->full_name ?? 'Unknown',
-                'email' => $r->user?->email ?? '',
-                'initials' => collect(explode(' ', $r->user?->full_name ?? '?'))
+                'name'       => $r->user?->full_name ?? 'Unknown',
+                'email'      => $r->user?->email ?? '',
+                'avatar_url' => $avatars[$r->user_id]?->avatar_url ?? null,
+                'initials'   => collect(explode(' ', $r->user?->full_name ?? '?'))
                     ->map(fn($w) => strtoupper($w[0] ?? ''))
                     ->implode(''),
             ];

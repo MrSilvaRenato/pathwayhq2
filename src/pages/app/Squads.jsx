@@ -206,8 +206,10 @@ function PendingRequests({ onApproved }) {
       <div className="divide-y divide-amber-100">
         {requests.map(r => (
           <div key={r.id} className="flex items-center gap-3 px-4 py-3">
-            <div className="h-9 w-9 shrink-0 rounded-full bg-amber-200 flex items-center justify-center text-xs font-black text-amber-800">
-              {initials(r.athlete?.first_name, r.athlete?.last_name)}
+            <div className="h-9 w-9 shrink-0 rounded-full bg-amber-200 flex items-center justify-center text-xs font-black text-amber-800 overflow-hidden">
+              {r.athlete?.avatar_url
+                ? <img src={r.athlete.avatar_url} alt={r.athlete.first_name} className="h-full w-full object-cover" />
+                : initials(r.athlete?.first_name, r.athlete?.last_name)}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-slate-800 truncate">
@@ -287,8 +289,10 @@ function AddAthletePicker({ squad, currentAthletes, onAdded, onCancel }) {
         <ul className="space-y-1.5 max-h-52 overflow-y-auto">
           {available.map(a => (
             <li key={a.id} className="flex items-center gap-3 rounded-xl bg-white border border-slate-100 px-3 py-2.5 hover:border-slate-200 transition-colors">
-              <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-xs font-black text-emerald-700 shrink-0">
-                {initials(a.first_name, a.last_name)}
+              <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-xs font-black text-emerald-700 shrink-0 overflow-hidden">
+                {a.avatar_url
+                  ? <img src={a.avatar_url} alt={a.first_name} className="h-full w-full object-cover" />
+                  : initials(a.first_name, a.last_name)}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-slate-800 truncate">{a.first_name} {a.last_name}</p>
@@ -434,8 +438,10 @@ function RosterPanel({ squad, isAdmin, onClose, onAthleteRemoved, onAthleteAdded
                 <li key={a.id} className="px-5 py-3.5">
                   <div className="flex items-center gap-3">
                     {/* Avatar */}
-                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-sm font-black text-slate-600 shrink-0 border border-slate-200">
-                      {initials(a.first_name, a.last_name)}
+                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-sm font-black text-slate-600 shrink-0 border border-slate-200 overflow-hidden">
+                      {a.avatar_url
+                        ? <img src={a.avatar_url} alt={a.first_name} className="h-full w-full object-cover" />
+                        : initials(a.first_name, a.last_name)}
                     </div>
                     {/* Info */}
                     <div className="flex-1 min-w-0">

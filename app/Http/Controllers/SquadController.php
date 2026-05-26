@@ -41,6 +41,7 @@ class SquadController extends Controller
                     'is_active'     => $a->is_active,
                     'sport'         => $a->sport,
                     'dob'           => $a->dob,
+                    'avatar_url'    => $a->avatar_url,
                     'contact_phone' => $a->user?->phone ?? $a->phone,
                     'contact_email' => $a->user?->email ?? $a->invite_email,
                     'invite_status' => $a->invite_status,

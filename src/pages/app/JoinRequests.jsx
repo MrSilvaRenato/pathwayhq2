@@ -189,8 +189,10 @@ export default function JoinRequests() {
                   const meta = STATUS_META[r.status] ?? STATUS_META.rejected
                   return (
                     <div key={r.id} className="px-5 py-3.5 flex items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 font-black text-xs select-none">
-                        {initials(r.user?.full_name)}
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 font-black text-xs select-none overflow-hidden">
+                        {r.user?.avatar_url
+                          ? <img src={r.user.avatar_url} alt={r.user.full_name} className="h-full w-full object-cover" />
+                          : initials(r.user?.full_name)}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-slate-700 truncate">{r.user?.full_name ?? '—'}</p>

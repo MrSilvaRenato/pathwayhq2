@@ -146,13 +146,13 @@ class ClubJoinRequestController extends Controller
             ->orderByDesc('created_at')
             ->get()
             ->map(function ($jr) {
-                // Attach the athlete's avatar if they have one
+                // Attach avatar from any athlete record for this user
                 if ($jr->user_id) {
-                    $athlete = \App\Models\Athlete::where('user_id', $jr->user_id)
-                        ->where('club_id', $jr->club_id)
+                    $avatarUrl = \App\Models\Athlete::where('user_id', $jr->user_id)
+                        ->whereNotNull('avatar_url')
                         ->value('avatar_url');
-                    if ($jr->user && $athlete) {
-                        $jr->user->avatar_url = $athlete;
+                    if ($jr->user && $avatarUrl) {
+                        $jr->user->avatar_url = $avatarUrl;
                     }
                 }
                 return $jr;
