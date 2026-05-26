@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
-  View, Text, ScrollView, StyleSheet, ActivityIndicator,
-  RefreshControl, TouchableOpacity, Image,
+  View, Text, ScrollView, Modal, Pressable, TouchableOpacity,
+  ActivityIndicator, RefreshControl, Image, StyleSheet, Dimensions,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -9,9 +9,9 @@ import { useAuth } from '../../contexts/AuthContext'
 import api from '../../lib/api'
 import { colors, font, spacing, radius } from '../../lib/theme'
 import { FTEM_PHASES, SPORTS } from '../../lib/constants'
-import Avatar from '../../components/Avatar'
-import Badge from '../../components/Badge'
-import Card from '../../components/Card'
+
+const SCREEN_W = Dimensions.get('window').width
+const STAT_W = (SCREEN_W - spacing.md * 2 - 8) / 3
 
 function greeting() {
   const h = new Date().getHours()
@@ -24,53 +24,237 @@ function todayLabel() {
   return new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-function formatDate(str) {
-  if (!str) return ''
-  const d = new Date(str)
-  return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
-}
-
-function formatTime(str) {
-  if (!str) return ''
-  const d = new Date(str)
-  return d.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: true })
-}
+function fmtDay(dt) { return new Date(dt).getDate() }
+function fmtMon(dt) { return new Date(dt).toLocaleDateString('en-AU', { month: 'short' }).toUpperCase() }
+function fmtTime(dt) { return new Date(dt).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: true }) }
+function fmtFull(dt) { return new Date(dt).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }) }
 
 function sportLabel(value) {
-  return SPORTS.find((s) => s.value === value)?.label ?? value ?? '—'
+  return SPORTS.find(s => s.value === value)?.label ?? value ?? '—'
 }
 
-function ftemColor(phase) {
-  if (!phase) return 'slate'
-  if (phase.startsWith('F')) return 'slate'
-  if (phase.startsWith('T')) return 'blue'
-  if (phase.startsWith('E')) return 'green'
-  if (phase === 'M') return 'amber'
-  return 'slate'
+function initials(name) {
+  if (!name) return '?'
+  return (name).split(' ').map(n => n[0] ?? '').join('').slice(0, 2).toUpperCase() || '?'
 }
 
-function StatPill({ iconName, value, label }) {
+const COMPACT_THRESHOLD = 7
+
+function SkeletonBlock({ width, height, style }) {
   return (
-    <View style={styles.statPill}>
-      <Ionicons name={iconName} size={16} color={colors.primary} />
-      <Text style={styles.statValue}>{value ?? '—'}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
+    <View style={[{ width: width ?? '100%', height: height ?? 16, backgroundColor: '#e5e7eb', borderRadius: radius.md }, style]} />
   )
 }
 
-function FtemBar({ phase, count, total }) {
-  const pct = total > 0 ? count / total : 0
+function SkeletonLoader() {
   return (
-    <View style={styles.ftemRow}>
-      <Text style={styles.ftemLabel}>{phase}</Text>
-      <View style={styles.ftemTrack}>
-        <View style={[styles.ftemFill, { width: `${Math.round(pct * 100)}%` }]} />
+    <ScrollView contentContainerStyle={{ padding: spacing.md, paddingTop: spacing.sm }} showsVerticalScrollIndicator={false}>
+      <SkeletonBlock height={28} width="60%" style={{ marginBottom: 6 }} />
+      <SkeletonBlock height={12} width="40%" style={{ marginBottom: spacing.md }} />
+      <SkeletonBlock height={80} style={{ borderRadius: radius.lg, marginBottom: spacing.md }} />
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: spacing.md }}>
+        {[0, 1, 2, 3, 4].map(i => (
+          <SkeletonBlock key={i} width={STAT_W} height={76} style={{ borderRadius: radius.lg }} />
+        ))}
       </View>
-      <Text style={styles.ftemCount}>{count}</Text>
-    </View>
+      <SkeletonBlock height={14} width="45%" style={{ marginBottom: spacing.sm }} />
+      {[0, 1, 2].map(i => <SkeletonBlock key={i} height={68} style={{ borderRadius: radius.lg, marginBottom: spacing.sm }} />)}
+      <SkeletonBlock height={14} width="40%" style={{ marginBottom: spacing.sm, marginTop: spacing.sm }} />
+      {[0, 1].map(i => <SkeletonBlock key={i} height={48} style={{ borderRadius: radius.lg, marginBottom: spacing.sm }} />)}
+      <View style={{ height: spacing.xl }} />
+    </ScrollView>
   )
 }
+
+function AttendanceModal({ event, onClose }) {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.get(`/events/${event.id}/attendees`)
+      .then(r => setData(r.data))
+      .catch(() => setData({ yes: [], maybe: [], no: [], total: 0 }))
+      .finally(() => setLoading(false))
+  }, [event.id])
+
+  function StatPill({ value, label }) {
+    return (
+      <View style={aStyles.statPill}>
+        <Text style={aStyles.statValue}>{value}</Text>
+        <Text style={aStyles.statLabel}>{label}</Text>
+      </View>
+    )
+  }
+
+  function AvatarCircle({ person, bg, textColor }) {
+    if (person.avatar_url) {
+      return <Image source={{ uri: person.avatar_url }} style={[aStyles.avatarImg, { backgroundColor: bg }]} />
+    }
+    return (
+      <View style={[aStyles.avatarCircle, { backgroundColor: bg }]}>
+        <Text style={[aStyles.avatarInitials, { color: textColor }]}>{initials(person.name)}</Text>
+      </View>
+    )
+  }
+
+  function FullList({ people, bg, textColor }) {
+    return (
+      <View style={{ gap: 6 }}>
+        {people.map((p, i) => (
+          <View key={i} style={aStyles.fullRow}>
+            <AvatarCircle person={p} bg={bg} textColor={textColor} />
+            <View style={{ flex: 1 }}>
+              <Text style={aStyles.fullName} numberOfLines={1}>{p.name}</Text>
+              {p.email ? <Text style={aStyles.fullEmail} numberOfLines={1}>{p.email}</Text> : null}
+            </View>
+          </View>
+        ))}
+      </View>
+    )
+  }
+
+  function ChipGrid({ people, bg, textColor }) {
+    const rows = []
+    for (let i = 0; i < people.length; i += 2) {
+      rows.push(people.slice(i, i + 2))
+    }
+    return (
+      <View style={{ gap: 6 }}>
+        {rows.map((row, ri) => (
+          <View key={ri} style={{ flexDirection: 'row', gap: 6 }}>
+            {row.map((p, pi) => (
+              <View key={pi} style={[aStyles.chip, { backgroundColor: bg, flex: 1 }]}>
+                <AvatarCircle person={p} bg="rgba(255,255,255,0.6)" textColor={textColor} />
+                <Text style={[aStyles.chipName, { color: textColor }]} numberOfLines={1}>
+                  {p.name.split(' ')[0]}
+                </Text>
+              </View>
+            ))}
+            {row.length === 1 ? <View style={{ flex: 1 }} /> : null}
+          </View>
+        ))}
+      </View>
+    )
+  }
+
+  function Section({ label, people, iconName, iconColor, bg, textColor }) {
+    if (!people || people.length === 0) return null
+    const compact = people.length >= COMPACT_THRESHOLD
+    return (
+      <View style={{ marginBottom: spacing.md }}>
+        <View style={aStyles.sectionHeader}>
+          <Ionicons name={iconName} size={14} color={iconColor} />
+          <Text style={[aStyles.sectionLabel, { color: iconColor }]}>{label}</Text>
+          <View style={[aStyles.countBadge, { backgroundColor: bg }]}>
+            <Text style={[aStyles.countText, { color: iconColor }]}>{people.length}</Text>
+          </View>
+        </View>
+        {compact
+          ? <ChipGrid people={people} bg={bg} textColor={textColor} />
+          : <FullList people={people} bg={bg} textColor={textColor} />
+        }
+      </View>
+    )
+  }
+
+  return (
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={aStyles.backdrop} onPress={onClose}>
+        <Pressable style={aStyles.sheet} onPress={e => e.stopPropagation()}>
+          <View style={aStyles.handle} />
+          <View style={aStyles.header}>
+            <View style={aStyles.headerTop}>
+              <View style={{ flex: 1 }}>
+                <Text style={aStyles.sessionLabel}>SESSION ATTENDANCE</Text>
+                <Text style={aStyles.eventTitle} numberOfLines={2}>{event.title}</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Ionicons name="time-outline" size={12} color="rgba(196,181,253,1)" />
+                    <Text style={aStyles.eventMeta}>{fmtFull(event.start_time)} · {fmtTime(event.start_time)}</Text>
+                  </View>
+                  {event.squad_name ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Ionicons name="people-outline" size={12} color="rgba(196,181,253,1)" />
+                      <Text style={aStyles.eventMeta}>{event.squad_name}</Text>
+                    </View>
+                  ) : null}
+                </View>
+              </View>
+              <TouchableOpacity style={aStyles.closeBtn} onPress={onClose}>
+                <Ionicons name="close" size={16} color="#fff" />
+              </TouchableOpacity>
+            </View>
+            <View style={aStyles.statRow}>
+              {loading ? (
+                <ActivityIndicator color="rgba(196,181,253,1)" size="small" style={{ flex: 1 }} />
+              ) : data ? (
+                <>
+                  <StatPill value={data.yes?.length ?? 0} label="Going" />
+                  <View style={aStyles.statDivider} />
+                  <StatPill value={data.maybe?.length ?? 0} label="Maybe" />
+                  <View style={aStyles.statDivider} />
+                  <StatPill value={data.no?.length ?? 0} label="Can't go" />
+                  <View style={aStyles.statDivider} />
+                  <StatPill value={data.total ?? 0} label="Replied" />
+                </>
+              ) : null}
+            </View>
+          </View>
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.md, paddingBottom: spacing.xl }}>
+            {loading ? (
+              <View style={{ alignItems: 'center', paddingVertical: spacing.xl }}>
+                <ActivityIndicator color={colors.primary} size="large" />
+              </View>
+            ) : !data || data.total === 0 ? (
+              <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+                <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
+                  <Ionicons name="people-outline" size={24} color="#cbd5e1" />
+                </View>
+                <Text style={{ fontSize: font.sm, fontWeight: '600', color: '#64748b' }}>No responses yet</Text>
+                <Text style={{ fontSize: font.xs, color: colors.textMuted, marginTop: 4 }}>Athletes haven't replied to this session</Text>
+              </View>
+            ) : (
+              <>
+                <Section label="Going" people={data.yes} iconName="checkmark-circle-outline" iconColor="#059669" bg="#d1fae5" textColor="#065f46" />
+                <Section label="Maybe" people={data.maybe} iconName="help-circle-outline" iconColor="#d97706" bg="#fef3c7" textColor="#92400e" />
+                <Section label="Can't make it" people={data.no} iconName="close-circle-outline" iconColor="#dc2626" bg="#fee2e2" textColor="#991b1b" />
+              </>
+            )}
+          </ScrollView>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  )
+}
+
+const aStyles = StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '90%', overflow: 'hidden' },
+  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#e2e8f0', alignSelf: 'center', marginTop: 10, marginBottom: 4 },
+  header: { backgroundColor: '#7c3aed', paddingHorizontal: spacing.md, paddingTop: 10, paddingBottom: 14 },
+  headerTop: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  sessionLabel: { fontSize: 10, fontWeight: '700', color: 'rgba(196,181,253,1)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 },
+  eventTitle: { fontSize: font.base, fontWeight: '800', color: '#fff', lineHeight: 21 },
+  eventMeta: { fontSize: font.xs, color: 'rgba(196,181,253,1)' },
+  closeBtn: { width: 36, height: 36, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+  statRow: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.2)', marginTop: 14, paddingTop: 12, alignItems: 'center' },
+  statPill: { flex: 1, alignItems: 'center' },
+  statValue: { fontSize: font.xl, fontWeight: '900', color: '#fff', lineHeight: 26 },
+  statLabel: { fontSize: 10, color: 'rgba(196,181,253,1)', marginTop: 2 },
+  statDivider: { width: 1, height: 32, backgroundColor: 'rgba(255,255,255,0.2)' },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
+  sectionLabel: { fontSize: font.xs, fontWeight: '700', flex: 1 },
+  countBadge: { borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 2 },
+  countText: { fontSize: 10, fontWeight: '900' },
+  fullRow: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 40 },
+  avatarCircle: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  avatarImg: { width: 36, height: 36, borderRadius: 18 },
+  avatarInitials: { fontSize: 11, fontWeight: '700' },
+  fullName: { fontSize: font.sm, fontWeight: '600', color: '#1e293b' },
+  fullEmail: { fontSize: 11, color: '#94a3b8' },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 8 },
+  chipName: { fontSize: font.xs, fontWeight: '600', flex: 1 },
+})
 
 export default function ManagerDashboardScreen() {
   const { user } = useAuth()
@@ -82,6 +266,7 @@ export default function ManagerDashboardScreen() {
   const [volunteering, setVolunteering] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [attendanceModal, setAttendanceModal] = useState(null)
 
   async function fetchAll() {
     try {
@@ -109,12 +294,12 @@ export default function ManagerDashboardScreen() {
       }
       if (an.status === 'fulfilled') {
         const list = Array.isArray(an.value.data) ? an.value.data : an.value.data?.data ?? []
-        setAnnouncements(list.slice(0, 4))
+        setAnnouncements(list.slice(0, 3))
       }
       if (vo.status === 'fulfilled') {
         const list = Array.isArray(vo.value.data) ? vo.value.data : vo.value.data?.data ?? []
         const now = new Date()
-        setVolunteering(list.filter(v => new Date(v.date) >= now).slice(0, 3))
+        setVolunteering(list.filter(v => !v.date || new Date(v.date) >= now).slice(0, 3))
       }
     } finally {
       setLoading(false)
@@ -131,14 +316,15 @@ export default function ManagerDashboardScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
+      <SafeAreaView style={styles.safe} edges={['bottom']}>
+        <SkeletonLoader />
+      </SafeAreaView>
     )
   }
 
   const activeAthletes = athletes.filter(a => a.is_active !== false && a.invite_status === 'accepted')
   const pendingInvites = athletes.filter(a => a.invite_status === 'pending')
+  const volNeeded = volunteering.filter(v => !v.spots || (v.signed_up ?? 0) < v.spots).length
 
   const ftemCounts = {}
   activeAthletes.forEach(a => {
@@ -147,6 +333,14 @@ export default function ManagerDashboardScreen() {
   const ftemPhases = Object.keys(FTEM_PHASES)
   const ftemTotal = Object.values(ftemCounts).reduce((s, n) => s + n, 0)
 
+  const stats = [
+    { iconName: 'people-outline', value: athletes.length, label: 'Athletes', color: '#3b82f6', bg: '#eff6ff' },
+    { iconName: 'time-outline', value: pendingInvites.length, label: 'Pending', color: '#d97706', bg: '#fffbeb' },
+    { iconName: 'calendar-outline', value: events.length, label: 'Sessions', color: '#7c3aed', bg: '#f5f3ff' },
+    { iconName: 'trophy-outline', value: milestones.length, label: 'Milestones', color: '#d97706', bg: '#fffbeb' },
+    { iconName: 'heart-outline', value: volNeeded, label: 'Volunteer', color: '#059669', bg: '#ecfdf5' },
+  ]
+
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       <ScrollView
@@ -154,154 +348,200 @@ export default function ManagerDashboardScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         showsVerticalScrollIndicator={false}
       >
-        {/* Greeting */}
         <View style={styles.greetingRow}>
           <Text style={styles.greetingText}>{greeting()}, {user?.full_name?.split(' ')[0] ?? 'Coach'} 👋</Text>
           <Text style={styles.greetingDate}>{todayLabel()}</Text>
         </View>
 
-        {/* Club banner */}
         {club ? (
           <View style={styles.clubBanner}>
             {club.logo_url ? (
               <Image source={{ uri: club.logo_url }} style={styles.clubLogo} resizeMode="contain" />
             ) : (
-              <Avatar name={club.name} size="md" />
+              <View style={styles.clubIconWrap}>
+                <Ionicons name="business-outline" size={28} color="rgba(255,255,255,0.8)" />
+              </View>
             )}
             <View style={styles.clubInfo}>
-              <Text style={styles.clubSub}>YOUR CLUB</Text>
-              <Text style={styles.clubName}>{club.name}</Text>
-              <Text style={styles.clubSubDetail}>
-                {[sportLabel(club.sport), club.city ? `${club.city}, ${club.state ?? ''}` : null].filter(Boolean).join(' · ')}
+              <Text style={styles.clubLabel}>YOUR CLUB</Text>
+              <Text style={styles.clubName} numberOfLines={1}>{club.name}</Text>
+              <Text style={styles.clubDetail} numberOfLines={1}>
+                {[sportLabel(club.sport), club.city ? `${club.city}${club.state ? `, ${club.state}` : ''}` : null].filter(Boolean).join(' · ')}
               </Text>
             </View>
           </View>
         ) : null}
 
-        {/* Stats row */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statsScroll} contentContainerStyle={styles.statsRow}>
-          <StatPill iconName="people-outline"     value={activeAthletes.length} label="Athletes" />
-          <StatPill iconName="person-add-outline" value={pendingInvites.length} label="Pending Invites" />
-          <StatPill iconName="calendar-outline"   value={events.length}         label="Upcoming Sessions" />
-          <StatPill iconName="trophy-outline"     value={milestones.length}     label="Milestones" />
-          <StatPill iconName="heart-outline"      value={volunteering.length}   label="Volunteer Spots" />
-        </ScrollView>
-
-        {/* Upcoming sessions */}
-        {events.length > 0 ? (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="calendar-outline" size={16} color={colors.primary} />
-              <Text style={styles.sectionTitle}>Upcoming Sessions</Text>
+        <View style={styles.statsGrid}>
+          {stats.map((s, i) => (
+            <View key={i} style={styles.statCard}>
+              <View style={[styles.statIconWrap, { backgroundColor: s.bg }]}>
+                <Ionicons name={s.iconName} size={16} color={s.color} />
+              </View>
+              <Text style={styles.statValue}>{s.value ?? '—'}</Text>
+              <Text style={styles.statLabel}>{s.label}</Text>
             </View>
-            {events.map((ev, i) => {
+          ))}
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>📅 Upcoming Sessions</Text>
+            <TouchableOpacity>
+              <Text style={styles.sectionLink}>Full calendar →</Text>
+            </TouchableOpacity>
+          </View>
+          {events.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="calendar-outline" size={36} color="#cbd5e1" />
+              <Text style={styles.emptyText}>No upcoming sessions</Text>
+              <TouchableOpacity>
+                <Text style={styles.emptyLink}>Schedule one →</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            events.map((ev, i) => {
               const d = new Date(ev.start_time)
               return (
-                <Card key={ev.id} style={[styles.eventCard, i === 0 && styles.eventCardFirst]}>
+                <TouchableOpacity
+                  key={ev.id}
+                  style={[styles.eventCard, i === 0 && styles.eventCardFirst]}
+                  onPress={() => setAttendanceModal(ev)}
+                  activeOpacity={0.75}
+                >
+                  {i === 0 ? (
+                    <View style={styles.nextBadge}>
+                      <Text style={styles.nextBadgeText}>Next</Text>
+                    </View>
+                  ) : null}
                   <View style={styles.eventRow}>
-                    <View style={styles.dateBadge}>
-                      <Text style={styles.dateDay}>{d.getDate()}</Text>
-                      <Text style={styles.dateMon}>{d.toLocaleString('en-AU', { month: 'short' })}</Text>
+                    <View style={[styles.dateBadge, i === 0 && styles.dateBadgeFirst]}>
+                      <Text style={[styles.dateDay, i === 0 && styles.dateDayFirst]}>{fmtDay(ev.start_time)}</Text>
+                      <Text style={[styles.dateMon, i === 0 && styles.dateMonFirst]}>{fmtMon(ev.start_time)}</Text>
                     </View>
                     <View style={styles.eventInfo}>
-                      <Text style={styles.eventTitle}>{ev.title}</Text>
-                      <Text style={styles.eventTime}>{formatTime(ev.start_time)}</Text>
-                      {ev.location ? <Text style={styles.eventMeta}>{ev.location}</Text> : null}
-                      {ev.squad_name ? <Text style={styles.eventMeta}>{ev.squad_name}</Text> : null}
+                      <Text style={styles.eventTitle} numberOfLines={1}>{ev.title}</Text>
+                      <Text style={styles.eventTime}>{fmtTime(ev.start_time)}</Text>
+                      {ev.location ? <Text style={styles.eventMeta} numberOfLines={1}>{ev.location}</Text> : null}
+                      {ev.squad_name ? <Text style={styles.eventMeta} numberOfLines={1}>{ev.squad_name}</Text> : null}
                     </View>
                     {ev.rsvp_counts ? (
-                      <View style={styles.rsvpBadge}>
+                      <View style={styles.rsvpWrap}>
                         <Text style={styles.rsvpCount}>{ev.rsvp_counts.yes ?? 0}</Text>
                         <Text style={styles.rsvpLabel}>going</Text>
                       </View>
                     ) : null}
                   </View>
-                </Card>
+                </TouchableOpacity>
+              )
+            })
+          )}
+        </View>
+
+        {ftemTotal > 0 ? (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>📈 FTEM Spread</Text>
+              <TouchableOpacity>
+                <Text style={styles.sectionLink}>Analytics →</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.ftemCard}>
+              {ftemPhases.filter(p => ftemCounts[p] > 0).map(phase => {
+                const count = ftemCounts[phase]
+                const pct = ftemTotal > 0 ? Math.round((count / ftemTotal) * 100) : 0
+                const meta = FTEM_PHASES[phase]
+                return (
+                  <View key={phase} style={styles.ftemRow}>
+                    <View style={[styles.ftemPhaseBadge, { backgroundColor: meta?.bgColor ?? '#f1f5f9' }]}>
+                      <Text style={[styles.ftemPhaseText, { color: meta?.textColor ?? '#334155' }]}>{phase}</Text>
+                    </View>
+                    <View style={styles.ftemTrack}>
+                      <View style={[styles.ftemFill, { width: `${pct}%` }]} />
+                    </View>
+                    <Text style={styles.ftemCount}>{count}</Text>
+                    <Text style={styles.ftemPct}>{pct}%</Text>
+                  </View>
+                )
+              })}
+              <View style={styles.ftemFooter}>
+                <Text style={styles.ftemFooterText}>{athletes.length} total · {activeAthletes.length} active</Text>
+              </View>
+            </View>
+          </View>
+        ) : null}
+
+        {announcements.length > 0 ? (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>📢 Announcements</Text>
+              <TouchableOpacity>
+                <Text style={styles.sectionLink}>Manage →</Text>
+              </TouchableOpacity>
+            </View>
+            {announcements.map(a => (
+              <View key={a.id} style={styles.annoCard}>
+                <Text style={styles.annoTitle} numberOfLines={1}>{a.title}</Text>
+                {a.body ? <Text style={styles.annoBody} numberOfLines={1}>{a.body}</Text> : null}
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        {milestones.length > 0 ? (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>🏆 Recent Milestones</Text>
+              <TouchableOpacity>
+                <Text style={styles.sectionLink}>All →</Text>
+              </TouchableOpacity>
+            </View>
+            {milestones.map(m => {
+              const meta = FTEM_PHASES[m.ftem_phase]
+              return (
+                <View key={m.id} style={styles.milestoneCard}>
+                  <Ionicons name="trophy" size={14} color="#f59e0b" style={{ marginTop: 1 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.milestoneTitle} numberOfLines={1}>{m.title}</Text>
+                    {m.athlete_name ? <Text style={styles.milestoneSub}>{m.athlete_name}</Text> : null}
+                    <Text style={styles.milestoneMeta}>{fmtFull(m.achieved_at ?? m.date)}</Text>
+                  </View>
+                  {m.ftem_phase ? (
+                    <View style={[styles.ftemBadge, { backgroundColor: meta?.bgColor ?? '#f1f5f9' }]}>
+                      <Text style={[styles.ftemBadgeText, { color: meta?.textColor ?? '#334155' }]}>{m.ftem_phase}</Text>
+                    </View>
+                  ) : null}
+                </View>
               )
             })}
           </View>
         ) : null}
 
-        {/* FTEM spread */}
-        {ftemTotal > 0 ? (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="bar-chart-outline" size={16} color={colors.primary} />
-              <Text style={styles.sectionTitle}>FTEM Spread</Text>
-              <Text style={styles.sectionSub}>{ftemTotal} athletes</Text>
-            </View>
-            <Card>
-              {ftemPhases.filter(p => ftemCounts[p] > 0).map(phase => (
-                <FtemBar key={phase} phase={phase} count={ftemCounts[phase] ?? 0} total={ftemTotal} />
-              ))}
-            </Card>
-          </View>
-        ) : null}
-
-        {/* Recent announcements */}
-        {announcements.length > 0 ? (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="megaphone-outline" size={16} color={colors.primary} />
-              <Text style={styles.sectionTitle}>Announcements</Text>
-            </View>
-            {announcements.map(a => (
-              <Card key={a.id} style={styles.itemCard}>
-                <View style={styles.annoRow}>
-                  {a.pinned ? <Ionicons name="pin" size={13} color={colors.primary} style={{ marginRight: 4 }} /> : null}
-                  <Text style={styles.itemTitle} numberOfLines={1}>{a.title}</Text>
-                </View>
-                {a.body ? <Text style={styles.itemBody} numberOfLines={2}>{a.body}</Text> : null}
-                <Text style={styles.itemMeta}>{formatDate(a.posted_at ?? a.created_at)}</Text>
-              </Card>
-            ))}
-          </View>
-        ) : null}
-
-        {/* Recent milestones */}
-        {milestones.length > 0 ? (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="trophy-outline" size={16} color={colors.primary} />
-              <Text style={styles.sectionTitle}>Recent Milestones</Text>
-            </View>
-            {milestones.map(m => (
-              <Card key={m.id} style={styles.itemCard}>
-                <View style={styles.milestoneRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.itemTitle}>{m.title}</Text>
-                    {m.athlete_name ? <Text style={styles.itemMeta}>{m.athlete_name}</Text> : null}
-                    <Text style={styles.itemMeta}>{formatDate(m.achieved_at ?? m.date)}</Text>
-                  </View>
-                  {m.ftem_phase ? <Badge label={FTEM_PHASES[m.ftem_phase]?.label ?? m.ftem_phase} color={ftemColor(m.ftem_phase)} /> : null}
-                </View>
-              </Card>
-            ))}
-          </View>
-        ) : null}
-
-        {/* Volunteering */}
         {volunteering.length > 0 ? (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="heart-outline" size={16} color={colors.primary} />
-              <Text style={styles.sectionTitle}>Volunteer Spots</Text>
+              <Text style={styles.sectionTitle}>🤝 Volunteering</Text>
+              <TouchableOpacity>
+                <Text style={styles.sectionLink}>All →</Text>
+              </TouchableOpacity>
             </View>
             {volunteering.map(v => {
-              const remaining = v.spots - (v.signed_up ?? 0)
+              const spotsLeft = v.spots ? v.spots - (v.signed_up ?? 0) : null
+              const isFull = spotsLeft !== null && spotsLeft <= 0
               return (
-                <Card key={v.id} style={styles.itemCard}>
-                  <View style={styles.volRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.itemTitle}>{v.title}</Text>
-                      <Text style={styles.itemMeta}>{formatDate(v.date)}</Text>
-                    </View>
-                    <Badge
-                      label={remaining <= 0 ? 'Full' : `${remaining} spots`}
-                      color={remaining <= 0 ? 'slate' : 'green'}
-                    />
+                <View key={v.id} style={styles.volCard}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.volTitle} numberOfLines={1}>{v.title}</Text>
+                    {v.date ? <Text style={styles.volMeta}>{fmtFull(v.date)}</Text> : null}
                   </View>
-                </Card>
+                  {spotsLeft !== null ? (
+                    <View style={[styles.spotsBadge, { backgroundColor: isFull ? '#fee2e2' : '#d1fae5' }]}>
+                      <Text style={[styles.spotsText, { color: isFull ? '#dc2626' : '#059669' }]}>
+                        {isFull ? 'Full' : `${spotsLeft} left`}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
               )
             })}
           </View>
@@ -309,79 +549,132 @@ export default function ManagerDashboardScreen() {
 
         <View style={{ height: spacing.xl }} />
       </ScrollView>
+
+      {attendanceModal ? (
+        <AttendanceModal event={attendanceModal} onClose={() => setAttendanceModal(null)} />
+      ) : null}
     </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   content: { padding: spacing.md, paddingTop: spacing.sm },
 
   greetingRow: { marginBottom: spacing.md },
-  greetingText: { fontSize: font.lg, fontWeight: '800', color: colors.text },
+  greetingText: { fontSize: font.xl, fontWeight: '800', color: colors.text },
   greetingDate: { fontSize: font.xs, color: colors.textMuted, marginTop: 2 },
 
   clubBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: colors.primary, borderRadius: radius.lg,
+    backgroundColor: '#059669', borderRadius: radius.lg,
     padding: spacing.md, marginBottom: spacing.md,
   },
   clubLogo: { width: 56, height: 56, borderRadius: 12, backgroundColor: '#fff' },
+  clubIconWrap: {
+    width: 56, height: 56, borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.2)', borderWidth: 2, borderColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center', justifyContent: 'center',
+  },
   clubInfo: { flex: 1 },
-  clubSub: { fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: 0.8 },
-  clubName: { fontSize: font.lg, fontWeight: '800', color: '#fff', marginTop: 2 },
-  clubSubDetail: { fontSize: font.xs, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+  clubLabel: { fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: 1 },
+  clubName: { fontSize: font.xl, fontWeight: '800', color: '#fff', marginTop: 2 },
+  clubDetail: { fontSize: font.xs, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
 
-  statsScroll: { marginBottom: spacing.md, marginHorizontal: -spacing.md },
-  statsRow: { paddingHorizontal: spacing.md, gap: 10 },
-  statPill: {
-    alignItems: 'center', gap: 4,
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: spacing.md },
+  statCard: {
+    width: STAT_W, alignItems: 'center', gap: 4,
     backgroundColor: colors.surface, borderRadius: radius.lg,
-    paddingVertical: 12, paddingHorizontal: 16,
+    paddingVertical: 12, paddingHorizontal: 8,
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
-    minWidth: 88,
   },
-  statValue: { fontSize: font.xl, fontWeight: '800', color: colors.text },
+  statIconWrap: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  statValue: { fontSize: font.xl, fontWeight: '800', color: colors.text, lineHeight: 26 },
   statLabel: { fontSize: 10, color: colors.textMuted, fontWeight: '600', textAlign: 'center' },
 
   section: { marginBottom: spacing.md },
-  sectionHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.sm,
-  },
-  sectionTitle: { fontSize: font.base, fontWeight: '700', color: colors.text, flex: 1 },
-  sectionSub: { fontSize: font.xs, color: colors.textMuted },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
+  sectionTitle: { fontSize: font.base, fontWeight: '700', color: colors.text },
+  sectionLink: { fontSize: font.xs, color: colors.primary, fontWeight: '600' },
 
-  eventCard: { marginBottom: spacing.sm },
-  eventCardFirst: { borderLeftWidth: 3, borderLeftColor: colors.primary },
+  emptyState: { alignItems: 'center', paddingVertical: 28, gap: 6, backgroundColor: colors.surface, borderRadius: radius.lg },
+  emptyText: { fontSize: font.sm, color: '#94a3b8' },
+  emptyLink: { fontSize: font.xs, color: colors.primary, fontWeight: '600' },
+
+  eventCard: {
+    backgroundColor: colors.surface, borderRadius: radius.lg,
+    padding: spacing.md, marginBottom: spacing.sm,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
+    borderWidth: 1, borderColor: '#f1f5f9', position: 'relative',
+  },
+  eventCardFirst: { backgroundColor: '#f5f3ff', borderColor: '#e9d5ff' },
+  nextBadge: {
+    position: 'absolute', top: 10, right: 10,
+    backgroundColor: '#ede9fe', borderRadius: radius.full,
+    paddingHorizontal: 8, paddingVertical: 3,
+  },
+  nextBadgeText: { fontSize: 10, fontWeight: '700', color: '#7c3aed' },
   eventRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   dateBadge: {
     width: 44, height: 44, borderRadius: 12,
-    backgroundColor: colors.primaryLight, justifyContent: 'center', alignItems: 'center',
+    backgroundColor: '#e2e8f0', justifyContent: 'center', alignItems: 'center',
   },
-  dateDay: { fontSize: font.md, fontWeight: '800', color: colors.primary, lineHeight: 20 },
-  dateMon: { fontSize: 10, fontWeight: '600', color: colors.primary, textTransform: 'uppercase' },
+  dateBadgeFirst: { backgroundColor: '#7c3aed' },
+  dateDay: { fontSize: font.md, fontWeight: '800', color: '#475569', lineHeight: 20 },
+  dateDayFirst: { color: '#fff' },
+  dateMon: { fontSize: 10, fontWeight: '600', color: '#94a3b8', textTransform: 'uppercase' },
+  dateMonFirst: { color: 'rgba(196,181,253,1)' },
   eventInfo: { flex: 1 },
   eventTitle: { fontSize: font.base, fontWeight: '700', color: colors.text },
   eventTime: { fontSize: font.sm, color: colors.primary, marginTop: 1 },
   eventMeta: { fontSize: font.xs, color: colors.textMuted, marginTop: 1 },
-  rsvpBadge: { alignItems: 'center' },
+  rsvpWrap: { alignItems: 'center' },
   rsvpCount: { fontSize: font.lg, fontWeight: '800', color: colors.primary },
   rsvpLabel: { fontSize: 10, color: colors.textMuted },
 
+  ftemCard: {
+    backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
+  },
   ftemRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
-  ftemLabel: { fontSize: font.sm, fontWeight: '700', color: colors.textSecondary, width: 30 },
+  ftemPhaseBadge: { width: 34, borderRadius: 6, alignItems: 'center', paddingVertical: 3, paddingHorizontal: 2 },
+  ftemPhaseText: { fontSize: font.xs, fontWeight: '800' },
   ftemTrack: { flex: 1, height: 8, backgroundColor: colors.background, borderRadius: 4, overflow: 'hidden' },
   ftemFill: { height: '100%', backgroundColor: colors.primary, borderRadius: 4 },
-  ftemCount: { fontSize: font.xs, color: colors.textMuted, width: 24, textAlign: 'right' },
+  ftemCount: { fontSize: font.xs, fontWeight: '700', color: '#475569', width: 20, textAlign: 'right' },
+  ftemPct: { fontSize: 10, color: colors.textMuted, width: 30, textAlign: 'right' },
+  ftemFooter: { borderTopWidth: 1, borderTopColor: '#f8fafc', paddingTop: 8, marginTop: 2 },
+  ftemFooterText: { fontSize: font.xs, color: colors.textMuted },
 
-  itemCard: { marginBottom: spacing.sm },
-  itemTitle: { fontSize: font.base, fontWeight: '700', color: colors.text, marginBottom: 2 },
-  itemBody: { fontSize: font.sm, color: colors.textSecondary, lineHeight: 19 },
-  itemMeta: { fontSize: font.xs, color: colors.textMuted, marginTop: 4 },
+  annoCard: {
+    backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#dbeafe',
+    borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10, marginBottom: spacing.sm,
+  },
+  annoTitle: { fontSize: font.sm, fontWeight: '600', color: '#1e293b' },
+  annoBody: { fontSize: font.xs, color: '#64748b', marginTop: 2 },
 
-  annoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 2 },
-  milestoneRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
-  volRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  milestoneCard: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a',
+    borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 8, marginBottom: spacing.sm,
+  },
+  milestoneTitle: { fontSize: font.sm, fontWeight: '600', color: '#1e293b' },
+  milestoneSub: { fontSize: font.xs, color: '#64748b', marginTop: 1 },
+  milestoneMeta: { fontSize: 10, color: colors.textMuted, marginTop: 2 },
+  ftemBadge: { borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 3 },
+  ftemBadgeText: { fontSize: 10, fontWeight: '700' },
+
+  volCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.borderLight,
+    borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10, marginBottom: spacing.sm,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2, elevation: 1,
+  },
+  volTitle: { fontSize: font.sm, fontWeight: '600', color: colors.text },
+  volMeta: { fontSize: 10, color: colors.textMuted, marginTop: 2 },
+  spotsBadge: { borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 3 },
+  spotsText: { fontSize: 10, fontWeight: '700' },
 })
