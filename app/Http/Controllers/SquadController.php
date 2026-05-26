@@ -9,6 +9,8 @@ use App\Models\Athlete;
 use App\Models\User;
 use App\Models\Notification;
 use App\Models\SquadRequest;
+use App\Models\Club;
+use App\Services\MailService;
 
 class SquadController extends Controller
 {
@@ -82,11 +84,34 @@ class SquadController extends Controller
         $squad = Squad::where('id', $id)->where('club_id', $request->user()->club_id)->firstOrFail();
 
         // Verify athlete belongs to the same club
-        Athlete::where('id', $data['athlete_id'])
+        $athlete = Athlete::where('id', $data['athlete_id'])
             ->where('club_id', $request->user()->club_id)
+            ->with('user:id,full_name,email')
             ->firstOrFail();
 
+        // Skip notification if already in squad
+        $alreadyIn = $squad->athletes()->where('athletes.id', $athlete->id)->exists();
+
         $squad->athletes()->syncWithoutDetaching([$data['athlete_id']]);
+
+        if (!$alreadyIn && $athlete->user_id) {
+            $clubName = Club::find($request->user()->club_id)?->name ?? '';
+
+            Notification::create([
+                'id'      => (string) Str::uuid(),
+                'user_id' => $athlete->user_id,
+                'title'   => "🏅 You've been added to {$squad->name}",
+                'body'    => "You are now part of the {$squad->name} squad at {$clubName}.",
+                'link'    => '/dashboard',
+                'is_read' => false,
+                'at'      => now()->toDateTimeString(),
+            ]);
+
+            if ($athlete->user) {
+                MailService::squadAddedToAthlete($athlete->user, $squad->name, $clubName);
+            }
+        }
+
         return response()->json(['ok' => true]);
     }
 

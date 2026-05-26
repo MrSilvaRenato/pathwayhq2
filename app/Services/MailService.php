@@ -416,4 +416,36 @@ HTML
             Log::error('[MailService] seasonRsvpToManager failed', ['error' => $e->getMessage()]);
         }
     }
+
+    /**
+     * Notify an athlete they have been added to a squad.
+     */
+    public static function squadAddedToAthlete(User $athlete, string $squadName, string $clubName): void
+    {
+        $key = config('services.resend.key');
+        if (empty($key)) return;
+
+        try {
+            $athleteName   = $athlete->full_name ? explode(' ', $athlete->full_name)[0] : 'there';
+            $subject       = "You've been added to {$squadName}";
+            $escapedSquad  = htmlspecialchars($squadName, ENT_QUOTES, 'UTF-8');
+            $escapedClub   = htmlspecialchars($clubName, ENT_QUOTES, 'UTF-8');
+
+            $html = self::layout(
+                "You're now part of the {$squadName} squad",
+                <<<HTML
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#111827;">You've been added to a squad!</p>
+<p style="margin:0 0 16px;color:#4b5563;">Hi {$athleteName},</p>
+<p style="margin:0 0 16px;color:#4b5563;">Great news — <strong>{$escapedClub}</strong> has added you to the <strong>{$escapedSquad}</strong> squad. You're officially part of the group!</p>
+<p style="margin:0 0 16px;color:#4b5563;">Your coach will be in touch with training schedules, sessions, and any upcoming events for your squad. Keep an eye on your dashboard for updates.</p>
+<p style="margin:0;color:#4b5563;">Time to train hard and make your squad proud. See you out there!</p>
+HTML
+                . self::button('View my dashboard', self::appUrl('/dashboard'))
+            );
+
+            self::send($athlete->email, $athlete->full_name ?? $athlete->email, $subject, $html);
+        } catch (\Throwable $e) {
+            Log::error('[MailService] squadAddedToAthlete failed', ['error' => $e->getMessage()]);
+        }
+    }
 }
