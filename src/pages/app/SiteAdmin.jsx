@@ -596,18 +596,23 @@ function AthletesTab() {
 
 function BroadcastTab() {
   const toast = useToast()
-  const [clubs,    setClubs]    = useState([])
-  const [form,     setForm]     = useState({ title: '', body: '', link: '', target: 'all' })
-  const [sending,  setSending]  = useState(false)
-  const [lastSent, setLastSent] = useState(null)
+  const [clubs,      setClubs]      = useState([])
+  const [form,       setForm]       = useState({ title: '', body: '', link: '', target: 'all' })
+  const [confirming, setConfirming] = useState(false)
+  const [sending,    setSending]    = useState(false)
+  const [lastSent,   setLastSent]   = useState(null)
 
   useEffect(() => {
     api.get('/clubs/all').then(r => setClubs(r.data)).catch(() => {})
   }, [])
 
-  async function handleSend(e) {
+  function handleSend(e) {
     e.preventDefault()
-    if (!confirm(`Send this notification to the selected audience?`)) return
+    setConfirming(true)
+  }
+
+  async function confirmSend() {
+    setConfirming(false)
     setSending(true)
     try {
       const { data } = await api.post('/admin/broadcast', form)
@@ -629,6 +634,8 @@ function BroadcastTab() {
     { value: 'role:parent',     label: 'Parents only' },
     ...clubs.map(c => ({ value: `club:${c.id}`, label: `Club: ${c.name}` })),
   ]
+
+  const audienceLabel = targetOptions.find(o => o.value === form.target)?.label ?? form.target
 
   return (
     <div className="max-w-2xl">
@@ -665,11 +672,30 @@ function BroadcastTab() {
             <input value={form.link} onChange={e => setForm(p => ({ ...p, link: e.target.value }))}
               className={inputCls} placeholder="/dashboard or https://…" />
           </div>
-          <button type="submit" disabled={sending}
-            className="w-full flex items-center justify-center gap-2 rounded-xl bg-violet-500 hover:bg-violet-400 py-3 text-sm font-bold text-white disabled:opacity-50 transition-colors">
-            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Megaphone className="h-4 w-4" />}
-            {sending ? 'Sending…' : 'Send broadcast'}
-          </button>
+          {confirming ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+              <p className="text-sm font-semibold text-amber-900 text-center">
+                Send to <span className="font-black">{audienceLabel}</span>?
+              </p>
+              <p className="text-xs text-amber-700 text-center leading-relaxed">"{form.title}"</p>
+              <div className="flex gap-2.5">
+                <button type="button" onClick={() => setConfirming(false)}
+                  className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+                  <X className="h-3.5 w-3.5" /> Cancel
+                </button>
+                <button type="button" onClick={confirmSend}
+                  className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-violet-500 hover:bg-violet-400 py-3 text-sm font-bold text-white transition-colors">
+                  <Megaphone className="h-3.5 w-3.5" /> Yes, send it
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button type="submit" disabled={sending}
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-violet-500 hover:bg-violet-400 py-3 text-sm font-bold text-white disabled:opacity-50 transition-colors">
+              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Megaphone className="h-4 w-4" />}
+              {sending ? 'Sending…' : 'Send broadcast'}
+            </button>
+          )}
         </form>
       </div>
     </div>

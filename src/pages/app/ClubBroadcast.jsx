@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import {
   Megaphone, Search, CheckSquare, Square, Users,
-  Send, Loader2, Check, ChevronDown, ChevronUp,
+  Send, Loader2, Check, ChevronDown, ChevronUp, X,
 } from 'lucide-react'
 import api from '../../lib/api'
 import { FTEM_PHASES } from '../../lib/constants'
@@ -21,6 +21,7 @@ export default function ClubBroadcast() {
   const [q,         setQ]         = useState('')
   const [showList,  setShowList]  = useState(true)
   const [form,      setForm]      = useState({ title: '', body: '', link: '' })
+  const [confirming, setConfirming] = useState(false)
   const [sending,   setSending]   = useState(false)
   const [lastSent,  setLastSent]  = useState(null)
 
@@ -65,13 +66,17 @@ export default function ClubBroadcast() {
     })
   }
 
-  async function handleSend(e) {
+  function handleSend(e) {
     e.preventDefault()
     if (selected.size === 0) {
       toast.error('Select at least one athlete')
       return
     }
-    if (!confirm(`Send this notification to ${selected.size} athlete${selected.size !== 1 ? 's' : ''}?`)) return
+    setConfirming(true)
+  }
+
+  async function confirmSend() {
+    setConfirming(false)
     setSending(true)
     try {
       const { data } = await api.post('/club/broadcast', {
@@ -286,16 +291,43 @@ export default function ClubBroadcast() {
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={sending || selected.size === 0}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 py-3.5 text-sm font-bold text-white transition-colors shadow-sm shadow-emerald-500/20"
-            >
-              {sending
-                ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
-                : <><Send className="h-4 w-4" /> Send to {selected.size || '—'} athlete{selected.size !== 1 ? 's' : ''}</>
-              }
-            </button>
+            {confirming ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+                <p className="text-sm font-semibold text-amber-900 text-center">
+                  Send to <span className="font-black">{selected.size} athlete{selected.size !== 1 ? 's' : ''}</span>?
+                </p>
+                <p className="text-xs text-amber-700 text-center leading-relaxed">
+                  "{form.title}"
+                </p>
+                <div className="flex gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setConfirming(false)}
+                    className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+                  >
+                    <X className="h-3.5 w-3.5" /> Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmSend}
+                    className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 py-3 text-sm font-bold text-white transition-colors shadow-sm shadow-emerald-500/20"
+                  >
+                    <Send className="h-3.5 w-3.5" /> Yes, send it
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="submit"
+                disabled={sending || selected.size === 0}
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 py-3.5 text-sm font-bold text-white transition-colors shadow-sm shadow-emerald-500/20"
+              >
+                {sending
+                  ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
+                  : <><Send className="h-4 w-4" /> Send to {selected.size || '—'} athlete{selected.size !== 1 ? 's' : ''}</>
+                }
+              </button>
+            )}
           </form>
         </div>
 
