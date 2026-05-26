@@ -136,6 +136,61 @@ class ClubJoinRequestController extends Controller
         return response()->json(['status' => $req?->status ?? null]);
     }
 
+    // Athlete: view their own join requests across all clubs
+    public function myRequests(Request $request)
+    {
+        $requests = ClubJoinRequest::where('user_id', $request->user()->id)
+            ->with('club:id,name,sport,city,logo_url,slug')
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn($jr) => [
+                'id'         => $jr->id,
+                'status'     => $jr->status,
+                'created_at' => $jr->created_at,
+                'slug'       => $jr->club?->slug,
+                'club_name'  => $jr->club?->name,
+                'club_sport' => $jr->club?->sport,
+                'club_city'  => $jr->club?->city,
+                'club_logo'  => $jr->club?->logo_url,
+            ]);
+
+        return response()->json($requests);
+    }
+
+    // Athlete revokes their own pending or rejected request
+    public function revoke(Request $request, $slug)
+    {
+        $club = Club::where('slug', $slug)->firstOrFail();
+        $user = $request->user();
+
+        $jr = ClubJoinRequest::where('club_id', $club->id)
+            ->where('user_id', $user->id)
+            ->whereIn('status', ['pending', 'rejected'])
+            ->first();
+
+        if (!$jr) {
+            return response()->json(['message' => 'No revokable request found.'], 404);
+        }
+
+        $jr->delete();
+
+        return response()->json(['ok' => true]);
+    }
+
+    // Manager deletes a request so the athlete can re-apply
+    public function destroy(Request $request, $id)
+    {
+        if (!in_array($request->user()->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
+        $jr = ClubJoinRequest::where('id', $id)
+            ->where('club_id', $request->user()->club_id)
+            ->firstOrFail();
+
+        $jr->delete();
+
+        return response()->json(['ok' => true]);
+    }
+
     // Club admin / coach: list join requests
     public function index(Request $request)
     {
@@ -187,9 +242,16 @@ class ClubJoinRequestController extends Controller
             $slug = $baseSlug . '-' . $i++;
         }
 
-        // Deactivate athlete at any previous club and notify their old staff
+        // Carry over any existing avatar from previous athlete records
+        $existingAvatar = Athlete::where('user_id', $jr->user_id)
+            ->whereNotNull('avatar_url')
+            ->value('avatar_url');
+
+        // Deactivate athlete at any previous club (including standalone records with no club)
         $oldAthletes = Athlete::where('user_id', $jr->user_id)
-            ->where('club_id', '!=', $jr->club_id)
+            ->where(function ($q) use ($jr) {
+                $q->where('club_id', '!=', $jr->club_id)->orWhereNull('club_id');
+            })
             ->where('is_active', true)
             ->get();
 
@@ -226,6 +288,7 @@ class ClubJoinRequestController extends Controller
             'is_active'     => true,
             'slug'          => $slug,
             'is_public'     => false,
+            'avatar_url'    => $existingAvatar,
         ]);
 
         $jr->update(['status' => 'approved', 'responded_at' => now()]);

@@ -417,15 +417,19 @@ class AthleteController extends Controller
     {
         $user = $request->user();
 
-        $athlete = Athlete::where('user_id', $user->id)
+        // Prefer the active club athlete record; fall back to any active record
+        $athletes = Athlete::where('user_id', $user->id)
             ->where('invite_status', 'accepted')
             ->where('is_active', true)
-            ->first();
+            ->get();
+
+        // Primary record used for slug uniqueness check and response
+        $primary = $athletes->firstWhere('club_id', '!=', null) ?? $athletes->first();
 
         // If no accepted athlete record exists, create a standalone one so
         // users who registered directly (not via club invite) can still set
         // their avatar and public profile.
-        if (!$athlete) {
+        if (!$primary) {
             $nameParts = explode(' ', trim($user->full_name ?? ''), 2);
             $firstName = $nameParts[0] ?? '';
             $lastName  = $nameParts[1] ?? '';
@@ -437,7 +441,7 @@ class AthleteController extends Controller
                 $slug = $baseSlug . '-' . $i++;
             }
 
-            $athlete = Athlete::create([
+            $primary = Athlete::create([
                 'id'           => (string) Str::uuid(),
                 'user_id'      => $user->id,
                 'first_name'   => $firstName,
@@ -448,17 +452,21 @@ class AthleteController extends Controller
                 'slug'         => $slug,
                 'ftem_phase'   => 'F1',
             ]);
+            $athletes = collect([$primary]);
         }
 
         $data = $request->validate([
             'is_public'  => 'boolean',
-            'slug'       => "nullable|string|max:80|unique:athletes,slug,{$athlete->id}",
+            'slug'       => "nullable|string|max:80|unique:athletes,slug,{$primary->id}",
             'avatar_url' => 'nullable|string|max:500',
         ]);
 
-        $athlete->update($data);
+        // Update all active athlete records so avatar/visibility stays in sync
+        foreach ($athletes as $a) {
+            $a->update($data);
+        }
 
-        return response()->json(['ok' => true, 'slug' => $athlete->fresh()->slug]);
+        return response()->json(['ok' => true, 'slug' => $primary->fresh()->slug]);
     }
 
     // Called when an athlete clicks the invite link and creates an account

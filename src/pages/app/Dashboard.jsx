@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   Users, Trophy, Calendar, ArrowRight, Zap, Dumbbell,
   MapPin, Megaphone, CheckCircle2, XCircle, HandHeart,
-  TrendingUp, Clock, X, HelpCircle, Loader2, Building2, Mail, UserCircle,
+  TrendingUp, Clock, X, HelpCircle, Loader2, Building2, Mail, UserCircle, Trash2,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
@@ -571,10 +571,13 @@ function AthleteDashboard({ user }) {
   const [events,        setEvents]       = useState([])
   const [announcements, setAnnouncements]= useState([])
   const [invites,       setInvites]      = useState([])
+  const [joinRequests,  setJoinRequests] = useState([])
   const [volunteering,  setVolunteering] = useState([])
   const [loading,       setLoading]      = useState(true)
   const [inviteAction,  setInviteAction] = useState({})
+  const [revoking,      setRevoking]     = useState(null)
   const [showSquadRequest, setShowSquadRequest] = useState(false)
+  const toast = useToast()
 
   useEffect(() => {
     Promise.all([
@@ -584,7 +587,8 @@ function AthleteDashboard({ user }) {
       api.get('/announcements').catch(() => ({ data: [] })),
       api.get('/athletes/invites').catch(() => ({ data: [] })),
       api.get('/volunteering').catch(() => ({ data: [] })),
-    ]).then(([p, m, e, a, inv, v]) => {
+      api.get('/my/join-requests').catch(() => ({ data: [] })),
+    ]).then(([p, m, e, a, inv, v, jr]) => {
       setProfile(p?.data ?? null)
       setMilestones((m.data ?? []).slice(0, 4))
       const now = new Date()
@@ -592,8 +596,22 @@ function AthleteDashboard({ user }) {
       setAnnouncements((a.data ?? []).slice(0, 4))
       setInvites(inv.data ?? [])
       setVolunteering((v.data ?? []).filter(v => !v.date || new Date(v.date) >= now).slice(0, 3))
+      setJoinRequests((jr.data ?? []).filter(r => r.status === 'pending' || r.status === 'rejected'))
     }).finally(() => setLoading(false))
   }, [])
+
+  async function revokeRequest(slug) {
+    setRevoking(slug)
+    try {
+      await api.delete(`/clubs/public/${slug}/join-request`)
+      setJoinRequests(p => p.filter(r => r.slug !== slug))
+      toast.success('Request withdrawn — you can now apply again')
+    } catch {
+      toast.error('Failed to revoke request')
+    } finally {
+      setRevoking(null)
+    }
+  }
 
   async function handleAccept(id) {
     setInviteAction(p => ({ ...p, [id]: 'accepting' }))
@@ -719,6 +737,43 @@ function AthleteDashboard({ user }) {
                   {inviteAction[inv.id] === 'rejecting' ? 'Declining…' : 'Decline'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      ))}
+
+      {/* ── Pending / rejected join requests ────────────────── */}
+      {joinRequests.map(jr => (
+        <div key={jr.id} className={`col-span-full rounded-2xl border-2 p-4 shadow-sm ${jr.status === 'pending' ? 'border-blue-200 bg-blue-50 shadow-blue-50' : 'border-slate-200 bg-slate-50'}`}>
+          <div className="flex items-start gap-3">
+            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg mt-0.5 ${jr.status === 'pending' ? 'bg-blue-100 border border-blue-200' : 'bg-slate-100 border border-slate-200'}`}>
+              {jr.status === 'pending' ? '⏳' : '❌'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-slate-900 text-sm leading-snug">
+                {jr.status === 'pending'
+                  ? `Your request to join ${jr.club_name} is pending`
+                  : `Your request to join ${jr.club_name} was not approved`}
+              </p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {jr.club_sport ? `${jr.club_sport}` : ''}{jr.club_city ? ` · ${jr.club_city}` : ''}
+                {' · '}Submitted {new Date(jr.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </p>
+              <p className="text-xs text-slate-500 mt-1.5">
+                {jr.status === 'pending'
+                  ? 'Withdraw your request to apply elsewhere or re-send a new request to this club.'
+                  : 'Withdraw this request to apply again.'}
+              </p>
+              <button
+                onClick={() => revokeRequest(jr.slug)}
+                disabled={revoking === jr.slug}
+                className="mt-3 flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-red-50 hover:border-red-200 hover:text-red-600 active:scale-95 px-4 py-2.5 text-sm font-semibold text-slate-600 transition-all disabled:opacity-50 min-h-[44px]"
+              >
+                {revoking === jr.slug
+                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                  : <Trash2 className="h-4 w-4" />}
+                {revoking === jr.slug ? 'Withdrawing…' : 'Withdraw request'}
+              </button>
             </div>
           </div>
         </div>

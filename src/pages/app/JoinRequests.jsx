@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { UserPlus, CheckCircle, XCircle, Loader2, Clock, Users, Mail, Phone, MessageSquare, CalendarDays } from 'lucide-react'
+import { UserPlus, CheckCircle, XCircle, Loader2, Clock, Users, Mail, Phone, CalendarDays, Trash2 } from 'lucide-react'
 import api from '../../lib/api'
 import { useToast } from '../../contexts/ToastContext'
 
@@ -44,6 +44,15 @@ export default function JoinRequests() {
       setRequests(p => p.map(r => r.id === id ? { ...r, status: 'rejected' } : r))
       toast.success('Request rejected')
     } catch { toast.error('Failed to reject') } finally { setActing(null) }
+  }
+
+  async function deleteRequest(id) {
+    setActing(id + 'd')
+    try {
+      await api.delete(`/club/join-requests/${id}`)
+      setRequests(p => p.filter(r => r.id !== id))
+      toast.success('Request deleted — athlete can now re-apply')
+    } catch { toast.error('Failed to delete') } finally { setActing(null) }
   }
 
   const pending  = requests.filter(r => r.status === 'pending')
@@ -205,6 +214,16 @@ export default function JoinRequests() {
                         <span className={`text-xs font-bold rounded-full border px-2.5 py-0.5 ${meta.color}`}>
                           {meta.label}
                         </span>
+                        <button
+                          onClick={() => deleteRequest(r.id)}
+                          disabled={!!acting}
+                          title="Delete request (allows athlete to re-apply)"
+                          className="flex items-center justify-center h-7 w-7 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"
+                        >
+                          {acting === r.id + 'd'
+                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            : <Trash2 className="h-3.5 w-3.5" />}
+                        </button>
                       </div>
                     </div>
                   )

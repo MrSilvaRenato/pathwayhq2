@@ -167,10 +167,13 @@ Route::middleware('auth:api')->group(function () {
 
     // Club join requests (athlete → requests to join a club)
     Route::post('/clubs/public/{slug}/join-request',    [ClubJoinRequestController::class, 'store']);
+    Route::delete('/clubs/public/{slug}/join-request',  [ClubJoinRequestController::class, 'revoke']);
     Route::get('/clubs/public/{slug}/my-join-status',   [ClubJoinRequestController::class, 'myStatus']);
-    Route::get('/club/join-requests',                    [ClubJoinRequestController::class, 'index']);
-    Route::put('/club/join-requests/{id}/approve',       [ClubJoinRequestController::class, 'approve']);
-    Route::put('/club/join-requests/{id}/reject',        [ClubJoinRequestController::class, 'reject']);
+    Route::get('/my/join-requests',                     [ClubJoinRequestController::class, 'myRequests']);
+    Route::get('/club/join-requests',                   [ClubJoinRequestController::class, 'index']);
+    Route::put('/club/join-requests/{id}/approve',      [ClubJoinRequestController::class, 'approve']);
+    Route::put('/club/join-requests/{id}/reject',       [ClubJoinRequestController::class, 'reject']);
+    Route::delete('/club/join-requests/{id}',           [ClubJoinRequestController::class, 'destroy']);
 
     // Seasons
     Route::get('/seasons',           [SeasonController::class, 'index']);
