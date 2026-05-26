@@ -253,6 +253,7 @@ class AthleteController extends Controller
             ->where('invite_status', 'accepted')
             ->where('is_active', true)
             ->with(['squads:id,name', 'club:id,name,logo_url,slug,sport,city,state'])
+            ->orderByDesc('created_at')
             ->first();
 
         if (!$athlete) return response()->json(null);
@@ -414,12 +415,40 @@ class AthleteController extends Controller
     // Athlete updates their own public profile settings
     public function updateMe(Request $request)
     {
-        $athlete = Athlete::where('user_id', $request->user()->id)
+        $user = $request->user();
+
+        $athlete = Athlete::where('user_id', $user->id)
             ->where('invite_status', 'accepted')
             ->where('is_active', true)
             ->first();
 
-        if (!$athlete) return response()->json(['error' => 'No athlete profile found'], 404);
+        // If no accepted athlete record exists, create a standalone one so
+        // users who registered directly (not via club invite) can still set
+        // their avatar and public profile.
+        if (!$athlete) {
+            $nameParts = explode(' ', trim($user->full_name ?? ''), 2);
+            $firstName = $nameParts[0] ?? '';
+            $lastName  = $nameParts[1] ?? '';
+
+            $baseSlug = Str::slug($user->full_name ?? $user->email);
+            $slug = $baseSlug;
+            $i = 1;
+            while (Athlete::where('slug', $slug)->exists()) {
+                $slug = $baseSlug . '-' . $i++;
+            }
+
+            $athlete = Athlete::create([
+                'id'           => (string) Str::uuid(),
+                'user_id'      => $user->id,
+                'first_name'   => $firstName,
+                'last_name'    => $lastName,
+                'invite_email' => $user->email,
+                'invite_status'=> 'accepted',
+                'is_active'    => true,
+                'slug'         => $slug,
+                'ftem_phase'   => 'F1',
+            ]);
+        }
 
         $data = $request->validate([
             'is_public'  => 'boolean',
