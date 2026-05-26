@@ -21,7 +21,7 @@ const COACH_NAV = [
     ],
   },
   {
-    group: 'Roster',
+    group: 'My Club',
     items: [
       { name: 'Athletes',      href: '/athletes',      icon: Users },
       { name: 'Squads',        href: '/squad',         icon: Layers,   badge: 'squadRequests' },
