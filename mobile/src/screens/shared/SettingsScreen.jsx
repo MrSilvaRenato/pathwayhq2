@@ -1,72 +1,189 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  ScrollView,
-  Alert,
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  ActivityIndicator, ScrollView, Alert, Switch,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { Ionicons } from '@expo/vector-icons'
 import { useAuth } from '../../contexts/AuthContext'
 import api from '../../lib/api'
 import { colors, font, spacing, radius } from '../../lib/theme'
-import { ROLES } from '../../lib/constants'
+import { ROLES, SPORTS, STATES, SUBSCRIPTION_TIERS } from '../../lib/constants'
 import Avatar from '../../components/Avatar'
 import Badge from '../../components/Badge'
 import Constants from 'expo-constants'
 
+function SectionCard({ title, children }) {
+  return (
+    <View style={styles.sectionCard}>
+      <Text style={styles.sectionCardTitle}>{title}</Text>
+      {children}
+    </View>
+  )
+}
+
+function SubHeading({ icon, label }) {
+  return (
+    <View style={styles.subHeadingRow}>
+      <Ionicons name={icon} size={13} color={colors.textMuted} />
+      <Text style={styles.subHeading}>{label}</Text>
+    </View>
+  )
+}
+
+function Toggle({ value, onValueChange, disabled }) {
+  return (
+    <Switch
+      value={value}
+      onValueChange={onValueChange}
+      disabled={disabled}
+      trackColor={{ false: colors.border, true: colors.primary }}
+      thumbColor="#fff"
+      ios_backgroundColor={colors.border}
+    />
+  )
+}
+
+function VisibilityRow({ iconName, iconColor, label, desc, value, onToggle, disabled }) {
+  return (
+    <View style={styles.visibilityRow}>
+      <Ionicons name={iconName} size={16} color={iconColor} style={{ marginRight: 12 }} />
+      <View style={{ flex: 1 }}>
+        <Text style={styles.visibilityLabel}>{label}</Text>
+        <Text style={styles.visibilityDesc}>{desc}</Text>
+      </View>
+      <Toggle value={value} onValueChange={onToggle} disabled={disabled} />
+    </View>
+  )
+}
+
+// ─── Picker modal replacement — horizontal chip scroll for small lists ────────
+function ChipPicker({ options, value, onChange }) {
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.sm }}>
+      {options.map(opt => (
+        <TouchableOpacity
+          key={opt.value}
+          style={[styles.chip, value === opt.value && styles.chipActive]}
+          onPress={() => onChange(opt.value)}
+        >
+          <Text style={[styles.chipText, value === opt.value && styles.chipTextActive]}>
+            {opt.emoji ? `${opt.emoji} ` : ''}{opt.label}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
+  )
+}
+
 export default function SettingsScreen() {
-  const { user, logout, refreshUser } = useAuth()
+  const { user, isAdmin, logout, refreshUser } = useAuth()
+  const isManager = user?.role === 'club_admin'
 
-  const [fullName, setFullName] = useState(user?.full_name ?? '')
-  const [email, setEmail] = useState(user?.email ?? '')
-  const [phone, setPhone] = useState(user?.phone ?? '')
-  const [password, setPassword] = useState('')
-  const [saving, setSaving] = useState(false)
+  // ── Profile state ──────────────────────────────────────────────────────────
+  const [profile, setProfile] = useState({
+    full_name: user?.full_name ?? '',
+    email: user?.email ?? '',
+    phone: user?.phone ?? '',
+    password: '',
+  })
+  const [showPw, setShowPw] = useState(false)
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [profileMsg, setProfileMsg] = useState({ type: '', text: '' })
+
+  // ── Club state ─────────────────────────────────────────────────────────────
+  const [club, setClub] = useState(null)
+  const [clubForm, setClubForm] = useState({})
+  const [savingClub, setSavingClub] = useState(false)
+  const [clubMsg, setClubMsg] = useState({ type: '', text: '' })
+
   const [signingOut, setSigningOut] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+  const appVersion = Constants.expoConfig?.version ?? Constants.manifest?.version ?? '1.0.0'
 
-  const appVersion =
-    Constants.expoConfig?.version ?? Constants.manifest?.version ?? '1.0.0'
+  useEffect(() => {
+    api.get('/profile').then(r => {
+      const d = r.data
+      setProfile(p => ({
+        ...p,
+        full_name: d.full_name ?? '',
+        email: d.email ?? '',
+        phone: d.phone ?? '',
+      }))
+      if (d.club_id) {
+        setClub(d)
+        setClubForm({
+          name:                d.club_name        ?? '',
+          city:                d.city             ?? '',
+          state:               d.state            ?? 'QLD',
+          sport:               d.sport            ?? 'soccer',
+          slug:                d.slug             ?? '',
+          description:         d.description      ?? '',
+          website:             d.website          ?? '',
+          contact_email:       d.contact_email    ?? '',
+          phone:               d.phone            ?? '',
+          is_public:           d.is_public        ?? false,
+          cover_image_url:     d.cover_image_url  ?? '',
+          logo_url:            d.logo_url         ?? '',
+          founded_year:        d.founded_year     ? String(d.founded_year) : '',
+          social_facebook:     d.social_facebook  ?? '',
+          social_instagram:    d.social_instagram ?? '',
+          social_twitter:      d.social_twitter   ?? '',
+          show_milestones:     d.show_milestones     ?? true,
+          show_athletes_count: d.show_athletes_count ?? true,
+          show_events:         d.show_events         ?? false,
+          show_announcements:  d.show_announcements  ?? false,
+        })
+      }
+    }).catch(() => {})
+  }, [])
 
-  async function handleSave() {
-    if (!fullName.trim() || !email.trim()) {
-      setError('Name and email are required.')
+  async function handleSaveProfile() {
+    if (!profile.full_name.trim() || !profile.email.trim()) {
+      setProfileMsg({ type: 'error', text: 'Name and email are required.' })
       return
     }
-    setError('')
-    setSuccess('')
-    setSaving(true)
+    if (profile.password && profile.password.length < 8) {
+      setProfileMsg({ type: 'error', text: 'Password must be at least 8 characters.' })
+      return
+    }
+    setProfileMsg({ type: '', text: '' })
+    setSavingProfile(true)
     try {
       const payload = {
-        full_name: fullName.trim(),
-        email: email.trim().toLowerCase(),
-        phone: phone.trim() || undefined,
+        full_name: profile.full_name.trim(),
+        email: profile.email.trim().toLowerCase(),
+        phone: profile.phone.trim() || undefined,
       }
-      if (password) {
-        if (password.length < 8) {
-          setError('Password must be at least 8 characters.')
-          setSaving(false)
-          return
-        }
-        payload.password = password
+      if (profile.password) payload.password = profile.password
+      const { data } = await api.put('/profile', payload)
+      if (data?.token) {
+        const { default: AsyncStorage } = await import('@react-native-async-storage/async-storage')
+        await AsyncStorage.setItem('phq_token', data.token)
       }
-      await api.put('/profile', payload)
       await refreshUser()
-      setPassword('')
-      setSuccess('Profile updated successfully.')
+      setProfile(p => ({ ...p, password: '' }))
+      setProfileMsg({ type: 'success', text: 'Profile saved successfully.' })
     } catch (e) {
-      const msg =
-        e?.response?.data?.message ??
-        e?.response?.data?.errors?.email?.[0] ??
-        'Failed to update profile.'
-      setError(msg)
+      setProfileMsg({ type: 'error', text: e?.response?.data?.message ?? 'Failed to save profile.' })
     } finally {
-      setSaving(false)
+      setSavingProfile(false)
+    }
+  }
+
+  async function handleSaveClub() {
+    if (!clubForm.name?.trim()) {
+      setClubMsg({ type: 'error', text: 'Club name is required.' })
+      return
+    }
+    setClubMsg({ type: '', text: '' })
+    setSavingClub(true)
+    try {
+      await api.put('/club', clubForm)
+      setClubMsg({ type: 'success', text: 'Club details saved successfully.' })
+    } catch (e) {
+      setClubMsg({ type: 'error', text: e?.response?.data?.message ?? 'Failed to save club details.' })
+    } finally {
+      setSavingClub(false)
     }
   }
 
@@ -74,21 +191,18 @@ export default function SettingsScreen() {
     Alert.alert('Sign out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Sign out',
-        style: 'destructive',
+        text: 'Sign out', style: 'destructive',
         onPress: async () => {
           setSigningOut(true)
-          try {
-            await logout()
-          } finally {
-            setSigningOut(false)
-          }
+          try { await logout() } finally { setSigningOut(false) }
         },
       },
     ])
   }
 
   const roleLabel = ROLES[user?.role] ?? user?.role ?? 'User'
+  const tier = club?.subscription_tier ?? 'free'
+  const tierInfo = SUBSCRIPTION_TIERS[tier]
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
@@ -97,87 +211,374 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Profile header */}
+
+        {/* ── Profile header ─────────────────────────────────────────────── */}
         <View style={styles.profileHeader}>
           <Avatar name={user?.full_name} size="xl" />
-          <Text style={styles.profileName}>{user?.full_name}</Text>
+          <Text style={styles.profileName}>{user?.full_name || 'Your account'}</Text>
           <Badge label={roleLabel} color="green" />
         </View>
 
-        {/* Profile form */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Profile</Text>
-          <View style={styles.card}>
-            {error ? (
-              <View style={styles.errorBanner}>
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            ) : null}
-            {success ? (
-              <View style={styles.successBanner}>
-                <Text style={styles.successText}>{success}</Text>
+        {/* ── Profile section ────────────────────────────────────────────── */}
+        <SectionCard title="Profile">
+          {profileMsg.text ? (
+            <View style={profileMsg.type === 'error' ? styles.errorBanner : styles.successBanner}>
+              <Text style={profileMsg.type === 'error' ? styles.errorText : styles.successText}>
+                {profileMsg.text}
+              </Text>
+            </View>
+          ) : null}
+
+          <Text style={styles.label}>Full name</Text>
+          <TextInput
+            style={styles.input}
+            value={profile.full_name}
+            onChangeText={v => setProfile(p => ({ ...p, full_name: v }))}
+            autoCapitalize="words"
+            autoCorrect={false}
+            placeholder="Your full name"
+            placeholderTextColor={colors.textMuted}
+          />
+
+          <Text style={styles.label}>Email address</Text>
+          <TextInput
+            style={styles.input}
+            value={profile.email}
+            onChangeText={v => setProfile(p => ({ ...p, email: v }))}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            placeholder="you@example.com"
+            placeholderTextColor={colors.textMuted}
+          />
+          <Text style={styles.hint}>This is your login email. Changing it takes effect immediately.</Text>
+
+          <Text style={styles.label}>
+            Mobile phone{' '}
+            <Text style={styles.labelMuted}>— visible to coaches &amp; admins</Text>
+          </Text>
+          <View style={styles.iconInput}>
+            <Ionicons name="call-outline" size={16} color={colors.textMuted} style={styles.inputIcon} />
+            <TextInput
+              style={[styles.input, styles.inputWithIcon]}
+              value={profile.phone}
+              onChangeText={v => setProfile(p => ({ ...p, phone: v }))}
+              keyboardType="phone-pad"
+              placeholder="+61 4xx xxx xxx"
+              placeholderTextColor={colors.textMuted}
+            />
+          </View>
+
+          {/* Security sub-section */}
+          <View style={styles.divider} />
+          <Text style={styles.subSectionLabel}>Security</Text>
+
+          <Text style={styles.label}>
+            New password{' '}
+            <Text style={styles.labelMuted}>(leave blank to keep current)</Text>
+          </Text>
+          <View style={styles.iconInput}>
+            <TextInput
+              style={[styles.input, { flex: 1, borderRightWidth: 0, borderTopRightRadius: 0, borderBottomRightRadius: 0 }]}
+              value={profile.password}
+              onChangeText={v => setProfile(p => ({ ...p, password: v }))}
+              secureTextEntry={!showPw}
+              placeholder="••••••••"
+              placeholderTextColor={colors.textMuted}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <TouchableOpacity
+              style={styles.eyeBtn}
+              onPress={() => setShowPw(v => !v)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={18} color={colors.textMuted} />
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.primaryBtn, savingProfile && styles.btnDisabled]}
+            onPress={handleSaveProfile}
+            disabled={savingProfile}
+          >
+            {savingProfile ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <>
+                <Ionicons name="save-outline" size={16} color="#fff" />
+                <Text style={styles.primaryBtnText}>Save profile</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </SectionCard>
+
+        {/* ── Club details section (club_admin only) ─────────────────────── */}
+        {club && isAdmin && isManager && (
+          <SectionCard title="Club details">
+            {clubMsg.text ? (
+              <View style={clubMsg.type === 'error' ? styles.errorBanner : styles.successBanner}>
+                <Text style={clubMsg.type === 'error' ? styles.errorText : styles.successText}>
+                  {clubMsg.text}
+                </Text>
               </View>
             ) : null}
 
-            <Text style={styles.label}>Full Name</Text>
+            {/* Basic info */}
+            <Text style={styles.label}>Club name</Text>
             <TextInput
               style={styles.input}
-              value={fullName}
-              onChangeText={setFullName}
-              autoCapitalize="words"
-              autoCorrect={false}
-              placeholder="Your name"
+              value={clubForm.name}
+              onChangeText={v => setClubForm(p => ({ ...p, name: v }))}
+              placeholder="Your club name"
               placeholderTextColor={colors.textMuted}
             />
 
-            <Text style={styles.label}>Email</Text>
+            <View style={styles.row2}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.label}>City</Text>
+                <TextInput
+                  style={styles.input}
+                  value={clubForm.city}
+                  onChangeText={v => setClubForm(p => ({ ...p, city: v }))}
+                  placeholder="City"
+                  placeholderTextColor={colors.textMuted}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.label}>State</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.sm }}>
+                  {STATES.map(s => (
+                    <TouchableOpacity
+                      key={s}
+                      style={[styles.chip, clubForm.state === s && styles.chipActive]}
+                      onPress={() => setClubForm(p => ({ ...p, state: s }))}
+                    >
+                      <Text style={[styles.chipText, clubForm.state === s && styles.chipTextActive]}>{s}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </View>
+
+            <Text style={styles.label}>Primary sport</Text>
+            <ChipPicker
+              options={SPORTS}
+              value={clubForm.sport}
+              onChange={v => setClubForm(p => ({ ...p, sport: v }))}
+            />
+
+            <Text style={styles.label}>Founded year</Text>
             <TextInput
               style={styles.input}
-              value={email}
-              onChangeText={setEmail}
+              value={clubForm.founded_year}
+              onChangeText={v => setClubForm(p => ({ ...p, founded_year: v }))}
+              keyboardType="number-pad"
+              placeholder="e.g. 1998"
+              placeholderTextColor={colors.textMuted}
+            />
+
+            <Text style={styles.label}>About the club</Text>
+            <TextInput
+              style={[styles.input, styles.textarea]}
+              value={clubForm.description}
+              onChangeText={v => setClubForm(p => ({ ...p, description: v }))}
+              multiline
+              textAlignVertical="top"
+              placeholder="Tell people about your club, your mission, and your values…"
+              placeholderTextColor={colors.textMuted}
+            />
+
+            {/* Contact & links */}
+            <View style={styles.divider} />
+            <SubHeading icon="globe-outline" label="Contact & links" />
+
+            <Text style={styles.label}>Website</Text>
+            <TextInput
+              style={styles.input}
+              value={clubForm.website}
+              onChangeText={v => setClubForm(p => ({ ...p, website: v }))}
+              autoCapitalize="none"
+              keyboardType="url"
+              placeholder="https://"
+              placeholderTextColor={colors.textMuted}
+            />
+
+            <Text style={styles.label}>Contact email</Text>
+            <TextInput
+              style={styles.input}
+              value={clubForm.contact_email}
+              onChangeText={v => setClubForm(p => ({ ...p, contact_email: v }))}
               keyboardType="email-address"
               autoCapitalize="none"
-              autoCorrect={false}
-              placeholder="you@example.com"
+              placeholder="club@example.com"
               placeholderTextColor={colors.textMuted}
             />
 
             <Text style={styles.label}>Phone</Text>
             <TextInput
               style={styles.input}
-              value={phone}
-              onChangeText={setPhone}
+              value={clubForm.phone}
+              onChangeText={v => setClubForm(p => ({ ...p, phone: v }))}
               keyboardType="phone-pad"
-              placeholder="+61 400 000 000"
+              placeholder="+61 7 xxxx xxxx"
               placeholderTextColor={colors.textMuted}
             />
 
-            <Text style={styles.label}>New Password</Text>
-            <TextInput
-              style={styles.input}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              placeholder="Leave blank to keep current"
-              placeholderTextColor={colors.textMuted}
-            />
+            {/* Social media */}
+            <View style={styles.divider} />
+            <SubHeading icon="share-social-outline" label="Social media" />
+
+            <View style={styles.socialRow}>
+              <Ionicons name="logo-instagram" size={18} color="#e1306c" style={styles.socialIcon} />
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                value={clubForm.social_instagram}
+                onChangeText={v => setClubForm(p => ({ ...p, social_instagram: v }))}
+                autoCapitalize="none"
+                keyboardType="url"
+                placeholder="https://instagram.com/yourclub"
+                placeholderTextColor={colors.textMuted}
+              />
+            </View>
+
+            <View style={styles.socialRow}>
+              <Ionicons name="logo-facebook" size={18} color="#1877f2" style={styles.socialIcon} />
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                value={clubForm.social_facebook}
+                onChangeText={v => setClubForm(p => ({ ...p, social_facebook: v }))}
+                autoCapitalize="none"
+                keyboardType="url"
+                placeholder="https://facebook.com/yourclub"
+                placeholderTextColor={colors.textMuted}
+              />
+            </View>
+
+            <View style={styles.socialRow}>
+              <Ionicons name="logo-twitter" size={18} color="#1da1f2" style={styles.socialIcon} />
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                value={clubForm.social_twitter}
+                onChangeText={v => setClubForm(p => ({ ...p, social_twitter: v }))}
+                autoCapitalize="none"
+                keyboardType="url"
+                placeholder="https://x.com/yourclub"
+                placeholderTextColor={colors.textMuted}
+              />
+            </View>
+
+            {/* Public profile visibility */}
+            <View style={styles.divider} />
+            <SubHeading icon="lock-closed-outline" label="Public profile visibility" />
+            <Text style={styles.hint}>Choose what visitors can see on your public club page.</Text>
+
+            {/* Master toggle */}
+            <View style={[styles.masterToggleCard, clubForm.is_public ? styles.masterToggleOn : styles.masterToggleOff]}>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons
+                    name={clubForm.is_public ? 'lock-open-outline' : 'lock-closed-outline'}
+                    size={14}
+                    color={clubForm.is_public ? colors.primary : colors.textMuted}
+                  />
+                  <Text style={[styles.masterToggleTitle, clubForm.is_public && { color: colors.primaryDark }]}>
+                    {clubForm.is_public ? 'Profile is public' : 'Profile is private'}
+                  </Text>
+                </View>
+                <Text style={styles.masterToggleDesc}>
+                  {clubForm.is_public
+                    ? 'Your club appears in the public directory and has a shareable profile page.'
+                    : 'Your club is hidden from public search and the directory.'}
+                </Text>
+                {clubForm.is_public && clubForm.slug ? (
+                  <Text style={styles.slugText}>/club/{clubForm.slug}</Text>
+                ) : null}
+              </View>
+              <Toggle
+                value={clubForm.is_public}
+                onValueChange={v => setClubForm(p => ({ ...p, is_public: v }))}
+              />
+            </View>
+
+            {/* Section toggles */}
+            {clubForm.is_public && (
+              <View style={styles.visibilityCard}>
+                <VisibilityRow
+                  iconName="people-outline" iconColor="#3b82f6"
+                  label="Athlete count & FTEM breakdown"
+                  desc="Show how many athletes you have and their development phases"
+                  value={clubForm.show_athletes_count}
+                  onToggle={v => setClubForm(p => ({ ...p, show_athletes_count: v }))}
+                />
+                <View style={styles.visibilityDivider} />
+                <VisibilityRow
+                  iconName="trophy-outline" iconColor="#f59e0b"
+                  label="Recent achievements"
+                  desc="Show milestones marked as shared with parent"
+                  value={clubForm.show_milestones}
+                  onToggle={v => setClubForm(p => ({ ...p, show_milestones: v }))}
+                />
+                <View style={styles.visibilityDivider} />
+                <VisibilityRow
+                  iconName="calendar-outline" iconColor="#8b5cf6"
+                  label="Upcoming sessions & matches"
+                  desc="Show your next 5 events on your public page"
+                  value={clubForm.show_events}
+                  onToggle={v => setClubForm(p => ({ ...p, show_events: v }))}
+                />
+                <View style={styles.visibilityDivider} />
+                <VisibilityRow
+                  iconName="megaphone-outline" iconColor={colors.primary}
+                  label="Club announcements"
+                  desc="Show your latest posts and news publicly"
+                  value={clubForm.show_announcements}
+                  onToggle={v => setClubForm(p => ({ ...p, show_announcements: v }))}
+                />
+              </View>
+            )}
 
             <TouchableOpacity
-              style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
-              onPress={handleSave}
-              disabled={saving}
+              style={[styles.primaryBtn, savingClub && styles.btnDisabled]}
+              onPress={handleSaveClub}
+              disabled={savingClub}
             >
-              {saving ? (
+              {savingClub ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
-                <Text style={styles.saveBtnText}>Save changes</Text>
+                <>
+                  <Ionicons name="save-outline" size={16} color="#fff" />
+                  <Text style={styles.primaryBtnText}>Save club details</Text>
+                </>
               )}
             </TouchableOpacity>
-          </View>
-        </View>
+          </SectionCard>
+        )}
 
-        {/* Sign out */}
-        <View style={styles.section}>
+        {/* ── Current plan section ───────────────────────────────────────── */}
+        {club && (
+          <SectionCard title="Current plan">
+            <View style={styles.planRow}>
+              <View>
+                <Text style={styles.planTier}>{tier.charAt(0).toUpperCase() + tier.slice(1)}</Text>
+                {tierInfo && (
+                  <Text style={styles.planMeta}>
+                    Up to {tierInfo.athletes} athletes · {tierInfo.price}
+                  </Text>
+                )}
+              </View>
+              <TouchableOpacity
+                style={styles.upgradeBtn}
+                onPress={() => Alert.alert('Upgrade', 'Contact us at support@pathwayhq.com to upgrade your plan.')}
+              >
+                <Text style={styles.upgradeBtnText}>Contact us to upgrade</Text>
+              </TouchableOpacity>
+            </View>
+          </SectionCard>
+        )}
+
+        {/* ── Sign out ───────────────────────────────────────────────────── */}
+        <View style={{ marginBottom: spacing.md }}>
           <TouchableOpacity
             style={styles.signOutBtn}
             onPress={handleLogout}
@@ -191,9 +592,7 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Version */}
         <Text style={styles.version}>PathwayHQ v{appVersion}</Text>
-
         <View style={{ height: spacing.xl }} />
       </ScrollView>
     </SafeAreaView>
@@ -208,101 +607,142 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.lg,
     gap: 10,
-  },
-  profileName: {
-    fontSize: font.xl,
-    fontWeight: '700',
-    color: colors.text,
-    marginTop: 4,
-  },
-
-  section: { marginBottom: spacing.md },
-  sectionTitle: {
-    fontSize: font.sm,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: spacing.sm,
-  },
-
-  card: {
     backgroundColor: colors.surface,
     borderRadius: 16,
-    padding: spacing.md,
+    marginBottom: spacing.md,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 4,
     elevation: 2,
   },
+  profileName: { fontSize: font.lg, fontWeight: '700', color: colors.text },
+
+  sectionCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  sectionCardTitle: {
+    fontSize: font.base,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: spacing.sm,
+  },
+
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.md },
+
+  subHeadingRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.sm },
+  subHeading: {
+    fontSize: font.xs, fontWeight: '700', color: colors.textSecondary,
+    textTransform: 'uppercase', letterSpacing: 0.8,
+  },
+  subSectionLabel: {
+    fontSize: font.xs, fontWeight: '700', color: colors.textSecondary,
+    textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: spacing.sm,
+  },
+
+  label: {
+    fontSize: font.sm, fontWeight: '600', color: colors.textSecondary,
+    marginBottom: 6, marginTop: spacing.sm,
+  },
+  labelMuted: { fontWeight: '400', color: colors.textMuted },
+  hint: { fontSize: font.xs, color: colors.textMuted, marginTop: 4, marginBottom: spacing.sm },
+
+  input: {
+    borderWidth: 1, borderColor: colors.border, borderRadius: radius.md,
+    paddingHorizontal: 14, paddingVertical: 13,
+    fontSize: font.base, color: colors.text, backgroundColor: '#fafafa',
+    marginBottom: spacing.sm,
+  },
+  textarea: { minHeight: 90, textAlignVertical: 'top' },
+
+  iconInput: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
+  inputIcon: { position: 'absolute', left: 14, zIndex: 1 },
+  inputWithIcon: { flex: 1, paddingLeft: 40, marginBottom: 0 },
+
+  eyeBtn: {
+    borderWidth: 1, borderColor: colors.border, borderLeftWidth: 0,
+    borderTopRightRadius: radius.md, borderBottomRightRadius: radius.md,
+    paddingHorizontal: 14, paddingVertical: 13,
+    backgroundColor: '#fafafa', justifyContent: 'center', alignItems: 'center',
+  },
+
+  row2: { flexDirection: 'row', gap: spacing.sm },
+
+  chip: {
+    paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.full,
+    backgroundColor: '#fff', borderWidth: 1, borderColor: colors.border, marginRight: 8,
+  },
+  chipActive: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
+  chipText: { fontSize: font.sm, fontWeight: '600', color: colors.textMuted },
+  chipTextActive: { color: colors.primary },
+
+  socialRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: spacing.sm },
+  socialIcon: { marginBottom: spacing.sm },
+
+  masterToggleCard: {
+    borderRadius: 12, padding: spacing.md,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    marginBottom: spacing.sm,
+  },
+  masterToggleOn: { backgroundColor: colors.primaryLight, borderWidth: 1, borderColor: colors.primary },
+  masterToggleOff: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: colors.border },
+  masterToggleTitle: { fontSize: font.sm, fontWeight: '700', color: colors.text },
+  masterToggleDesc: { fontSize: font.xs, color: colors.textMuted, marginTop: 3 },
+  slugText: { fontSize: font.xs, color: colors.primary, fontWeight: '600', marginTop: 4 },
+
+  visibilityCard: {
+    borderRadius: 12, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: '#fff', overflow: 'hidden', marginBottom: spacing.sm,
+  },
+  visibilityRow: { flexDirection: 'row', alignItems: 'center', padding: spacing.md },
+  visibilityDivider: { height: 1, backgroundColor: colors.borderLight },
+  visibilityLabel: { fontSize: font.sm, fontWeight: '600', color: colors.text },
+  visibilityDesc: { fontSize: font.xs, color: colors.textMuted, marginTop: 2 },
+
+  primaryBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, backgroundColor: colors.primary, borderRadius: radius.md,
+    paddingVertical: 14, marginTop: spacing.md,
+  },
+  btnDisabled: { opacity: 0.6 },
+  primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: font.base },
+
+  planRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginTop: spacing.sm },
+  planTier: { fontSize: font.xl, fontWeight: '900', color: colors.primary, textTransform: 'capitalize' },
+  planMeta: { fontSize: font.xs, color: colors.textMuted, marginTop: 2 },
+  upgradeBtn: {
+    borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.md,
+    paddingHorizontal: spacing.md, paddingVertical: 10, backgroundColor: colors.surface,
+  },
+  upgradeBtnText: { fontSize: font.sm, fontWeight: '600', color: colors.textSecondary },
+
+  signOutBtn: {
+    borderWidth: 1.5, borderColor: colors.error, borderRadius: radius.md,
+    paddingVertical: 14, alignItems: 'center', backgroundColor: colors.surface,
+  },
+  signOutText: { color: colors.error, fontWeight: '700', fontSize: font.base },
 
   errorBanner: {
-    backgroundColor: colors.errorLight,
-    borderRadius: radius.sm,
-    padding: spacing.sm + 4,
-    marginBottom: spacing.md,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.error,
+    backgroundColor: colors.errorLight ?? '#fef2f2', borderRadius: radius.sm,
+    padding: spacing.sm + 4, marginBottom: spacing.md,
+    borderLeftWidth: 3, borderLeftColor: colors.error,
   },
   errorText: { color: colors.error, fontSize: font.sm, fontWeight: '500' },
 
   successBanner: {
-    backgroundColor: '#f0fdf4',
-    borderRadius: radius.sm,
-    padding: spacing.sm + 4,
-    marginBottom: spacing.md,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.primary,
+    backgroundColor: '#f0fdf4', borderRadius: radius.sm,
+    padding: spacing.sm + 4, marginBottom: spacing.md,
+    borderLeftWidth: 3, borderLeftColor: colors.primary,
   },
   successText: { color: colors.primaryDark, fontSize: font.sm, fontWeight: '500' },
 
-  label: {
-    fontSize: font.sm,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginBottom: 6,
-    marginTop: spacing.sm,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    fontSize: font.base,
-    color: colors.text,
-    backgroundColor: '#fafafa',
-  },
-
-  saveBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: spacing.lg,
-  },
-  saveBtnDisabled: { opacity: 0.7 },
-  saveBtnText: { color: '#fff', fontWeight: '700', fontSize: font.base },
-
-  signOutBtn: {
-    borderWidth: 1.5,
-    borderColor: colors.error,
-    borderRadius: radius.md,
-    paddingVertical: 14,
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-  },
-  signOutText: {
-    color: colors.error,
-    fontWeight: '700',
-    fontSize: font.base,
-  },
-
-  version: {
-    textAlign: 'center',
-    fontSize: font.xs,
-    color: colors.textMuted,
-    marginTop: spacing.sm,
-  },
+  version: { textAlign: 'center', fontSize: font.xs, color: colors.textMuted, marginTop: spacing.sm },
 })
