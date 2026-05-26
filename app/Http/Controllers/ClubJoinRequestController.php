@@ -9,6 +9,7 @@ use App\Models\ClubJoinRequest;
 use App\Models\Athlete;
 use App\Models\User;
 use App\Models\Notification;
+use App\Services\MailService;
 
 class ClubJoinRequestController extends Controller
 {
@@ -65,6 +66,7 @@ class ClubJoinRequestController extends Controller
                             'is_read' => false,
                             'at'      => now()->toDateTimeString(),
                         ]);
+                        MailService::joinRequestToManagers($s, $user, $club);
                     }
 
                     return response()->json(['ok' => true], 201);
