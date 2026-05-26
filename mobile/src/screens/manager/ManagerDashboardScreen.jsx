@@ -336,11 +336,11 @@ export default function ManagerDashboardScreen() {
   const ftemTotal = Object.values(ftemCounts).reduce((s, n) => s + n, 0)
 
   const stats = [
-    { iconName: 'people-outline',   value: athletes.length,       label: 'Athletes',   color: '#3b82f6', bg: '#eff6ff', nav: () => navigation.navigate('Athletes') },
-    { iconName: 'time-outline',     value: pendingInvites.length, label: 'Pending',    color: '#d97706', bg: '#fffbeb', nav: () => navigation.navigate('Athletes') },
-    { iconName: 'calendar-outline', value: events.length,         label: 'Sessions',   color: '#7c3aed', bg: '#f5f3ff', nav: () => navigation.navigate('Calendar') },
-    { iconName: 'trophy-outline',   value: milestones.length,     label: 'Milestones', color: '#d97706', bg: '#fffbeb', nav: () => navigation.navigate('Awards') },
-    { iconName: 'heart-outline',    value: volNeeded,             label: 'Volunteer',  color: '#059669', bg: '#ecfdf5', nav: null },
+    { iconName: 'people-outline',   value: athletes.length,       label: 'Athletes',   sub: `${activeAthletes.length} active`,  color: '#3b82f6', bg: '#eff6ff', nav: () => navigation.navigate('Athletes') },
+    { iconName: 'time-outline',     value: pendingInvites.length, label: 'Pending',    sub: 'awaiting invite',                  color: '#d97706', bg: '#fffbeb', nav: () => navigation.navigate('Athletes') },
+    { iconName: 'calendar-outline', value: events.length,         label: 'Sessions',   sub: 'coming up',                       color: '#7c3aed', bg: '#f5f3ff', nav: () => navigation.navigate('Calendar') },
+    { iconName: 'trophy-outline',   value: milestones.length,     label: 'Milestones', sub: 'recent',                          color: '#d97706', bg: '#fffbeb', nav: () => navigation.navigate('Awards') },
+    { iconName: 'heart-outline',    value: volNeeded,             label: 'Volunteer',  sub: 'spots open',                      color: '#059669', bg: '#ecfdf5', nav: null },
   ]
 
   return (
@@ -395,14 +395,17 @@ export default function ManagerDashboardScreen() {
               </View>
               <Text style={styles.statValue}>{s.value ?? '—'}</Text>
               <Text style={styles.statLabel}>{s.label}</Text>
-              {s.label === 'Pending' ? <Text style={styles.statSub}>awaiting invite</Text> : null}
+              <Text style={styles.statSub}>{s.sub}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>📅 Upcoming Sessions</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.sectionTitle}>📅 Upcoming Sessions</Text>
+              <Text style={styles.sectionHint}>tap a session to see attendance</Text>
+            </View>
             <TouchableOpacity onPress={() => navigation.navigate('Calendar')}>
               <Text style={styles.sectionLink}>Full calendar →</Text>
             </TouchableOpacity>
@@ -454,111 +457,116 @@ export default function ManagerDashboardScreen() {
           )}
         </View>
 
-        {ftemTotal > 0 ? (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>📈 FTEM Spread</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('More', { screen: 'AnalyticsScreen' })}>
-                <Text style={styles.sectionLink}>Analytics →</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.ftemCard}>
-              {ftemPhases.filter(p => ftemCounts[p] > 0).map(phase => {
-                const count = ftemCounts[phase]
-                const pct = ftemTotal > 0 ? Math.round((count / ftemTotal) * 100) : 0
-                const meta = FTEM_PHASES[phase]
-                return (
-                  <View key={phase} style={styles.ftemRow}>
-                    <View style={[styles.ftemPhaseBadge, { backgroundColor: meta?.bgColor ?? '#f1f5f9' }]}>
-                      <Text style={[styles.ftemPhaseText, { color: meta?.textColor ?? '#334155' }]}>{phase}</Text>
-                    </View>
-                    <View style={styles.ftemTrack}>
-                      <View style={[styles.ftemFill, { width: `${pct}%` }]} />
-                    </View>
-                    <Text style={styles.ftemCount}>{count}</Text>
-                    <Text style={styles.ftemPct}>{pct}%</Text>
-                  </View>
-                )
-              })}
-              <View style={styles.ftemFooter}>
-                <Text style={styles.ftemFooterText}>{athletes.length} total · {activeAthletes.length} active</Text>
-              </View>
-            </View>
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>📈 FTEM Spread</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('More', { screen: 'AnalyticsScreen' })}>
+              <Text style={styles.sectionLink}>Analytics →</Text>
+            </TouchableOpacity>
           </View>
-        ) : null}
-
-        {announcements.length > 0 ? (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>📢 Announcements</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('More', { screen: 'AnnouncementsList' })}>
-                <Text style={styles.sectionLink}>Manage →</Text>
-              </TouchableOpacity>
-            </View>
-            {announcements.map(a => (
-              <View key={a.id} style={styles.annoCard}>
-                <Text style={styles.annoTitle} numberOfLines={1}>{a.title}</Text>
-                {a.body ? <Text style={styles.annoBody} numberOfLines={1}>{a.body}</Text> : null}
-              </View>
-            ))}
-          </View>
-        ) : null}
-
-        {milestones.length > 0 ? (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>🏆 Recent Milestones</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Awards')}>
-                <Text style={styles.sectionLink}>All →</Text>
-              </TouchableOpacity>
-            </View>
-            {milestones.map(m => {
-              const meta = FTEM_PHASES[m.ftem_phase]
-              return (
-                <View key={m.id} style={styles.milestoneCard}>
-                  <Ionicons name="trophy" size={14} color="#f59e0b" style={{ marginTop: 1 }} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.milestoneTitle} numberOfLines={1}>{m.title}</Text>
-                    {m.athlete_name ? <Text style={styles.milestoneSub}>{m.athlete_name}</Text> : null}
-                    <Text style={styles.milestoneMeta}>{fmtFull(m.achieved_at ?? m.date)}</Text>
-                  </View>
-                  {m.ftem_phase ? (
-                    <View style={[styles.ftemBadge, { backgroundColor: meta?.bgColor ?? '#f1f5f9' }]}>
-                      <Text style={[styles.ftemBadgeText, { color: meta?.textColor ?? '#334155' }]}>{m.ftem_phase}</Text>
+          <View style={styles.ftemCard}>
+            {ftemTotal === 0 ? (
+              <Text style={styles.emptyMsg}>No athletes yet</Text>
+            ) : (
+              <>
+                {ftemPhases.filter(p => ftemCounts[p] > 0).map(phase => {
+                  const count = ftemCounts[phase]
+                  const pct = Math.round((count / ftemTotal) * 100)
+                  const meta = FTEM_PHASES[phase]
+                  return (
+                    <View key={phase} style={styles.ftemRow}>
+                      <View style={[styles.ftemPhaseBadge, { backgroundColor: meta?.bgColor ?? '#f1f5f9' }]}>
+                        <Text style={[styles.ftemPhaseText, { color: meta?.textColor ?? '#334155' }]}>{phase}</Text>
+                      </View>
+                      <View style={styles.ftemTrack}>
+                        <View style={[styles.ftemFill, { width: `${pct}%` }]} />
+                      </View>
+                      <Text style={styles.ftemCount}>{count}</Text>
+                      <Text style={styles.ftemPct}>{pct}%</Text>
                     </View>
-                  ) : null}
+                  )
+                })}
+                <View style={styles.ftemFooter}>
+                  <Text style={styles.ftemFooterText}>{athletes.length} total athletes</Text>
+                  <Text style={styles.ftemFooterText}>{activeAthletes.length} active</Text>
                 </View>
-              )
-            })}
+              </>
+            )}
           </View>
-        ) : null}
+        </View>
 
-        {volunteering.length > 0 ? (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>🤝 Volunteering</Text>
-            </View>
-            {volunteering.map(v => {
-              const spotsLeft = v.spots ? v.spots - (v.signed_up ?? 0) : null
-              const isFull = spotsLeft !== null && spotsLeft <= 0
-              return (
-                <View key={v.id} style={styles.volCard}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.volTitle} numberOfLines={1}>{v.title}</Text>
-                    {v.date ? <Text style={styles.volMeta}>{fmtFull(v.date)}</Text> : null}
-                  </View>
-                  {spotsLeft !== null ? (
-                    <View style={[styles.spotsBadge, { backgroundColor: isFull ? '#fee2e2' : '#d1fae5' }]}>
-                      <Text style={[styles.spotsText, { color: isFull ? '#dc2626' : '#059669' }]}>
-                        {isFull ? 'Full' : `${spotsLeft} left`}
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
-              )
-            })}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>📢 Announcements</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('More', { screen: 'AnnouncementsList' })}>
+              <Text style={styles.sectionLink}>Manage →</Text>
+            </TouchableOpacity>
           </View>
-        ) : null}
+          {announcements.length === 0 ? (
+            <Text style={styles.emptyMsg}>No announcements yet</Text>
+          ) : announcements.map(a => (
+            <View key={a.id} style={styles.annoCard}>
+              <Text style={styles.annoTitle} numberOfLines={1}>{a.title}</Text>
+              {a.body ? <Text style={styles.annoBody} numberOfLines={1}>{a.body}</Text> : null}
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>🏆 Recent Milestones</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Awards')}>
+              <Text style={styles.sectionLink}>All →</Text>
+            </TouchableOpacity>
+          </View>
+          {milestones.length === 0 ? (
+            <Text style={styles.emptyMsg}>No milestones recorded yet</Text>
+          ) : milestones.map(m => {
+            const meta = FTEM_PHASES[m.ftem_phase]
+            return (
+              <View key={m.id} style={styles.milestoneCard}>
+                <Ionicons name="trophy" size={14} color="#f59e0b" style={{ marginTop: 1 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.milestoneTitle} numberOfLines={1}>{m.title}</Text>
+                  {m.athlete_name ? <Text style={styles.milestoneSub}>{m.athlete_name}</Text> : null}
+                  <Text style={styles.milestoneMeta}>{fmtFull(m.achieved_at ?? m.date)}</Text>
+                </View>
+                {m.ftem_phase ? (
+                  <View style={[styles.ftemBadge, { backgroundColor: meta?.bgColor ?? '#f1f5f9' }]}>
+                    <Text style={[styles.ftemBadgeText, { color: meta?.textColor ?? '#334155' }]}>{m.ftem_phase}</Text>
+                  </View>
+                ) : null}
+              </View>
+            )
+          })}
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>🤝 Volunteering</Text>
+          </View>
+          {volunteering.length === 0 ? (
+            <Text style={styles.emptyMsg}>No open opportunities</Text>
+          ) : volunteering.map(v => {
+            const spotsLeft = v.spots ? v.spots - (v.signed_up ?? 0) : null
+            const isFull = spotsLeft !== null && spotsLeft <= 0
+            return (
+              <View key={v.id} style={styles.volCard}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.volTitle} numberOfLines={1}>{v.title}</Text>
+                  {v.date ? <Text style={styles.volMeta}>{fmtFull(v.date)}</Text> : null}
+                </View>
+                {spotsLeft !== null ? (
+                  <View style={[styles.spotsBadge, { backgroundColor: isFull ? '#fee2e2' : '#d1fae5' }]}>
+                    <Text style={[styles.spotsText, { color: isFull ? '#dc2626' : '#059669' }]}>
+                      {isFull ? 'Full' : `${spotsLeft} left`}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            )
+          })}
+        </View>
 
         <View style={{ height: spacing.xl }} />
       </ScrollView>
@@ -616,7 +624,9 @@ const styles = StyleSheet.create({
   section: { marginBottom: spacing.md },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
   sectionTitle: { fontSize: font.base, fontWeight: '700', color: colors.text },
+  sectionHint: { fontSize: 10, color: colors.textMuted, marginTop: 1 },
   sectionLink: { fontSize: font.xs, color: colors.primary, fontWeight: '600' },
+  emptyMsg: { fontSize: font.xs, color: colors.textMuted, textAlign: 'center', paddingVertical: spacing.md },
 
   emptyState: { alignItems: 'center', paddingVertical: 28, gap: 6, backgroundColor: colors.surface, borderRadius: radius.lg },
   emptyText: { fontSize: font.sm, color: '#94a3b8' },
@@ -666,7 +676,7 @@ const styles = StyleSheet.create({
   ftemFill: { height: '100%', backgroundColor: colors.primary, borderRadius: 4 },
   ftemCount: { fontSize: font.xs, fontWeight: '700', color: '#475569', width: 20, textAlign: 'right' },
   ftemPct: { fontSize: 10, color: colors.textMuted, width: 30, textAlign: 'right' },
-  ftemFooter: { borderTopWidth: 1, borderTopColor: '#f8fafc', paddingTop: 8, marginTop: 2 },
+  ftemFooter: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#f8fafc', paddingTop: 8, marginTop: 2 },
   ftemFooterText: { fontSize: font.xs, color: colors.textMuted },
 
   annoCard: {
