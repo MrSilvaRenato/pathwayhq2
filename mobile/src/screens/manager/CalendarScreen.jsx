@@ -170,7 +170,7 @@ function DateTimeField({ label, value, onChange, required }) {
         </TouchableOpacity>
         <TouchableOpacity style={[styles.dtBtn, { flex: 2 }]} onPress={() => setPickTime(true)} activeOpacity={0.7}>
           <Ionicons name="time-outline" size={13} color={colors.textMuted} />
-          <Text style={[styles.dtBtnText, !timePart && { color: colors.textMuted }]}>
+          <Text style={[styles.dtBtnText, !timePart && { color: colors.textMuted }]} numberOfLines={1}>
             {timePart ?? 'Time'}
           </Text>
         </TouchableOpacity>
@@ -489,10 +489,8 @@ function EventFormModal({ initial, editScope, squads, onClose, onSave }) {
 
             {!isSeries && (
               <>
-                <View style={styles.row2}>
-                  <DateTimeField label="Start" value={form.start_time} onChange={v => setForm(p => ({ ...p, start_time: v }))} required />
-                  <DateTimeField label="End" value={form.end_time} onChange={v => setForm(p => ({ ...p, end_time: v }))} />
-                </View>
+                <DateTimeField label="Start" value={form.start_time} onChange={v => setForm(p => ({ ...p, start_time: v }))} required />
+                <DateTimeField label="End" value={form.end_time} onChange={v => setForm(p => ({ ...p, end_time: v }))} />
 
                 {!isEditing && (
                   <>
