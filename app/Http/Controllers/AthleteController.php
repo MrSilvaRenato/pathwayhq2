@@ -54,6 +54,25 @@ class AthleteController extends Controller
             return $a;
         };
 
+        // Back-fill avatar_url from any athlete record for the same user.
+        // Needed for athletes who uploaded an avatar before being approved
+        // into this club (their club record was created without avatar_url).
+        $backfillAvatars = function ($collection) {
+            $userIds = $collection->whereNull('avatar_url')->whereNotNull('user_id')->pluck('user_id')->unique();
+            if ($userIds->isEmpty()) return $collection;
+
+            $avatarMap = Athlete::whereIn('user_id', $userIds)
+                ->whereNotNull('avatar_url')
+                ->pluck('avatar_url', 'user_id');
+
+            return $collection->map(function ($a) use ($avatarMap) {
+                if (!$a->avatar_url && $a->user_id && isset($avatarMap[$a->user_id])) {
+                    $a->avatar_url = $avatarMap[$a->user_id];
+                }
+                return $a;
+            });
+        };
+
         // Pagination — opt-in. If per_page param present (and paginate != 'false'), paginate.
         $perPage = $request->query('per_page');
         $paginate = $request->query('paginate', 'true');
@@ -63,7 +82,7 @@ class AthleteController extends Controller
             $page    = max(1, (int) $request->query('page', 1));
 
             $total   = $query->count();
-            $athletes = $query->forPage($page, $perPage)->get()->map($mapAthlete);
+            $athletes = $backfillAvatars($query->forPage($page, $perPage)->get()->map($mapAthlete));
 
             return response()->json([
                 'data'        => $athletes,
@@ -75,7 +94,7 @@ class AthleteController extends Controller
         }
 
         // Backward-compatible flat array (React web app path)
-        $athletes = $query->get()->map($mapAthlete);
+        $athletes = $backfillAvatars($query->get()->map($mapAthlete));
         return response()->json($athletes);
     }
 
@@ -91,6 +110,12 @@ class AthleteController extends Controller
         $athlete->contact_phone = $athlete->user?->phone ?? $athlete->phone;
         $athlete->contact_email = $athlete->user?->email ?? $athlete->invite_email;
         unset($athlete->user);
+
+        if (!$athlete->avatar_url && $athlete->user_id) {
+            $athlete->avatar_url = Athlete::where('user_id', $athlete->user_id)
+                ->whereNotNull('avatar_url')
+                ->value('avatar_url');
+        }
 
         return response()->json($athlete);
     }
