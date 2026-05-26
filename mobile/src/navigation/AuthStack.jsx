@@ -1,6 +1,6 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { Text, View, StyleSheet } from 'react-native'
-import { Zap } from 'lucide-react-native'
+import { Ionicons } from '@expo/vector-icons'
 import LoginScreen from '../screens/auth/LoginScreen'
 import RegisterScreen from '../screens/auth/RegisterScreen'
 import { colors } from '../lib/theme'
@@ -11,7 +11,7 @@ function LogoTitle() {
   return (
     <View style={styles.logoRow}>
       <View style={styles.iconBox}>
-        <Zap size={16} color="#fff" fill="#fff" />
+        <Ionicons name="flash" size={16} color="#fff" />
       </View>
       <Text style={styles.logoText}>PathwayHQ</Text>
     </View>

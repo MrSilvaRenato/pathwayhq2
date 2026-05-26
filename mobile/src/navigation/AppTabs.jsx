@@ -2,19 +2,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { View, Text, StyleSheet } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import {
-  Dumbbell,
-  Megaphone,
-  Trophy,
-  CreditCard,
-  Settings,
-  Users,
-  UserPlus,
-  Layers,
-  CalendarDays,
-  Shield,
-  Bell,
-} from 'lucide-react-native'
+import { Ionicons } from '@expo/vector-icons'
 import { useAuth } from '../contexts/AuthContext'
 import { colors } from '../lib/theme'
 import { useState, useEffect } from 'react'
@@ -145,14 +133,14 @@ function NotificationsStack() {
   )
 }
 
-function TabIcon({ Icon, color, size }) {
-  return <Icon size={size} color={color} />
+function TabIcon({ name, color, size }) {
+  return <Ionicons name={name} size={size} color={color} />
 }
 
-function BadgeIcon({ Icon, color, size, count }) {
+function BadgeIcon({ name, color, size, count }) {
   return (
     <View>
-      <Icon size={size} color={color} />
+      <Ionicons name={name} size={size} color={color} />
       {count > 0 && (
         <View style={styles.badge}>
           <Text style={styles.badgeText}>{count > 99 ? '99+' : count}</Text>
@@ -209,7 +197,7 @@ export default function AppTabs() {
           options={{
             title: 'Dashboard',
             tabBarIcon: ({ color, size }) => (
-              <TabIcon Icon={Shield} color={color} size={size} />
+              <TabIcon name="shield-checkmark-outline" color={color} size={size} />
             ),
           }}
         />
@@ -219,7 +207,7 @@ export default function AppTabs() {
           options={{
             title: 'Notifications',
             tabBarIcon: ({ color, size }) => (
-              <TabIcon Icon={Bell} color={color} size={size} />
+              <TabIcon name="notifications-outline" color={color} size={size} />
             ),
           }}
         />
@@ -229,7 +217,7 @@ export default function AppTabs() {
           options={{
             title: 'Settings',
             tabBarIcon: ({ color, size }) => (
-              <TabIcon Icon={Settings} color={color} size={size} />
+              <TabIcon name="settings-outline" color={color} size={size} />
             ),
           }}
         />
@@ -246,7 +234,7 @@ export default function AppTabs() {
           options={{
             title: 'Athletes',
             tabBarIcon: ({ color, size }) => (
-              <TabIcon Icon={Users} color={color} size={size} />
+              <TabIcon name="people-outline" color={color} size={size} />
             ),
           }}
         />
@@ -256,12 +244,7 @@ export default function AppTabs() {
           options={{
             title: 'Join Requests',
             tabBarIcon: ({ color, size }) => (
-              <BadgeIcon
-                Icon={UserPlus}
-                color={color}
-                size={size}
-                count={pendingCount}
-              />
+              <BadgeIcon name="person-add-outline" color={color} size={size} count={pendingCount} />
             ),
           }}
         />
@@ -271,7 +254,7 @@ export default function AppTabs() {
           options={{
             title: 'Squads',
             tabBarIcon: ({ color, size }) => (
-              <TabIcon Icon={Layers} color={color} size={size} />
+              <TabIcon name="layers-outline" color={color} size={size} />
             ),
           }}
         />
@@ -281,7 +264,7 @@ export default function AppTabs() {
           options={{
             title: 'Seasons',
             tabBarIcon: ({ color, size }) => (
-              <TabIcon Icon={CalendarDays} color={color} size={size} />
+              <TabIcon name="calendar-outline" color={color} size={size} />
             ),
           }}
         />
@@ -291,7 +274,7 @@ export default function AppTabs() {
           options={{
             title: 'Settings',
             tabBarIcon: ({ color, size }) => (
-              <TabIcon Icon={Settings} color={color} size={size} />
+              <TabIcon name="settings-outline" color={color} size={size} />
             ),
           }}
         />
@@ -308,7 +291,7 @@ export default function AppTabs() {
         options={{
           title: 'Dashboard',
           tabBarIcon: ({ color, size }) => (
-            <TabIcon Icon={Dumbbell} color={color} size={size} />
+            <TabIcon name="barbell-outline" color={color} size={size} />
           ),
         }}
       />
@@ -318,7 +301,7 @@ export default function AppTabs() {
         options={{
           title: 'Announcements',
           tabBarIcon: ({ color, size }) => (
-            <TabIcon Icon={Megaphone} color={color} size={size} />
+            <TabIcon name="megaphone-outline" color={color} size={size} />
           ),
         }}
       />
@@ -328,7 +311,7 @@ export default function AppTabs() {
         options={{
           title: 'Milestones',
           tabBarIcon: ({ color, size }) => (
-            <TabIcon Icon={Trophy} color={color} size={size} />
+            <TabIcon name="trophy-outline" color={color} size={size} />
           ),
         }}
       />
@@ -338,7 +321,7 @@ export default function AppTabs() {
         options={{
           title: 'Registrations',
           tabBarIcon: ({ color, size }) => (
-            <TabIcon Icon={CreditCard} color={color} size={size} />
+            <TabIcon name="card-outline" color={color} size={size} />
           ),
         }}
       />
@@ -348,7 +331,7 @@ export default function AppTabs() {
         options={{
           title: 'Settings',
           tabBarIcon: ({ color, size }) => (
-            <TabIcon Icon={Settings} color={color} size={size} />
+            <TabIcon name="settings-outline" color={color} size={size} />
           ),
         }}
       />

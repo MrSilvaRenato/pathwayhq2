@@ -1,12 +1,13 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 import { colors, font, spacing, radius } from '../lib/theme'
 
-export default function EmptyState({ icon: Icon, title, subtitle, action }) {
+export default function EmptyState({ iconName, title, subtitle, action }) {
   return (
     <View style={styles.container}>
-      {Icon && (
+      {iconName && (
         <View style={styles.iconWrap}>
-          <Icon size={36} color={colors.textMuted} />
+          <Ionicons name={iconName} size={36} color={colors.textMuted} />
         </View>
       )}
       <Text style={styles.title}>{title}</Text>

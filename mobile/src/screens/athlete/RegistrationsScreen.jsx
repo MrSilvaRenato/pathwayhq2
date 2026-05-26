@@ -10,7 +10,6 @@ import {
   Alert,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { CreditCard } from 'lucide-react-native'
 import api from '../../lib/api'
 import { colors, font, spacing, radius } from '../../lib/theme'
 import Badge from '../../components/Badge'
@@ -111,7 +110,7 @@ export default function RegistrationsScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={['bottom']}>
         <EmptyState
-          icon={CreditCard}
+          iconName="card-outline"
           title="No registrations"
           subtitle="You have no event registrations yet."
         />

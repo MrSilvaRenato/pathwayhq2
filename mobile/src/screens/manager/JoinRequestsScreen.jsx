@@ -10,7 +10,6 @@ import {
   Alert,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { UserPlus } from 'lucide-react-native'
 import api from '../../lib/api'
 import { colors, font, spacing, radius } from '../../lib/theme'
 import Avatar from '../../components/Avatar'
@@ -146,7 +145,7 @@ export default function JoinRequestsScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={['bottom']}>
         <EmptyState
-          icon={UserPlus}
+          iconName="person-add-outline"
           title="No join requests"
           subtitle="Athletes who request to join your club will appear here."
         />

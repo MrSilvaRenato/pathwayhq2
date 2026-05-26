@@ -8,7 +8,7 @@ import {
   RefreshControl,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { CalendarDays } from 'lucide-react-native'
+import { Ionicons } from '@expo/vector-icons'
 import api from '../../lib/api'
 import { colors, font, spacing, radius } from '../../lib/theme'
 import Badge from '../../components/Badge'
@@ -80,7 +80,7 @@ export default function SeasonsScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={['bottom']}>
         <EmptyState
-          icon={CalendarDays}
+          iconName="calendar-outline"
           title="No seasons yet"
           subtitle="Create a season to organise events and track athlete progress over time."
         />
@@ -108,7 +108,7 @@ export default function SeasonsScreen() {
             <View style={styles.card}>
               <View style={styles.cardHeader}>
                 <View style={styles.iconBox}>
-                  <CalendarDays size={18} color={colors.primary} />
+                  <Ionicons name="calendar-outline" size={18} color={colors.primary} />
                 </View>
                 <View style={styles.cardInfo}>
                   <Text style={styles.cardTitle}>{item.name}</Text>

@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Bell } from 'lucide-react-native'
+import { Ionicons } from '@expo/vector-icons'
 import api from '../../lib/api'
 import { colors, font, spacing, radius } from '../../lib/theme'
 import EmptyState from '../../components/EmptyState'
@@ -116,7 +116,7 @@ export default function NotificationsScreen({ navigation }) {
     return (
       <SafeAreaView style={styles.safe} edges={['bottom']}>
         <EmptyState
-          icon={Bell}
+          iconName="notifications-outline"
           title="No notifications"
           subtitle="You're all caught up! Notifications will appear here."
         />
@@ -148,7 +148,7 @@ export default function NotificationsScreen({ navigation }) {
             >
               {isUnread && <View style={styles.unreadBar} />}
               <View style={styles.iconBox}>
-                <Bell size={16} color={isUnread ? colors.primary : colors.textMuted} />
+                <Ionicons name="notifications-outline" size={16} color={isUnread ? colors.primary : colors.textMuted} />
               </View>
               <View style={styles.rowContent}>
                 <Text style={[styles.rowTitle, isUnread && styles.rowTitleUnread]}>

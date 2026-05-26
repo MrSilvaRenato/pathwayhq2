@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Trophy, Bell, Calendar, Users, Zap } from 'lucide-react-native'
+import { Ionicons } from '@expo/vector-icons'
 import { useAuth } from '../../contexts/AuthContext'
 import api from '../../lib/api'
 import { colors, font, spacing, radius } from '../../lib/theme'
@@ -168,7 +168,7 @@ export default function DashboardScreen() {
         ) : (
           <Card style={styles.noClubCard}>
             <View style={styles.noClubRow}>
-              <Users size={20} color={colors.primary} />
+              <Ionicons name="people-outline" size={20} color={colors.primary} />
               <Text style={styles.noClubText}>
                 You are not part of a club yet. Search for clubs to join.
               </Text>
@@ -242,7 +242,7 @@ export default function DashboardScreen() {
         {milestones.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Trophy size={16} color={colors.primary} />
+              <Ionicons name="trophy-outline" size={16} color={colors.primary} />
               <Text style={styles.sectionTitle}>Recent Milestones</Text>
             </View>
             {milestones.map((m) => (
@@ -277,7 +277,7 @@ export default function DashboardScreen() {
         {events.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Calendar size={16} color={colors.primary} />
+              <Ionicons name="calendar-outline" size={16} color={colors.primary} />
               <Text style={styles.sectionTitle}>Upcoming Events</Text>
             </View>
             {events.map((ev) => (
@@ -300,7 +300,7 @@ export default function DashboardScreen() {
         {announcements.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Bell size={16} color={colors.primary} />
+              <Ionicons name="notifications-outline" size={16} color={colors.primary} />
               <Text style={styles.sectionTitle}>Recent Announcements</Text>
             </View>
             {announcements.map((a) => (

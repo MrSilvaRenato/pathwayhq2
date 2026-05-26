@@ -8,7 +8,6 @@ import {
   RefreshControl,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Trophy } from 'lucide-react-native'
 import api from '../../lib/api'
 import { colors, font, spacing, radius } from '../../lib/theme'
 import { FTEM_PHASES } from '../../lib/constants'
@@ -92,7 +91,7 @@ export default function MilestonesScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={['bottom']}>
         <EmptyState
-          icon={Trophy}
+          iconName="trophy-outline"
           title="No milestones yet"
           subtitle="Your coach will add milestones as you progress through your athletic journey."
         />

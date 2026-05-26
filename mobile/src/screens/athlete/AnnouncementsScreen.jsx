@@ -9,7 +9,6 @@ import {
   RefreshControl,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Megaphone } from 'lucide-react-native'
 import api from '../../lib/api'
 import { colors, font, spacing, radius } from '../../lib/theme'
 import Badge from '../../components/Badge'
@@ -107,7 +106,7 @@ export default function AnnouncementsScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={['bottom']}>
         <EmptyState
-          icon={Megaphone}
+          iconName="megaphone-outline"
           title="No announcements"
           subtitle="Your club hasn't posted any announcements yet."
         />

@@ -1,14 +1,14 @@
 import { View, Text, StyleSheet, ScrollView } from 'react-native'
 import { useState, useEffect } from 'react'
-import { Shield, Users, Building2, Activity } from 'lucide-react-native'
+import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../../lib/theme'
 import api from '../../lib/api'
 
-function StatCard({ icon: Icon, label, value }) {
+function StatCard({ iconName, label, value }) {
   return (
     <View style={styles.card}>
       <View style={styles.cardIcon}>
-        <Icon size={20} color={colors.primary} />
+        <Ionicons name={iconName} size={20} color={colors.primary} />
       </View>
       <Text style={styles.cardValue}>{value ?? '—'}</Text>
       <Text style={styles.cardLabel}>{label}</Text>
@@ -26,13 +26,13 @@ export default function AdminDashboardScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Shield size={28} color={colors.primary} />
+        <Ionicons name="shield-checkmark-outline" size={28} color={colors.primary} />
         <Text style={styles.title}>Platform Overview</Text>
       </View>
       <View style={styles.grid}>
-        <StatCard icon={Users}     label="Users"    value={stats?.users} />
-        <StatCard icon={Building2} label="Clubs"    value={stats?.clubs} />
-        <StatCard icon={Activity}  label="Athletes" value={stats?.athletes} />
+        <StatCard iconName="people-outline"   label="Users"    value={stats?.users} />
+        <StatCard iconName="business-outline" label="Clubs"    value={stats?.clubs} />
+        <StatCard iconName="pulse-outline"    label="Athletes" value={stats?.athletes} />
       </View>
     </ScrollView>
   )

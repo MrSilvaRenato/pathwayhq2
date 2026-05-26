@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Users, Search } from 'lucide-react-native'
+import { Ionicons } from '@expo/vector-icons'
 import api from '../../lib/api'
 import { colors, font, spacing, radius } from '../../lib/theme'
 import { FTEM_PHASES, SPORTS } from '../../lib/constants'
@@ -94,7 +94,7 @@ export default function AthletesScreen({ navigation }) {
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       <View style={styles.searchRow}>
         <View style={styles.searchWrap}>
-          <Search size={16} color={colors.textMuted} />
+          <Ionicons name="search-outline" size={16} color={colors.textMuted} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search athletes..."
@@ -109,7 +109,7 @@ export default function AthletesScreen({ navigation }) {
 
       {filtered.length === 0 ? (
         <EmptyState
-          icon={Users}
+          iconName="people-outline"
           title={query ? 'No results' : 'No athletes yet'}
           subtitle={
             query

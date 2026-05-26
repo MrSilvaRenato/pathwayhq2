@@ -11,7 +11,7 @@ import {
   ScrollView,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Zap } from 'lucide-react-native'
+import { Ionicons } from '@expo/vector-icons'
 import { useAuth } from '../../contexts/AuthContext'
 import { colors, font, spacing, radius } from '../../lib/theme'
 
@@ -53,7 +53,7 @@ export default function LoginScreen({ navigation }) {
           {/* Brand mark */}
           <View style={styles.brandWrap}>
             <View style={styles.iconBox}>
-              <Zap size={32} color="#fff" fill="#fff" />
+              <Ionicons name="flash" size={32} color="#fff" />
             </View>
             <Text style={styles.brandName}>PathwayHQ</Text>
             <Text style={styles.tagline}>Your athletic journey starts here</Text>

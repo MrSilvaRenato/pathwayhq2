@@ -12,7 +12,7 @@ import {
   SafeAreaView as RNSafeAreaView,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Layers, X, Users } from 'lucide-react-native'
+import { Ionicons } from '@expo/vector-icons'
 import api from '../../lib/api'
 import { colors, font, spacing, radius } from '../../lib/theme'
 import Avatar from '../../components/Avatar'
@@ -93,7 +93,7 @@ export default function SquadsScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={['bottom']}>
         <EmptyState
-          icon={Layers}
+          iconName="layers-outline"
           title="No squads yet"
           subtitle="Create squads to organise your athletes into training groups."
         />
@@ -123,7 +123,7 @@ export default function SquadsScreen() {
           >
             <View style={styles.squadRow}>
               <View style={styles.squadIconBox}>
-                <Layers size={20} color={colors.primary} />
+                <Ionicons name="layers-outline" size={20} color={colors.primary} />
               </View>
               <View style={styles.squadInfo}>
                 <Text style={styles.squadName}>{item.name}</Text>
@@ -153,7 +153,7 @@ export default function SquadsScreen() {
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>{selectedSquad?.name}</Text>
             <TouchableOpacity onPress={closeModal} style={styles.closeBtn}>
-              <X size={22} color={colors.text} />
+              <Ionicons name="close" size={22} color={colors.text} />
             </TouchableOpacity>
           </View>
           {selectedSquad?.description ? (
@@ -167,7 +167,7 @@ export default function SquadsScreen() {
             </View>
           ) : squadAthletes.length === 0 ? (
             <EmptyState
-              icon={Users}
+              iconName="people-outline"
               title="No athletes in this squad"
               subtitle="Athletes assigned to this squad will appear here."
             />
