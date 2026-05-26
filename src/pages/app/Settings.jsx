@@ -314,8 +314,8 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* Save button — sticky on mobile */}
-          <div className="fixed bottom-0 left-0 right-0 z-10 bg-white border-t border-slate-100 py-3 px-4 md:static md:border-0 md:p-0 md:bg-transparent md:z-auto">
+          {/* Save button — sticky on mobile, floats above the bottom nav bar */}
+          <div className="fixed bottom-16 left-0 right-0 z-40 bg-white border-t border-slate-100 py-3 px-4 md:static md:border-0 md:p-0 md:bg-transparent md:z-auto md:bottom-auto">
             <button
               type="submit"
               disabled={savingProfile}
