@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, ScrollView, Alert, Switch,
+  ActivityIndicator, ScrollView, Alert, Switch, Modal, FlatList,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -57,22 +57,51 @@ function VisibilityRow({ iconName, iconColor, label, desc, value, onToggle, disa
   )
 }
 
-// ─── Picker modal replacement — horizontal chip scroll for small lists ────────
-function ChipPicker({ options, value, onChange }) {
+// ─── Modal dropdown picker ─────────────────────────────────────────────────────
+function DropdownPicker({ options, value, onChange, placeholder = 'Select…' }) {
+  const [open, setOpen] = useState(false)
+  const selected = options.find(o => o.value === value)
+  const displayLabel = selected
+    ? `${selected.emoji ? selected.emoji + ' ' : ''}${selected.label}`
+    : placeholder
+
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.sm }}>
-      {options.map(opt => (
-        <TouchableOpacity
-          key={opt.value}
-          style={[styles.chip, value === opt.value && styles.chipActive]}
-          onPress={() => onChange(opt.value)}
-        >
-          <Text style={[styles.chipText, value === opt.value && styles.chipTextActive]}>
-            {opt.emoji ? `${opt.emoji} ` : ''}{opt.label}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </ScrollView>
+    <>
+      <TouchableOpacity style={styles.dropdownBtn} onPress={() => setOpen(true)} activeOpacity={0.7}>
+        <Text style={[styles.dropdownBtnText, !selected && { color: colors.textMuted }]}>
+          {displayLabel}
+        </Text>
+        <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
+      </TouchableOpacity>
+
+      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setOpen(false)} />
+        <View style={styles.pickerSheet}>
+          <View style={styles.pickerHandle} />
+          <FlatList
+            data={options}
+            keyExtractor={o => o.value}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 24 }}
+            renderItem={({ item }) => {
+              const isSelected = item.value === value
+              return (
+                <TouchableOpacity
+                  style={[styles.pickerItem, isSelected && styles.pickerItemSelected]}
+                  onPress={() => { onChange(item.value); setOpen(false) }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.pickerItemText, isSelected && styles.pickerItemTextSelected]}>
+                    {item.emoji ? `${item.emoji}  ` : ''}{item.label}
+                  </Text>
+                  {isSelected && <Ionicons name="checkmark" size={18} color={colors.primary} />}
+                </TouchableOpacity>
+              )
+            }}
+          />
+        </View>
+      </Modal>
+    </>
   )
 }
 
@@ -347,25 +376,21 @@ export default function SettingsScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.label}>State</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.sm }}>
-                  {STATES.map(s => (
-                    <TouchableOpacity
-                      key={s}
-                      style={[styles.chip, clubForm.state === s && styles.chipActive]}
-                      onPress={() => setClubForm(p => ({ ...p, state: s }))}
-                    >
-                      <Text style={[styles.chipText, clubForm.state === s && styles.chipTextActive]}>{s}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+                <DropdownPicker
+                  options={STATES.map(s => ({ value: s, label: s }))}
+                  value={clubForm.state}
+                  onChange={v => setClubForm(p => ({ ...p, state: v }))}
+                  placeholder="Select state…"
+                />
               </View>
             </View>
 
             <Text style={styles.label}>Primary sport</Text>
-            <ChipPicker
+            <DropdownPicker
               options={SPORTS}
               value={clubForm.sport}
               onChange={v => setClubForm(p => ({ ...p, sport: v }))}
+              placeholder="Select sport…"
             />
 
             <Text style={styles.label}>Founded year</Text>
@@ -676,13 +701,36 @@ const styles = StyleSheet.create({
 
   row2: { flexDirection: 'row', gap: spacing.sm },
 
-  chip: {
-    paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.full,
-    backgroundColor: '#fff', borderWidth: 1, borderColor: colors.border, marginRight: 8,
+  dropdownBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    borderWidth: 1, borderColor: colors.border, borderRadius: radius.md,
+    paddingHorizontal: 14, paddingVertical: 13,
+    backgroundColor: '#fafafa', marginBottom: spacing.sm,
   },
-  chipActive: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
-  chipText: { fontSize: font.sm, fontWeight: '600', color: colors.textMuted },
-  chipTextActive: { color: colors.primary },
+  dropdownBtnText: { fontSize: font.base, color: colors.text, flex: 1 },
+
+  modalOverlay: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  pickerSheet: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    maxHeight: '60%', paddingTop: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1, shadowRadius: 12, elevation: 20,
+  },
+  pickerHandle: {
+    width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border,
+    alignSelf: 'center', marginBottom: 12,
+  },
+  pickerItem: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 14, paddingHorizontal: 20,
+  },
+  pickerItemSelected: { backgroundColor: colors.primaryLight },
+  pickerItemText: { fontSize: font.base, color: colors.text },
+  pickerItemTextSelected: { color: colors.primary, fontWeight: '700' },
 
   socialRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: spacing.sm },
   socialIcon: { marginBottom: spacing.sm },
