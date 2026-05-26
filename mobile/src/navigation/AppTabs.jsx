@@ -21,6 +21,10 @@ import AthleteDetailScreen from '../screens/manager/AthleteDetailScreen'
 import JoinRequestsScreen from '../screens/manager/JoinRequestsScreen'
 import SquadsScreen from '../screens/manager/SquadsScreen'
 import SeasonsScreen from '../screens/manager/SeasonsScreen'
+import CalendarScreen from '../screens/manager/CalendarScreen'
+import AnalyticsScreen from '../screens/manager/AnalyticsScreen'
+import ClubBroadcastScreen from '../screens/manager/ClubBroadcastScreen'
+import MoreScreen from '../screens/manager/MoreScreen'
 
 // Shared screens
 import SettingsScreen from '../screens/shared/SettingsScreen'
@@ -46,36 +50,25 @@ function SimpleStack({ screen: Screen, name, title }) {
   )
 }
 
+// ── Athlete stacks ────────────────────────────────────────────────────────────
+
 function AthleteStack() {
-  return (
-    <SimpleStack screen={DashboardScreen} name="AthleteDashboard" title="Dashboard" />
-  )
+  return <SimpleStack screen={DashboardScreen} name="AthleteDashboard" title="Dashboard" />
 }
-
 function AnnouncementsStack() {
-  return (
-    <SimpleStack
-      screen={AnnouncementsScreen}
-      name="AnnouncementsList"
-      title="Announcements"
-    />
-  )
+  return <SimpleStack screen={AnnouncementsScreen} name="AnnouncementsList" title="Announcements" />
 }
-
 function MilestonesStack() {
-  return (
-    <SimpleStack screen={MilestonesScreen} name="MilestonesList" title="Milestones" />
-  )
+  return <SimpleStack screen={MilestonesScreen} name="MilestonesList" title="Milestones" />
+}
+function RegistrationsStack() {
+  return <SimpleStack screen={RegistrationsScreen} name="RegistrationsList" title="Registrations" />
 }
 
-function RegistrationsStack() {
-  return (
-    <SimpleStack
-      screen={RegistrationsScreen}
-      name="RegistrationsList"
-      title="Registrations"
-    />
-  )
+// ── Manager stacks ────────────────────────────────────────────────────────────
+
+function ManagerDashboardStack() {
+  return <SimpleStack screen={ManagerDashboardScreen} name="ManagerDashboard" title="Dashboard" />
 }
 
 function AthletesManagerStack() {
@@ -86,59 +79,53 @@ function AthletesManagerStack() {
       <S.Screen
         name="AthleteDetail"
         component={AthleteDetailScreen}
-        options={({ route }) => ({
-          title: route.params?.athlete?.name ?? 'Athlete',
-        })}
+        options={({ route }) => ({ title: route.params?.athlete?.name ?? 'Athlete' })}
       />
     </S.Navigator>
   )
 }
 
-function JoinRequestsStack() {
+function CalendarStack() {
+  return <SimpleStack screen={CalendarScreen} name="CalendarList" title="Calendar" />
+}
+
+function MilestonesManagerStack() {
+  return <SimpleStack screen={MilestonesScreen} name="MilestonesListManager" title="Milestones" />
+}
+
+// "More" stack — contains all secondary screens reachable from the More tab
+function MoreManagerStack({ pendingCount }) {
+  const S = createNativeStackNavigator()
+  const MoreWithProps = (props) => <MoreScreen {...props} pendingCount={pendingCount} />
   return (
-    <SimpleStack
-      screen={JoinRequestsScreen}
-      name="JoinRequestsList"
-      title="Join Requests"
-    />
+    <S.Navigator screenOptions={HEADER_OPTS}>
+      <S.Screen name="MoreList" options={{ title: 'More' }}>
+        {(props) => <MoreScreen {...props} pendingCount={pendingCount} />}
+      </S.Screen>
+      <S.Screen name="JoinRequestsList"   component={JoinRequestsScreen}    options={{ title: 'Join Requests' }} />
+      <S.Screen name="SquadsList"         component={SquadsScreen}           options={{ title: 'Squads' }} />
+      <S.Screen name="SeasonsList"        component={SeasonsScreen}          options={{ title: 'Seasons' }} />
+      <S.Screen name="AnnouncementsList"  component={AnnouncementsScreen}    options={{ title: 'Announcements' }} />
+      <S.Screen name="BroadcastScreen"    component={ClubBroadcastScreen}    options={{ title: 'Broadcast' }} />
+      <S.Screen name="AnalyticsScreen"    component={AnalyticsScreen}        options={{ title: 'Analytics' }} />
+      <S.Screen name="SettingsList"       component={SettingsScreen}         options={{ title: 'Settings' }} />
+    </S.Navigator>
   )
 }
 
-function ManagerDashboardStack() {
-  return (
-    <SimpleStack screen={ManagerDashboardScreen} name="ManagerDashboard" title="Dashboard" />
-  )
-}
-
-function SquadsStack() {
-  return (
-    <SimpleStack screen={SquadsScreen} name="SquadsList" title="Squads" />
-  )
-}
-
-function SeasonsStack() {
-  return (
-    <SimpleStack screen={SeasonsScreen} name="SeasonsList" title="Seasons" />
-  )
-}
+// ── Shared stacks ─────────────────────────────────────────────────────────────
 
 function SettingsStack() {
-  return (
-    <SimpleStack screen={SettingsScreen} name="SettingsList" title="Settings" />
-  )
+  return <SimpleStack screen={SettingsScreen} name="SettingsList" title="Settings" />
 }
-
 function AdminDashboardStack() {
-  return (
-    <SimpleStack screen={AdminDashboardScreen} name="AdminDashboard" title="Admin" />
-  )
+  return <SimpleStack screen={AdminDashboardScreen} name="AdminDashboard" title="Admin" />
+}
+function NotificationsStack() {
+  return <SimpleStack screen={NotificationsScreen} name="NotificationsList" title="Notifications" />
 }
 
-function NotificationsStack() {
-  return (
-    <SimpleStack screen={NotificationsScreen} name="NotificationsList" title="Notifications" />
-  )
-}
+// ── Tab icons ─────────────────────────────────────────────────────────────────
 
 function TabIcon({ name, color, size }) {
   return <Ionicons name={name} size={size} color={color} />
@@ -157,6 +144,8 @@ function BadgeIcon({ name, color, size, count }) {
   )
 }
 
+// ── Main navigator ────────────────────────────────────────────────────────────
+
 export default function AppTabs() {
   const { user } = useAuth()
   const role = user?.role
@@ -165,8 +154,7 @@ export default function AppTabs() {
 
   useEffect(() => {
     if (role === 'club_admin' || role === 'coach') {
-      api
-        .get('/club/join-requests')
+      api.get('/club/join-requests')
         .then((r) => {
           const pending = (r.data || []).filter((req) => req.status === 'pending')
           setPendingCount(pending.length)
@@ -195,183 +183,90 @@ export default function AppTabs() {
     headerShown: false,
   }
 
+  // ── Site admin ──────────────────────────────────────────────────────────────
   if (role === 'site_admin') {
     return (
       <Tab.Navigator screenOptions={tabBarStyle}>
-        <Tab.Screen
-          name="AdminDash"
-          component={AdminDashboardStack}
-          options={{
-            title: 'Dashboard',
-            tabBarIcon: ({ color, size }) => (
-              <TabIcon name="shield-checkmark-outline" color={color} size={size} />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="Notifications"
-          component={NotificationsStack}
-          options={{
-            title: 'Notifications',
-            tabBarIcon: ({ color, size }) => (
-              <TabIcon name="notifications-outline" color={color} size={size} />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="Settings"
-          component={SettingsStack}
-          options={{
-            title: 'Settings',
-            tabBarIcon: ({ color, size }) => (
-              <TabIcon name="settings-outline" color={color} size={size} />
-            ),
-          }}
-        />
+        <Tab.Screen name="AdminDash" component={AdminDashboardStack} options={{
+          title: 'Dashboard',
+          tabBarIcon: ({ color, size }) => <TabIcon name="shield-checkmark-outline" color={color} size={size} />,
+        }} />
+        <Tab.Screen name="Notifications" component={NotificationsStack} options={{
+          title: 'Notifications',
+          tabBarIcon: ({ color, size }) => <TabIcon name="notifications-outline" color={color} size={size} />,
+        }} />
+        <Tab.Screen name="Settings" component={SettingsStack} options={{
+          title: 'Settings',
+          tabBarIcon: ({ color, size }) => <TabIcon name="settings-outline" color={color} size={size} />,
+        }} />
       </Tab.Navigator>
     )
   }
 
+  // ── Club admin / coach — matches web mobile: Dashboard | Athletes | Calendar | Awards | More
   if (role === 'club_admin' || role === 'coach') {
     return (
       <Tab.Navigator screenOptions={tabBarStyle}>
-        <Tab.Screen
-          name="ManagerDash"
-          component={ManagerDashboardStack}
-          options={{
-            title: 'Dashboard',
-            tabBarIcon: ({ color, size }) => (
-              <TabIcon name="barbell-outline" color={color} size={size} />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="Athletes"
-          component={AthletesManagerStack}
-          options={{
-            title: 'Athletes',
-            tabBarIcon: ({ color, size }) => (
-              <TabIcon name="people-outline" color={color} size={size} />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="JoinRequests"
-          component={JoinRequestsStack}
-          options={{
-            title: 'Join Requests',
-            tabBarIcon: ({ color, size }) => (
-              <BadgeIcon name="person-add-outline" color={color} size={size} count={pendingCount} />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="Squads"
-          component={SquadsStack}
-          options={{
-            title: 'Squads',
-            tabBarIcon: ({ color, size }) => (
-              <TabIcon name="layers-outline" color={color} size={size} />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="Seasons"
-          component={SeasonsStack}
-          options={{
-            title: 'Seasons',
-            tabBarIcon: ({ color, size }) => (
-              <TabIcon name="calendar-outline" color={color} size={size} />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="Settings"
-          component={SettingsStack}
-          options={{
-            title: 'Settings',
-            tabBarIcon: ({ color, size }) => (
-              <TabIcon name="settings-outline" color={color} size={size} />
-            ),
-          }}
-        />
+        <Tab.Screen name="ManagerDash" component={ManagerDashboardStack} options={{
+          title: 'Dashboard',
+          tabBarIcon: ({ color, size }) => <TabIcon name="grid-outline" color={color} size={size} />,
+        }} />
+        <Tab.Screen name="Athletes" component={AthletesManagerStack} options={{
+          title: 'Athletes',
+          tabBarIcon: ({ color, size }) => <TabIcon name="people-outline" color={color} size={size} />,
+        }} />
+        <Tab.Screen name="Calendar" component={CalendarStack} options={{
+          title: 'Calendar',
+          tabBarIcon: ({ color, size }) => <TabIcon name="calendar-outline" color={color} size={size} />,
+        }} />
+        <Tab.Screen name="Awards" component={MilestonesManagerStack} options={{
+          title: 'Awards',
+          tabBarIcon: ({ color, size }) => <TabIcon name="trophy-outline" color={color} size={size} />,
+        }} />
+        <Tab.Screen name="More" options={{
+          title: 'More',
+          tabBarIcon: ({ color, size }) => (
+            <BadgeIcon name="ellipsis-horizontal-outline" color={color} size={size} count={pendingCount} />
+          ),
+        }}>
+          {() => <MoreManagerStack pendingCount={pendingCount} />}
+        </Tab.Screen>
       </Tab.Navigator>
     )
   }
 
-  // Default: athlete / parent
+  // ── Athlete / parent ────────────────────────────────────────────────────────
   return (
     <Tab.Navigator screenOptions={tabBarStyle}>
-      <Tab.Screen
-        name="Dashboard"
-        component={AthleteStack}
-        options={{
-          title: 'Dashboard',
-          tabBarIcon: ({ color, size }) => (
-            <TabIcon name="barbell-outline" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Announcements"
-        component={AnnouncementsStack}
-        options={{
-          title: 'Announcements',
-          tabBarIcon: ({ color, size }) => (
-            <TabIcon name="megaphone-outline" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Milestones"
-        component={MilestonesStack}
-        options={{
-          title: 'Milestones',
-          tabBarIcon: ({ color, size }) => (
-            <TabIcon name="trophy-outline" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Registrations"
-        component={RegistrationsStack}
-        options={{
-          title: 'Registrations',
-          tabBarIcon: ({ color, size }) => (
-            <TabIcon name="card-outline" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Settings"
-        component={SettingsStack}
-        options={{
-          title: 'Settings',
-          tabBarIcon: ({ color, size }) => (
-            <TabIcon name="settings-outline" color={color} size={size} />
-          ),
-        }}
-      />
+      <Tab.Screen name="Dashboard" component={AthleteStack} options={{
+        title: 'Dashboard',
+        tabBarIcon: ({ color, size }) => <TabIcon name="barbell-outline" color={color} size={size} />,
+      }} />
+      <Tab.Screen name="Announcements" component={AnnouncementsStack} options={{
+        title: 'Announcements',
+        tabBarIcon: ({ color, size }) => <TabIcon name="megaphone-outline" color={color} size={size} />,
+      }} />
+      <Tab.Screen name="Milestones" component={MilestonesStack} options={{
+        title: 'Milestones',
+        tabBarIcon: ({ color, size }) => <TabIcon name="trophy-outline" color={color} size={size} />,
+      }} />
+      <Tab.Screen name="Registrations" component={RegistrationsStack} options={{
+        title: 'Registrations',
+        tabBarIcon: ({ color, size }) => <TabIcon name="card-outline" color={color} size={size} />,
+      }} />
+      <Tab.Screen name="Settings" component={SettingsStack} options={{
+        title: 'Settings',
+        tabBarIcon: ({ color, size }) => <TabIcon name="settings-outline" color={color} size={size} />,
+      }} />
     </Tab.Navigator>
   )
 }
 
 const styles = StyleSheet.create({
   badge: {
-    position: 'absolute',
-    top: -4,
-    right: -8,
-    backgroundColor: colors.error,
-    borderRadius: 999,
-    minWidth: 18,
-    height: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 4,
+    position: 'absolute', top: -4, right: -8,
+    backgroundColor: colors.error, borderRadius: 999,
+    minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4,
   },
-  badgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '700',
-  },
+  badgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
 })

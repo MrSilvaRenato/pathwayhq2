@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   View, Text, ScrollView, StyleSheet, ActivityIndicator,
-  RefreshControl, TouchableOpacity,
+  RefreshControl, TouchableOpacity, Image,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -12,6 +12,17 @@ import { FTEM_PHASES, SPORTS } from '../../lib/constants'
 import Avatar from '../../components/Avatar'
 import Badge from '../../components/Badge'
 import Card from '../../components/Card'
+
+function greeting() {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 17) return 'Good afternoon'
+  return 'Good evening'
+}
+
+function todayLabel() {
+  return new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+}
 
 function formatDate(str) {
   if (!str) return ''
@@ -50,10 +61,9 @@ function StatPill({ iconName, value, label }) {
 
 function FtemBar({ phase, count, total }) {
   const pct = total > 0 ? count / total : 0
-  const label = FTEM_PHASES[phase]?.label ?? phase
   return (
     <View style={styles.ftemRow}>
-      <Text style={styles.ftemLabel}>{label}</Text>
+      <Text style={styles.ftemLabel}>{phase}</Text>
       <View style={styles.ftemTrack}>
         <View style={[styles.ftemFill, { width: `${Math.round(pct * 100)}%` }]} />
       </View>
@@ -144,14 +154,25 @@ export default function ManagerDashboardScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         showsVerticalScrollIndicator={false}
       >
+        {/* Greeting */}
+        <View style={styles.greetingRow}>
+          <Text style={styles.greetingText}>{greeting()}, {user?.full_name?.split(' ')[0] ?? 'Coach'} 👋</Text>
+          <Text style={styles.greetingDate}>{todayLabel()}</Text>
+        </View>
+
         {/* Club banner */}
         {club ? (
           <View style={styles.clubBanner}>
-            <Avatar name={club.name} size="md" />
+            {club.logo_url ? (
+              <Image source={{ uri: club.logo_url }} style={styles.clubLogo} resizeMode="contain" />
+            ) : (
+              <Avatar name={club.name} size="md" />
+            )}
             <View style={styles.clubInfo}>
+              <Text style={styles.clubSub}>YOUR CLUB</Text>
               <Text style={styles.clubName}>{club.name}</Text>
-              <Text style={styles.clubSub}>
-                {[sportLabel(club.sport), club.city, club.state].filter(Boolean).join(' · ')}
+              <Text style={styles.clubSubDetail}>
+                {[sportLabel(club.sport), club.city ? `${club.city}, ${club.state ?? ''}` : null].filter(Boolean).join(' · ')}
               </Text>
             </View>
           </View>
@@ -297,14 +318,20 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   content: { padding: spacing.md, paddingTop: spacing.sm },
 
+  greetingRow: { marginBottom: spacing.md },
+  greetingText: { fontSize: font.lg, fontWeight: '800', color: colors.text },
+  greetingDate: { fontSize: font.xs, color: colors.textMuted, marginTop: 2 },
+
   clubBanner: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 14,
     backgroundColor: colors.primary, borderRadius: radius.lg,
     padding: spacing.md, marginBottom: spacing.md,
   },
+  clubLogo: { width: 56, height: 56, borderRadius: 12, backgroundColor: '#fff' },
   clubInfo: { flex: 1 },
-  clubName: { fontSize: font.md, fontWeight: '700', color: '#fff' },
-  clubSub: { fontSize: font.xs, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+  clubSub: { fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: 0.8 },
+  clubName: { fontSize: font.lg, fontWeight: '800', color: '#fff', marginTop: 2 },
+  clubSubDetail: { fontSize: font.xs, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
 
   statsScroll: { marginBottom: spacing.md, marginHorizontal: -spacing.md },
   statsRow: { paddingHorizontal: spacing.md, gap: 10 },
@@ -344,7 +371,7 @@ const styles = StyleSheet.create({
   rsvpLabel: { fontSize: 10, color: colors.textMuted },
 
   ftemRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
-  ftemLabel: { fontSize: font.xs, fontWeight: '600', color: colors.textSecondary, width: 32 },
+  ftemLabel: { fontSize: font.sm, fontWeight: '700', color: colors.textSecondary, width: 30 },
   ftemTrack: { flex: 1, height: 8, backgroundColor: colors.background, borderRadius: 4, overflow: 'hidden' },
   ftemFill: { height: '100%', backgroundColor: colors.primary, borderRadius: 4 },
   ftemCount: { fontSize: font.xs, color: colors.textMuted, width: 24, textAlign: 'right' },
