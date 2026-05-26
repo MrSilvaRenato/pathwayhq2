@@ -53,10 +53,10 @@ function SectionCard({ title, children }) {
 }
 
 export default function Settings() {
-  const { user, isAdmin } = useAuth()
+  const { user, isAdmin, refreshUser } = useAuth()
   const toast = useToast()
 
-  const [profile,  setProfile]  = useState({ full_name: '', phone: '', password: '' })
+  const [profile,  setProfile]  = useState({ full_name: '', email: '', phone: '', password: '' })
   const [club,     setClub]     = useState(null)
   const [clubForm, setClubForm] = useState({})
   const [savingProfile, setSavingProfile] = useState(false)
@@ -71,7 +71,7 @@ export default function Settings() {
     }
     api.get('/profile').then(r => {
       const d = r.data
-      setProfile({ full_name: d.full_name ?? '', phone: d.phone ?? '', password: '' })
+      setProfile({ full_name: d.full_name ?? '', email: d.email ?? '', phone: d.phone ?? '', password: '' })
       if (d.club_id) {
         setClub(d)
         setClubForm({
@@ -104,7 +104,12 @@ export default function Settings() {
     e.preventDefault()
     setSavingProfile(true)
     try {
-      await api.put('/profile', profile)
+      const { data } = await api.put('/profile', profile)
+      // If email changed the backend issues a fresh token — store it and refresh auth state
+      if (data.token) {
+        localStorage.setItem('phq_token', data.token)
+        await refreshUser()
+      }
       setProfile(p => ({ ...p, password: '' }))
       toast.success('Profile saved successfully')
     } catch (err) {
@@ -255,12 +260,16 @@ export default function Settings() {
             />
           </div>
           <div>
-            <label className={labelCls}>Email</label>
+            <label className={labelCls}>Email address</label>
             <input
-              value={user?.email ?? ''}
-              disabled
-              className={inputCls + ' opacity-60 cursor-not-allowed bg-slate-50'}
+              type="email"
+              required
+              value={profile.email}
+              onChange={e => setProfile(p => ({ ...p, email: e.target.value }))}
+              className={inputCls}
+              placeholder="you@example.com"
             />
+            <p className="text-[11px] text-slate-400 mt-1.5">This is your login email. Changing it takes effect immediately.</p>
           </div>
           <div>
             <label className={labelCls}>

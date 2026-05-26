@@ -32,6 +32,11 @@ export function AuthProvider({ children }) {
     return data.user
   }
 
+  async function refreshUser() {
+    const data = await api.get('/auth/me')
+    setUser(data.data)
+  }
+
   function logout() {
     sessionStorage.removeItem('phq_admin_token')
     localStorage.removeItem('phq_token')
@@ -55,7 +60,7 @@ export function AuthProvider({ children }) {
   const isAdmin = user?.role === 'club_admin' || user?.role === 'site_admin'
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, isAdmin, isImpersonating, impersonate, stopImpersonating }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, isAdmin, isImpersonating, impersonate, stopImpersonating, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )

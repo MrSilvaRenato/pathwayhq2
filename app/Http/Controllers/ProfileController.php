@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use App\Models\Athlete;
+use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 
 class ProfileController extends Controller
 {
@@ -46,14 +48,19 @@ class ProfileController extends Controller
 
     public function update(Request $request)
     {
+        $user = $request->user();
+
         $data = $request->validate([
             'full_name' => 'required|string',
+            'email'     => 'required|email|unique:users,email,' . $user->id,
             'phone'     => 'nullable|string|max:20',
             'password'  => 'nullable|min:6',
         ]);
 
-        $user = $request->user();
+        $oldEmail = $user->email;
+
         $user->full_name = $data['full_name'];
+        $user->email     = $data['email'];
         $user->phone     = $data['phone'] ?? $user->phone;
 
         if (!empty($data['password'])) {
@@ -62,6 +69,16 @@ class ProfileController extends Controller
 
         $user->save();
 
-        return response()->json(['ok' => true]);
+        // Keep invite_email in sync on linked athlete records
+        if ($data['email'] !== $oldEmail) {
+            Athlete::where('user_id', $user->id)
+                ->where('invite_email', $oldEmail)
+                ->update(['invite_email' => $data['email']]);
+        }
+
+        // Issue a fresh token so the client reflects the updated email immediately
+        $token = JWTAuth::fromUser($user);
+
+        return response()->json(['ok' => true, 'token' => $token]);
     }
 }
