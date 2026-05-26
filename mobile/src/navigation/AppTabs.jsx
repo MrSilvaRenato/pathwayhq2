@@ -26,6 +26,7 @@ import RegistrationsScreen from '../screens/athlete/RegistrationsScreen'
 
 // Manager screens
 import AthletesScreen from '../screens/manager/AthletesScreen'
+import AthleteDetailScreen from '../screens/manager/AthleteDetailScreen'
 import JoinRequestsScreen from '../screens/manager/JoinRequestsScreen'
 import SquadsScreen from '../screens/manager/SquadsScreen'
 import SeasonsScreen from '../screens/manager/SeasonsScreen'
@@ -86,8 +87,18 @@ function RegistrationsStack() {
 }
 
 function AthletesManagerStack() {
+  const S = createNativeStackNavigator()
   return (
-    <SimpleStack screen={AthletesScreen} name="AthletesList" title="Athletes" />
+    <S.Navigator screenOptions={HEADER_OPTS}>
+      <S.Screen name="AthletesList" component={AthletesScreen} options={{ title: 'Athletes' }} />
+      <S.Screen
+        name="AthleteDetail"
+        component={AthleteDetailScreen}
+        options={({ route }) => ({
+          title: route.params?.athlete?.name ?? 'Athlete',
+        })}
+      />
+    </S.Navigator>
   )
 }
 
