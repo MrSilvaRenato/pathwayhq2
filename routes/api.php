@@ -186,6 +186,7 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/seasons/{id}/invite',               [SeasonRegistrationController::class, 'invite']);
     Route::get('/my-registrations',                   [SeasonRegistrationController::class, 'myRegistrations']);
     Route::post('/registrations/{id}/pay',            [SeasonRegistrationController::class, 'pay']);
+    Route::post('/registrations/{id}/reject',         [SeasonRegistrationController::class, 'reject']);
     Route::put('/registrations/{id}/mark-paid',       [SeasonRegistrationController::class, 'markPaid']);
     Route::delete('/registrations/{id}',              [SeasonRegistrationController::class, 'destroy']);
 

@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react'
-import { CreditCard, CheckCircle2, Clock, Building2, CalendarDays, Loader2, DollarSign } from 'lucide-react'
+import { CreditCard, CheckCircle2, XCircle, Clock, Building2, CalendarDays, Loader2, DollarSign, AlertTriangle } from 'lucide-react'
 import api from '../../lib/api'
 import { useToast } from '../../contexts/ToastContext'
 
 const STATUS = {
-  invited:          { label: 'Payment required', color: 'bg-amber-100 text-amber-700', dot: 'bg-amber-400' },
-  manual_pending:   { label: 'Pay at club',       color: 'bg-blue-100 text-blue-700',   dot: 'bg-blue-400' },
+  invited:          { label: 'Action required',  color: 'bg-amber-100 text-amber-700',     dot: 'bg-amber-400' },
+  manual_pending:   { label: 'Pay at club',       color: 'bg-blue-100 text-blue-700',       dot: 'bg-blue-400' },
   paid:             { label: 'Paid ✓',            color: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-400' },
   manual_confirmed: { label: 'Paid ✓',            color: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-400' },
-  rejected:         { label: 'Not required',      color: 'bg-slate-100 text-slate-500', dot: 'bg-slate-300' },
+  rejected:         { label: 'Declined',          color: 'bg-slate-100 text-slate-500',     dot: 'bg-slate-300' },
 }
 
 function fmtMoney(cents, currency = 'AUD') {
@@ -27,9 +27,7 @@ function PayModal({ reg, onClose, onPaid }) {
         toast.success("Your club has been notified. Pay when you're at the club.")
         onPaid()
       } else if (res.data.client_secret) {
-        // Stripe — for now show message since Stripe.js needs to be configured
         toast.success('Redirecting to payment…')
-        // TODO: integrate Stripe.js Elements with client_secret
         onPaid()
       }
     } catch (err) {
@@ -68,9 +66,11 @@ function PayModal({ reg, onClose, onPaid }) {
 }
 
 export default function MyRegistrations() {
-  const [regs,    setRegs]    = useState([])
-  const [loading, setLoading] = useState(true)
-  const [paying,  setPaying]  = useState(null)
+  const [regs,       setRegs]       = useState([])
+  const [loading,    setLoading]    = useState(true)
+  const [paying,     setPaying]     = useState(null)
+  const [confirming, setConfirming] = useState(null) // reg id being declined
+  const [rejecting,  setRejecting]  = useState(null) // reg id mid-request
   const toast = useToast()
 
   const load = () => {
@@ -81,6 +81,18 @@ export default function MyRegistrations() {
   }
 
   useEffect(() => { load() }, [])
+
+  async function rejectReg(id) {
+    setRejecting(id)
+    try {
+      await api.post(`/registrations/${id}/reject`)
+      toast.success('Registration declined — your manager has been notified.')
+      setConfirming(null)
+      load()
+    } catch (err) {
+      toast.error(err?.response?.data?.message ?? 'Failed to decline')
+    } finally { setRejecting(null) }
+  }
 
   const pending = regs.filter(r => r.status === 'invited')
   const others  = regs.filter(r => r.status !== 'invited')
@@ -109,14 +121,18 @@ export default function MyRegistrations() {
         </div>
       ) : (
         <div className="space-y-4">
+
+          {/* ── Pending invites — action required ── */}
           {pending.length > 0 && (
-            <div className="rounded-2xl border-2 border-amber-200 bg-amber-50 p-1 overflow-hidden">
-              <p className="text-xs font-bold text-amber-700 px-4 pt-3 pb-1 uppercase tracking-wider">Action required</p>
-              <div className="space-y-1">
-                {pending.map(r => {
-                  const s = STATUS[r.status]
-                  return (
-                    <div key={r.id} className="bg-white rounded-xl mx-1 mb-1 p-4 flex items-center gap-4 shadow-sm">
+            <div className="rounded-2xl border-2 border-amber-200 bg-amber-50 overflow-hidden">
+              <p className="text-xs font-bold text-amber-700 px-4 pt-3 pb-2 uppercase tracking-wider flex items-center gap-1.5">
+                <Clock className="h-3.5 w-3.5" /> Action required · {pending.length}
+              </p>
+              <div className="space-y-1 px-1 pb-1">
+                {pending.map(r => (
+                  <div key={r.id} className="bg-white rounded-xl p-4 shadow-sm">
+                    {/* Club + season info */}
+                    <div className="flex items-center gap-3 mb-4">
                       {r.club_logo
                         ? <img src={r.club_logo} alt={r.club_name} className="h-12 w-12 rounded-xl object-cover shrink-0" />
                         : <div className="h-12 w-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 font-black text-lg shrink-0">{r.club_name?.[0]}</div>
@@ -132,20 +148,62 @@ export default function MyRegistrations() {
                           </p>
                         )}
                       </div>
-                      <div className="text-right shrink-0">
-                        <p className="font-black text-slate-900 text-lg">{fmtMoney(r.fee_cents, r.currency)}</p>
-                        <button onClick={() => setPaying(r)}
-                          className="mt-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 px-4 py-2 text-xs font-bold text-white transition-colors">
-                          Pay now
+                      <p className="font-black text-slate-900 text-xl shrink-0">{fmtMoney(r.fee_cents, r.currency)}</p>
+                    </div>
+
+                    {/* Decline confirmation inline */}
+                    {confirming === r.id ? (
+                      <div className="rounded-xl bg-red-50 border border-red-200 p-4">
+                        <div className="flex items-start gap-2.5 mb-3">
+                          <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-bold text-red-800">Decline this registration?</p>
+                            <p className="text-xs text-red-600 mt-0.5">Your manager will be notified. You can ask them to re-invite you later.</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => rejectReg(r.id)}
+                            disabled={rejecting === r.id}
+                            className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-red-500 hover:bg-red-400 disabled:opacity-60 py-2.5 text-sm font-bold text-white transition-colors min-h-[44px]"
+                          >
+                            {rejecting === r.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                            Yes, decline
+                          </button>
+                          <button
+                            onClick={() => setConfirming(null)}
+                            className="flex-1 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 py-2.5 text-sm font-semibold text-slate-600 transition-colors min-h-[44px]"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* RSVP buttons */
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setPaying(r)}
+                          className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 py-3 text-sm font-bold text-white transition-all shadow-sm shadow-emerald-500/20 min-h-[48px]"
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                          Yes, Register &amp; Pay
+                        </button>
+                        <button
+                          onClick={() => setConfirming(r.id)}
+                          className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 active:scale-95 py-3 text-sm font-bold text-red-600 transition-all min-h-[48px]"
+                        >
+                          <XCircle className="h-4 w-4" />
+                          No, Decline
                         </button>
                       </div>
-                    </div>
-                  )
-                })}
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           )}
 
+          {/* ── Resolved registrations ── */}
           {others.map(r => {
             const s = STATUS[r.status] ?? STATUS.invited
             return (
@@ -161,10 +219,14 @@ export default function MyRegistrations() {
                 <div className="text-right shrink-0">
                   <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold ${s.color}`}>{s.label}</span>
                   {r.paid_at && <p className="text-xs text-slate-400 mt-0.5">{new Date(r.paid_at).toLocaleDateString('en-AU')}</p>}
+                  {r.status === 'manual_pending' && (
+                    <p className="text-xs text-slate-400 mt-0.5">Awaiting club confirmation</p>
+                  )}
                 </div>
               </div>
             )
           })}
+
         </div>
       )}
 

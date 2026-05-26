@@ -448,4 +448,112 @@ HTML
             Log::error('[MailService] squadAddedToAthlete failed', ['error' => $e->getMessage()]);
         }
     }
+
+    /**
+     * Notify manager that an athlete declined a season registration invite.
+     */
+    public static function seasonRejectedToManager(User $manager, User $athlete, string $seasonName): void
+    {
+        $key = config('services.resend.key');
+        if (empty($key)) return;
+
+        try {
+            $managerName   = $manager->full_name ? explode(' ', $manager->full_name)[0] : 'there';
+            $athleteName   = $athlete->full_name ?? $athlete->email;
+            $athleteEmail  = $athlete->email;
+            $subject       = "{$athleteName} declined the registration for {$seasonName}";
+            $escapedName   = htmlspecialchars($athleteName, ENT_QUOTES, 'UTF-8');
+            $escapedSeason = htmlspecialchars($seasonName, ENT_QUOTES, 'UTF-8');
+
+            $html = self::layout(
+                "{$athleteName} declined their registration invite",
+                <<<HTML
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#111827;">Registration declined</p>
+<p style="margin:0 0 16px;color:#4b5563;">Hi {$managerName},</p>
+<p style="margin:0 0 16px;color:#4b5563;"><strong>{$escapedName}</strong> has declined their registration invite for <strong>{$escapedSeason}</strong>. Their spot has been freed up.</p>
+<table cellpadding="0" cellspacing="0" style="background-color:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:8px 8px;margin-bottom:16px;width:100%;">
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;width:80px;">Athlete</td><td style="padding:5px 8px;font-weight:600;color:#111827;">{$escapedName}</td></tr>
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;">Email</td><td style="padding:5px 8px;color:#111827;">{$athleteEmail}</td></tr>
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;">Season</td><td style="padding:5px 8px;font-weight:600;color:#111827;">{$escapedSeason}</td></tr>
+</table>
+<p style="margin:0;color:#4b5563;">You can reach out to them directly or invite another athlete in their place.</p>
+HTML
+                . self::button('View season registrations', self::appUrl('/seasons'))
+            );
+
+            self::send($manager->email, $manager->full_name ?? $manager->email, $subject, $html);
+        } catch (\Throwable $e) {
+            Log::error('[MailService] seasonRejectedToManager failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Notify athlete that the manager revoked their season registration invite.
+     */
+    public static function seasonRevokedToAthlete(User $athlete, string $clubName, string $seasonName): void
+    {
+        $key = config('services.resend.key');
+        if (empty($key)) return;
+
+        try {
+            $athleteName   = $athlete->full_name ? explode(' ', $athlete->full_name)[0] : 'there';
+            $subject       = "Your registration invite for {$seasonName} has been withdrawn";
+            $escapedClub   = htmlspecialchars($clubName, ENT_QUOTES, 'UTF-8');
+            $escapedSeason = htmlspecialchars($seasonName, ENT_QUOTES, 'UTF-8');
+
+            $html = self::layout(
+                "Registration invite for {$seasonName} withdrawn",
+                <<<HTML
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#111827;">Registration invite withdrawn</p>
+<p style="margin:0 0 16px;color:#4b5563;">Hi {$athleteName},</p>
+<p style="margin:0 0 16px;color:#4b5563;"><strong>{$escapedClub}</strong> has withdrawn your registration invite for <strong>{$escapedSeason}</strong>.</p>
+<p style="margin:0;color:#4b5563;">If you think this was a mistake or have any questions, please reach out to your club manager directly.</p>
+HTML
+                . self::button('View my registrations', self::appUrl('/my-registrations'))
+            );
+
+            self::send($athlete->email, $athlete->full_name ?? $athlete->email, $subject, $html);
+        } catch (\Throwable $e) {
+            Log::error('[MailService] seasonRevokedToAthlete failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Notify manager that an athlete paid online by card.
+     */
+    public static function seasonPaidOnlineToManager(User $manager, User $athlete, string $seasonName): void
+    {
+        $key = config('services.resend.key');
+        if (empty($key)) return;
+
+        try {
+            $managerName   = $manager->full_name ? explode(' ', $manager->full_name)[0] : 'there';
+            $athleteName   = $athlete->full_name ?? $athlete->email;
+            $athleteEmail  = $athlete->email;
+            $subject       = "💳 {$athleteName} paid online for {$seasonName}";
+            $escapedName   = htmlspecialchars($athleteName, ENT_QUOTES, 'UTF-8');
+            $escapedSeason = htmlspecialchars($seasonName, ENT_QUOTES, 'UTF-8');
+
+            $html = self::layout(
+                "{$athleteName} completed online payment for {$seasonName}",
+                <<<HTML
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#111827;">Online payment received!</p>
+<p style="margin:0 0 16px;color:#4b5563;">Hi {$managerName},</p>
+<p style="margin:0 0 16px;color:#4b5563;">Great news — <strong>{$escapedName}</strong> has completed their online card payment for <strong>{$escapedSeason}</strong>. Their registration is now confirmed.</p>
+<table cellpadding="0" cellspacing="0" style="background-color:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px 8px;margin-bottom:16px;width:100%;">
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;width:80px;">Athlete</td><td style="padding:5px 8px;font-weight:600;color:#111827;">{$escapedName}</td></tr>
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;">Email</td><td style="padding:5px 8px;color:#111827;">{$athleteEmail}</td></tr>
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;">Season</td><td style="padding:5px 8px;font-weight:600;color:#111827;">{$escapedSeason}</td></tr>
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;">Payment</td><td style="padding:5px 8px;font-weight:600;color:#10b981;">Online card ✓</td></tr>
+</table>
+<p style="margin:0;color:#4b5563;">No further action needed — their registration is fully confirmed in the system.</p>
+HTML
+                . self::button('View season registrations', self::appUrl('/seasons'))
+            );
+
+            self::send($manager->email, $manager->full_name ?? $manager->email, $subject, $html);
+        } catch (\Throwable $e) {
+            Log::error('[MailService] seasonPaidOnlineToManager failed', ['error' => $e->getMessage()]);
+        }
+    }
 }

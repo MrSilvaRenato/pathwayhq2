@@ -168,6 +168,40 @@ class SeasonRegistrationController extends Controller
         return response()->json(['client_secret' => $intent->client_secret]);
     }
 
+    // Athlete: decline a season registration invite
+    public function reject(Request $request, $id)
+    {
+        $reg = SeasonRegistration::where('id', $id)
+            ->where('user_id', $request->user()->id)
+            ->whereIn('status', ['invited'])
+            ->with('season.club')
+            ->firstOrFail();
+
+        $reg->update(['status' => 'rejected']);
+
+        $user = $request->user();
+
+        // Notify managers
+        $managers = User::where('club_id', $reg->season->club_id)
+            ->where('role', 'club_admin')
+            ->get();
+
+        foreach ($managers as $mgr) {
+            Notification::create([
+                'id'      => (string) Str::uuid(),
+                'user_id' => $mgr->id,
+                'title'   => "❌ {$user->full_name} declined {$reg->season->name}",
+                'body'    => "They chose not to register for this season.",
+                'link'    => "/seasons/{$reg->season_id}",
+                'is_read' => false,
+                'at'      => now()->toDateTimeString(),
+            ]);
+            MailService::seasonRejectedToManager($mgr, $user, $reg->season->name);
+        }
+
+        return response()->json(['ok' => true]);
+    }
+
     // Stripe webhook: confirm payment
     public function stripeWebhook(Request $request)
     {
@@ -183,10 +217,13 @@ class SeasonRegistrationController extends Controller
 
         if ($event->type === 'payment_intent.succeeded') {
             $intentId = $event->data->object->id;
-            $reg = SeasonRegistration::where('stripe_payment_intent_id', $intentId)->first();
+            $reg = SeasonRegistration::where('stripe_payment_intent_id', $intentId)
+                ->with('season.club')
+                ->first();
             if ($reg) {
                 $reg->update(['status' => 'paid', 'paid_at' => now()]);
 
+                // Notify athlete
                 Notification::create([
                     'id'      => (string) Str::uuid(),
                     'user_id' => $reg->user_id,
@@ -196,6 +233,26 @@ class SeasonRegistrationController extends Controller
                     'is_read' => false,
                     'at'      => now()->toDateTimeString(),
                 ]);
+
+                // Notify managers
+                $athleteUser = User::find($reg->user_id);
+                $managers = User::where('club_id', $reg->season->club_id)
+                    ->where('role', 'club_admin')
+                    ->get();
+                foreach ($managers as $mgr) {
+                    Notification::create([
+                        'id'      => (string) Str::uuid(),
+                        'user_id' => $mgr->id,
+                        'title'   => "💳 {$athleteUser?->full_name} paid online for {$reg->season->name}",
+                        'body'    => "Card payment confirmed. Registration is complete.",
+                        'link'    => "/seasons/{$reg->season_id}",
+                        'is_read' => false,
+                        'at'      => now()->toDateTimeString(),
+                    ]);
+                    if ($athleteUser) {
+                        MailService::seasonPaidOnlineToManager($mgr, $athleteUser, $reg->season->name);
+                    }
+                }
             }
         }
 
@@ -230,7 +287,7 @@ class SeasonRegistrationController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    // Club admin: remove a registration invite
+    // Club admin: remove/revoke a registration invite
     public function destroy(Request $request, $id)
     {
         if (!in_array($request->user()->role, ['club_admin', 'site_admin'])) abort(403);
@@ -238,12 +295,15 @@ class SeasonRegistrationController extends Controller
         $reg = SeasonRegistration::where('id', $id)
             ->whereHas('season', fn($q) => $q->where('club_id', $request->user()->club_id))
             ->whereNotIn('status', ['paid'])
-            ->with('season')
+            ->with('season.club')
             ->firstOrFail();
 
         $reg->delete();
 
         if ($reg->user_id) {
+            $athleteUser = User::find($reg->user_id);
+            $clubName    = $reg->season->club?->name ?? '';
+
             Notification::create([
                 'id'      => (string) Str::uuid(),
                 'user_id' => $reg->user_id,
@@ -253,6 +313,10 @@ class SeasonRegistrationController extends Controller
                 'is_read' => false,
                 'at'      => now()->toDateTimeString(),
             ]);
+
+            if ($athleteUser) {
+                MailService::seasonRevokedToAthlete($athleteUser, $clubName, $reg->season->name);
+            }
         }
 
         return response()->json(['ok' => true]);
