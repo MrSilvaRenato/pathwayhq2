@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Trophy, Save, Trash2, Phone, Mail, Globe, Lock, Copy, Check, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Trophy, Save, Trash2, Phone, Mail, Globe, Copy, Check, ExternalLink } from 'lucide-react'
 import api from '../../lib/api'
 import { FTEM_PHASES, SPORTS } from '../../lib/constants'
 import { useAuth } from '../../contexts/AuthContext'
@@ -27,7 +27,6 @@ export default function AthleteDetail() {
   const [editing,    setEditing]    = useState(false)
   const [form,       setForm]       = useState({})
   const [saving,     setSaving]     = useState(false)
-  const [toggling,   setToggling]   = useState(false)
   const [copied,     setCopied]     = useState(false)
 
   useEffect(() => {
@@ -47,14 +46,6 @@ export default function AthleteDetail() {
     if (!confirm('Delete this athlete? This cannot be undone.')) return
     await api.delete(`/athletes/${id}`)
     navigate('/athletes')
-  }
-
-  async function togglePublic() {
-    setToggling(true)
-    const next = !athlete.is_public
-    await api.put(`/athletes/${id}`, { ...athlete, is_public: next })
-    setAthlete(a => ({ ...a, is_public: next }))
-    setToggling(false)
   }
 
   function copyLink() {
@@ -223,34 +214,23 @@ export default function AthleteDetail() {
                 </div>
               )}
 
-              {/* Public profile panel */}
-              {isAdmin && athlete.slug && (
-                <div className={`rounded-xl border p-4 mb-4 ${athlete.is_public ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-slate-50'}`}>
-                  <div className="flex items-center justify-between gap-3 mb-3">
-                    <div className="flex items-center gap-2">
-                      {athlete.is_public
-                        ? <Globe className="h-4 w-4 text-emerald-600" />
-                        : <Lock  className="h-4 w-4 text-slate-400" />}
-                      <span className={`text-sm font-bold ${athlete.is_public ? 'text-emerald-700' : 'text-slate-500'}`}>
-                        {athlete.is_public ? 'Public profile' : 'Private profile'}
-                      </span>
-                    </div>
-                    <button onClick={togglePublic} disabled={toggling}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${athlete.is_public ? 'bg-emerald-500' : 'bg-slate-300'}`}>
-                      <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${athlete.is_public ? 'translate-x-6' : 'translate-x-1'}`} />
+              {/* Public profile link — view only for managers, athlete controls visibility */}
+              {isAdmin && athlete.slug && athlete.is_public && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 mb-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Globe className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span className="text-sm font-bold text-emerald-700">Public profile</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="flex-1 truncate rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-500 font-mono">
+                      {window.location.origin}/athlete/{athlete.slug}
+                    </span>
+                    <button onClick={copyLink}
+                      className="shrink-0 flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors">
+                      {copied ? <><Check className="h-3.5 w-3.5 text-emerald-500" /> Copied</> : <><Copy className="h-3.5 w-3.5" /> Copy</>}
                     </button>
                   </div>
-                  {athlete.is_public && (
-                    <div className="flex items-center gap-2">
-                      <span className="flex-1 truncate rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-500 font-mono">
-                        {window.location.origin}/athlete/{athlete.slug}
-                      </span>
-                      <button onClick={copyLink}
-                        className="shrink-0 flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors">
-                        {copied ? <><Check className="h-3.5 w-3.5 text-emerald-500" /> Copied</> : <><Copy className="h-3.5 w-3.5" /> Copy</>}
-                      </button>
-                    </div>
-                  )}
+                  <p className="text-xs text-emerald-600 mt-2">Visibility is controlled by the athlete in their settings.</p>
                 </div>
               )}
 

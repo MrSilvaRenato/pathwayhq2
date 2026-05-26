@@ -187,6 +187,61 @@ export default function Settings() {
         </SectionCard>
       )}
 
+      {/* ── Athlete public profile visibility ────────────────────── */}
+      {user?.role === 'athlete' && athleteProfile !== undefined && (
+        <SectionCard title="Public Profile">
+          <div className="mt-4 space-y-3">
+            <div className={`rounded-xl p-4 ${athleteProfile?.is_public ? 'bg-emerald-50 border border-emerald-200' : 'bg-slate-50 border border-slate-200'}`}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  {athleteProfile?.is_public
+                    ? <Globe className="h-4 w-4 text-emerald-600 shrink-0" />
+                    : <Lock  className="h-4 w-4 text-slate-400 shrink-0" />}
+                  <div>
+                    <p className={`text-sm font-bold ${athleteProfile?.is_public ? 'text-emerald-700' : 'text-slate-600'}`}>
+                      {athleteProfile?.is_public ? 'Profile is public' : 'Profile is private'}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {athleteProfile?.is_public
+                        ? 'Anyone with the link can view your profile page.'
+                        : 'Only your club managers and coaches can see your details.'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => saveAthleteProfile({ is_public: !athleteProfile?.is_public })}
+                  disabled={savingAthlete}
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${athleteProfile?.is_public ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                >
+                  <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${athleteProfile?.is_public ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+              </div>
+            </div>
+
+            {athleteProfile?.is_public && athleteProfile?.slug && (
+              <div className="flex items-center gap-2">
+                <span className="flex-1 truncate rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500 font-mono">
+                  {window.location.origin}/athlete/{athleteProfile.slug}
+                </span>
+                <a
+                  href={`/athlete/${athleteProfile.slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600 transition-colors"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" /> View
+                </a>
+              </div>
+            )}
+
+            <p className="text-xs text-slate-400 leading-relaxed">
+              This is your choice. Club managers can view your details internally regardless of this setting, but cannot make your public profile visible without your consent.
+            </p>
+          </div>
+        </SectionCard>
+      )}
+
       {/* ── Profile section ───────────────────────────────────────── */}
       <SectionCard title="Profile">
         <form onSubmit={saveProfile} className="space-y-4 mt-4">
