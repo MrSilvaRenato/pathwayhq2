@@ -15,6 +15,7 @@ import AnnouncementsScreen from '../screens/athlete/AnnouncementsScreen'
 import RegistrationsScreen from '../screens/athlete/RegistrationsScreen'
 
 // Manager screens
+import ManagerDashboardScreen from '../screens/manager/ManagerDashboardScreen'
 import AthletesScreen from '../screens/manager/AthletesScreen'
 import AthleteDetailScreen from '../screens/manager/AthleteDetailScreen'
 import JoinRequestsScreen from '../screens/manager/JoinRequestsScreen'
@@ -100,6 +101,12 @@ function JoinRequestsStack() {
       name="JoinRequestsList"
       title="Join Requests"
     />
+  )
+}
+
+function ManagerDashboardStack() {
+  return (
+    <SimpleStack screen={ManagerDashboardScreen} name="ManagerDashboard" title="Dashboard" />
   )
 }
 
@@ -228,6 +235,16 @@ export default function AppTabs() {
   if (role === 'club_admin' || role === 'coach') {
     return (
       <Tab.Navigator screenOptions={tabBarStyle}>
+        <Tab.Screen
+          name="ManagerDash"
+          component={ManagerDashboardStack}
+          options={{
+            title: 'Dashboard',
+            tabBarIcon: ({ color, size }) => (
+              <TabIcon name="barbell-outline" color={color} size={size} />
+            ),
+          }}
+        />
         <Tab.Screen
           name="Athletes"
           component={AthletesManagerStack}
