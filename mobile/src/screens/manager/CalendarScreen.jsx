@@ -492,22 +492,20 @@ function EventFormModal({ initial, editScope, squads, onClose, onSave }) {
                 <DateTimeField label="Start" value={form.start_time} onChange={v => setForm(p => ({ ...p, start_time: v }))} required />
                 <DateTimeField label="End" value={form.end_time} onChange={v => setForm(p => ({ ...p, end_time: v }))} />
 
-                {!isEditing && (
-                  <>
-                    <Text style={styles.fieldLabel}>Repeat</Text>
-                    <Dropdown options={RECURRENCE_OPTIONS} value={form.recurrence} onChange={onRecurrenceChange} />
+                <Text style={styles.fieldLabel}>Repeat</Text>
+                <Dropdown options={RECURRENCE_OPTIONS} value={form.recurrence} onChange={onRecurrenceChange} />
 
-                    {form.recurrence !== 'none' && (
-                      <>
-                        <DateField
-                          label="Repeat until"
-                          value={form.repeat_until}
-                          onChange={v => setForm(p => ({ ...p, repeat_until: v }))}
-                        />
-                        {occCount > 1 && (
-                          <Text style={styles.occCount}>Will create {occCount} sessions</Text>
-                        )}
-                      </>
+                {form.recurrence !== 'none' && (
+                  <>
+                    <DateField
+                      label="Repeat until"
+                      value={form.repeat_until}
+                      onChange={v => setForm(p => ({ ...p, repeat_until: v }))}
+                    />
+                    {occCount > 1 && (
+                      <Text style={styles.occCount}>
+                        {isEditing ? `Will create ${occCount} sessions from this date` : `Will create ${occCount} sessions`}
+                      </Text>
                     )}
                   </>
                 )}
@@ -549,7 +547,7 @@ function EventFormModal({ initial, editScope, squads, onClose, onSave }) {
               {saving ? <ActivityIndicator color="#fff" size="small" /> : (
                 <Text style={styles.primaryBtnText}>
                   {isEditing
-                    ? (isSeries ? 'Update all sessions' : 'Save changes')
+                    ? (isSeries ? 'Update all sessions' : (occCount > 1 ? `Save & create ${occCount} sessions` : 'Save changes'))
                     : (occCount > 1 ? `Add ${occCount} sessions` : 'Add event')}
                 </Text>
               )}
