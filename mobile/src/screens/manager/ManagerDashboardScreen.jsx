@@ -269,16 +269,18 @@ export default function ManagerDashboardScreen() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [attendanceModal, setAttendanceModal] = useState(null)
+  const [unreadCount, setUnreadCount] = useState(0)
 
   async function fetchAll() {
     try {
-      const [cl, at, ev, mi, an, vo] = await Promise.allSettled([
+      const [cl, at, ev, mi, an, vo, notif] = await Promise.allSettled([
         api.get('/club'),
         api.get('/athletes'),
         api.get('/events'),
         api.get('/milestones'),
         api.get('/announcements'),
         api.get('/volunteering'),
+        api.get('/notifications'),
       ])
       if (cl.status === 'fulfilled') setClub(cl.value.data ?? null)
       if (at.status === 'fulfilled') {
@@ -302,6 +304,10 @@ export default function ManagerDashboardScreen() {
         const list = Array.isArray(vo.value.data) ? vo.value.data : vo.value.data?.data ?? []
         const now = new Date()
         setVolunteering(list.filter(v => !v.date || new Date(v.date) >= now).slice(0, 3))
+      }
+      if (notif.status === 'fulfilled') {
+        const list = Array.isArray(notif.value.data) ? notif.value.data : notif.value.data?.data ?? []
+        setUnreadCount(list.filter(n => !n.is_read).length)
       }
     } finally {
       setLoading(false)
@@ -351,8 +357,22 @@ export default function ManagerDashboardScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.greetingRow}>
-          <Text style={styles.greetingText}>{greeting()}, {user?.full_name?.split(' ')[0] ?? 'Coach'} 👋</Text>
-          <Text style={styles.greetingDate}>{todayLabel()}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.greetingText}>{greeting()}, {user?.full_name?.split(' ')[0] ?? 'Coach'} 👋</Text>
+            <Text style={styles.greetingDate}>{todayLabel()}</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.bellBtn}
+            onPress={() => navigation.navigate('More', { screen: 'NotificationsList' })}
+            activeOpacity={0.75}
+          >
+            <Ionicons name="notifications-outline" size={22} color={colors.textSecondary} />
+            {unreadCount > 0 && (
+              <View style={styles.bellBadge}>
+                <Text style={styles.bellBadgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
         </View>
 
         {club ? (
@@ -582,9 +602,22 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.md, paddingTop: spacing.sm },
 
-  greetingRow: { marginBottom: spacing.md },
+  greetingRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
   greetingText: { fontSize: font.xl, fontWeight: '800', color: colors.text },
   greetingDate: { fontSize: font.xs, color: colors.textMuted, marginTop: 2 },
+  bellBtn: {
+    width: 42, height: 42, borderRadius: radius.lg,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2,
+  },
+  bellBadge: {
+    position: 'absolute', top: -4, right: -4,
+    backgroundColor: colors.error, borderRadius: 999,
+    minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4,
+    borderWidth: 2, borderColor: colors.background,
+  },
+  bellBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
 
   clubBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 14,

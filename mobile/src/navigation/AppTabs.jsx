@@ -109,6 +109,7 @@ function MoreManagerStack({ pendingCount }) {
       <S.Screen name="BroadcastScreen"    component={ClubBroadcastScreen}    options={{ title: 'Broadcast' }} />
       <S.Screen name="AnalyticsScreen"    component={AnalyticsScreen}        options={{ title: 'Analytics' }} />
       <S.Screen name="SettingsList"       component={SettingsScreen}         options={{ title: 'Settings' }} />
+      <S.Screen name="NotificationsList"  component={NotificationsScreen}    options={{ title: 'Notifications' }} />
     </S.Navigator>
   )
 }
