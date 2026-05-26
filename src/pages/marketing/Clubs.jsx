@@ -184,6 +184,7 @@ function ClubCard({ club, onRequestJoin }) {
 }
 
 export default function Clubs() {
+  const { user } = useAuth()
   const [clubs,    setClubs]    = useState([])
   const [q,        setQ]        = useState('')
   const [sport,    setSport]    = useState('')
