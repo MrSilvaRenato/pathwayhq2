@@ -27,6 +27,7 @@ import ClaimProfile      from './pages/ClaimProfile'
 import JoinRequests     from './pages/app/JoinRequests'
 import Seasons          from './pages/app/Seasons'
 import MyRegistrations  from './pages/app/MyRegistrations'
+import ClubBroadcast    from './pages/app/ClubBroadcast'
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -76,6 +77,7 @@ export default function App() {
             <Route path="join-requests"     element={<JoinRequests />} />
             <Route path="seasons"           element={<Seasons />} />
             <Route path="my-registrations"  element={<MyRegistrations />} />
+            <Route path="club-broadcast"    element={<ClubBroadcast />} />
           </Route>
 
           <Route path="*" element={<SmartRedirect />} />

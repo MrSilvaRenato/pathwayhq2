@@ -150,6 +150,10 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/admin/activity-log',     [AdminController::class, 'activityLog']);
     Route::post('/admin/impersonate/{id}',[AdminController::class, 'impersonate']);
 
+    // Club broadcast
+    Route::get('/club/broadcast/athletes',  [ClubController::class, 'broadcastAthletes']);
+    Route::post('/club/broadcast',          [ClubController::class, 'broadcast']);
+
     // Coaches (club_admin manages coaches for their club)
     Route::get('/club/coaches',         [CoachController::class, 'index']);
     Route::post('/club/coaches',        [CoachController::class, 'store']);

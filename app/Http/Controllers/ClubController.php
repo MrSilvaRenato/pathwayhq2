@@ -9,7 +9,9 @@ use App\Models\Milestone;
 use App\Models\Event;
 use App\Models\Announcement;
 use App\Models\ClubTrophy;
+use App\Models\Notification;
 use App\Models\User;
+use Illuminate\Support\Str;
 
 class ClubController extends Controller
 {
@@ -153,6 +155,71 @@ class ClubController extends Controller
         Club::where('id', $clubId)->update($safe);
 
         return response()->json(['ok' => true]);
+    }
+
+    // Club manager: list athletes eligible to receive broadcast (have a user account)
+    public function broadcastAthletes(Request $request)
+    {
+        $user = $request->user();
+        if (!in_array($user->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
+        $clubId = $user->club_id;
+        if (!$clubId) return response()->json([]);
+
+        $athletes = Athlete::where('club_id', $clubId)
+            ->where('is_active', true)
+            ->where('invite_status', 'accepted')
+            ->whereNotNull('user_id')
+            ->orderBy('last_name')->orderBy('first_name')
+            ->get(['id', 'first_name', 'last_name', 'ftem_phase', 'avatar_url', 'user_id']);
+
+        return response()->json($athletes);
+    }
+
+    // Club manager: send broadcast to selected athletes
+    public function broadcast(Request $request)
+    {
+        $user = $request->user();
+        if (!in_array($user->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
+        $clubId = $user->club_id;
+        if (!$clubId) return response()->json(['message' => 'No club assigned.'], 403);
+
+        $data = $request->validate([
+            'title'       => 'required|string|max:255',
+            'body'        => 'required|string|max:5000',
+            'link'        => 'nullable|string|max:255',
+            'athlete_ids' => 'required|array|min:1',
+            'athlete_ids.*' => 'string',
+        ]);
+
+        // Resolve target user_ids — only athletes in this club
+        $allAthletes = Athlete::where('club_id', $clubId)
+            ->where('is_active', true)
+            ->where('invite_status', 'accepted')
+            ->whereNotNull('user_id');
+
+        if ($data['athlete_ids'] !== ['all']) {
+            $allAthletes->whereIn('id', $data['athlete_ids']);
+        }
+
+        $userIds = $allAthletes->pluck('user_id')->unique()->filter()->values();
+        $count   = $userIds->count();
+
+        foreach ($userIds as $userId) {
+            Notification::create([
+                'id'      => (string) Str::uuid(),
+                'user_id' => $userId,
+                'title'   => $data['title'],
+                'body'    => $data['body'],
+                'link'    => $data['link'] ?? null,
+                'type'    => 'broadcast',
+                'is_read' => false,
+                'at'      => now()->toDateTimeString(),
+            ]);
+        }
+
+        return response()->json(['ok' => true, 'count' => $count]);
     }
 
     // Site admin: all clubs

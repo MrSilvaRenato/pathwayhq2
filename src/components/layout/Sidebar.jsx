@@ -17,6 +17,7 @@ const COACH_NAV = [
   { name: 'Seasons',        href: '/seasons',        icon: CalendarDays },
   { name: 'Calendar',       href: '/calendar',       icon: Calendar },
   { name: 'Announcements',  href: '/announcements',  icon: Megaphone },
+  { name: 'Broadcast',      href: '/club-broadcast', icon: Zap },
   { name: 'Volunteering',   href: '/volunteering',   icon: HandHeart },
   { name: 'Milestones',     href: '/milestones',     icon: Trophy },
   { name: 'Trophy Cabinet', href: '/trophies',       icon: Award },
