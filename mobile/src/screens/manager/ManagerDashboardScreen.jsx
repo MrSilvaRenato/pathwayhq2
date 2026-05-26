@@ -5,6 +5,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
+import { useNavigation } from '@react-navigation/native'
 import { useAuth } from '../../contexts/AuthContext'
 import api from '../../lib/api'
 import { colors, font, spacing, radius } from '../../lib/theme'
@@ -258,6 +259,7 @@ const aStyles = StyleSheet.create({
 
 export default function ManagerDashboardScreen() {
   const { user } = useAuth()
+  const navigation = useNavigation()
   const [club, setClub] = useState(null)
   const [athletes, setAthletes] = useState([])
   const [events, setEvents] = useState([])
@@ -334,11 +336,11 @@ export default function ManagerDashboardScreen() {
   const ftemTotal = Object.values(ftemCounts).reduce((s, n) => s + n, 0)
 
   const stats = [
-    { iconName: 'people-outline', value: athletes.length, label: 'Athletes', color: '#3b82f6', bg: '#eff6ff' },
-    { iconName: 'time-outline', value: pendingInvites.length, label: 'Pending', color: '#d97706', bg: '#fffbeb' },
-    { iconName: 'calendar-outline', value: events.length, label: 'Sessions', color: '#7c3aed', bg: '#f5f3ff' },
-    { iconName: 'trophy-outline', value: milestones.length, label: 'Milestones', color: '#d97706', bg: '#fffbeb' },
-    { iconName: 'heart-outline', value: volNeeded, label: 'Volunteer', color: '#059669', bg: '#ecfdf5' },
+    { iconName: 'people-outline',   value: athletes.length,       label: 'Athletes',   color: '#3b82f6', bg: '#eff6ff', nav: () => navigation.navigate('Athletes') },
+    { iconName: 'time-outline',     value: pendingInvites.length, label: 'Pending',    color: '#d97706', bg: '#fffbeb', nav: () => navigation.navigate('Athletes') },
+    { iconName: 'calendar-outline', value: events.length,         label: 'Sessions',   color: '#7c3aed', bg: '#f5f3ff', nav: () => navigation.navigate('Calendar') },
+    { iconName: 'trophy-outline',   value: milestones.length,     label: 'Milestones', color: '#d97706', bg: '#fffbeb', nav: () => navigation.navigate('Awards') },
+    { iconName: 'heart-outline',    value: volNeeded,             label: 'Volunteer',  color: '#059669', bg: '#ecfdf5', nav: null },
   ]
 
   return (
@@ -369,25 +371,39 @@ export default function ManagerDashboardScreen() {
                 {[sportLabel(club.sport), club.city ? `${club.city}${club.state ? `, ${club.state}` : ''}` : null].filter(Boolean).join(' · ')}
               </Text>
             </View>
+            <TouchableOpacity
+              style={styles.settingsBtn}
+              onPress={() => navigation.navigate('More', { screen: 'SettingsList' })}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="settings-outline" size={14} color="#fff" />
+              <Text style={styles.settingsBtnText}>Settings</Text>
+            </TouchableOpacity>
           </View>
         ) : null}
 
         <View style={styles.statsGrid}>
           {stats.map((s, i) => (
-            <View key={i} style={styles.statCard}>
+            <TouchableOpacity
+              key={i}
+              style={styles.statCard}
+              onPress={s.nav ?? undefined}
+              activeOpacity={s.nav ? 0.7 : 1}
+            >
               <View style={[styles.statIconWrap, { backgroundColor: s.bg }]}>
                 <Ionicons name={s.iconName} size={16} color={s.color} />
               </View>
               <Text style={styles.statValue}>{s.value ?? '—'}</Text>
               <Text style={styles.statLabel}>{s.label}</Text>
-            </View>
+              {s.label === 'Pending' ? <Text style={styles.statSub}>awaiting invite</Text> : null}
+            </TouchableOpacity>
           ))}
         </View>
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>📅 Upcoming Sessions</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('Calendar')}>
               <Text style={styles.sectionLink}>Full calendar →</Text>
             </TouchableOpacity>
           </View>
@@ -395,7 +411,7 @@ export default function ManagerDashboardScreen() {
             <View style={styles.emptyState}>
               <Ionicons name="calendar-outline" size={36} color="#cbd5e1" />
               <Text style={styles.emptyText}>No upcoming sessions</Text>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('Calendar')}>
                 <Text style={styles.emptyLink}>Schedule one →</Text>
               </TouchableOpacity>
             </View>
@@ -442,7 +458,7 @@ export default function ManagerDashboardScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>📈 FTEM Spread</Text>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('More', { screen: 'AnalyticsScreen' })}>
                 <Text style={styles.sectionLink}>Analytics →</Text>
               </TouchableOpacity>
             </View>
@@ -475,7 +491,7 @@ export default function ManagerDashboardScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>📢 Announcements</Text>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('More', { screen: 'AnnouncementsList' })}>
                 <Text style={styles.sectionLink}>Manage →</Text>
               </TouchableOpacity>
             </View>
@@ -492,7 +508,7 @@ export default function ManagerDashboardScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>🏆 Recent Milestones</Text>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('Awards')}>
                 <Text style={styles.sectionLink}>All →</Text>
               </TouchableOpacity>
             </View>
@@ -521,9 +537,6 @@ export default function ManagerDashboardScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>🤝 Volunteering</Text>
-              <TouchableOpacity>
-                <Text style={styles.sectionLink}>All →</Text>
-              </TouchableOpacity>
             </View>
             {volunteering.map(v => {
               const spotsLeft = v.spots ? v.spots - (v.signed_up ?? 0) : null
@@ -580,6 +593,12 @@ const styles = StyleSheet.create({
   clubLabel: { fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: 1 },
   clubName: { fontSize: font.xl, fontWeight: '800', color: '#fff', marginTop: 2 },
   clubDetail: { fontSize: font.xs, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+  settingsBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: radius.md,
+    paddingHorizontal: 10, paddingVertical: 7,
+  },
+  settingsBtnText: { fontSize: font.xs, fontWeight: '700', color: '#fff' },
 
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: spacing.md },
   statCard: {
@@ -592,6 +611,7 @@ const styles = StyleSheet.create({
   statIconWrap: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   statValue: { fontSize: font.xl, fontWeight: '800', color: colors.text, lineHeight: 26 },
   statLabel: { fontSize: 10, color: colors.textMuted, fontWeight: '600', textAlign: 'center' },
+  statSub: { fontSize: 9, color: colors.textMuted, textAlign: 'center', marginTop: -2 },
 
   section: { marginBottom: spacing.md },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
