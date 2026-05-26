@@ -21,7 +21,7 @@ import Constants from 'expo-constants'
 export default function SettingsScreen() {
   const { user, logout, refreshUser } = useAuth()
 
-  const [fullName, setFullName] = useState(user?.name ?? '')
+  const [fullName, setFullName] = useState(user?.full_name ?? '')
   const [email, setEmail] = useState(user?.email ?? '')
   const [phone, setPhone] = useState(user?.phone ?? '')
   const [password, setPassword] = useState('')
@@ -43,7 +43,7 @@ export default function SettingsScreen() {
     setSaving(true)
     try {
       const payload = {
-        name: fullName.trim(),
+        full_name: fullName.trim(),
         email: email.trim().toLowerCase(),
         phone: phone.trim() || undefined,
       }
@@ -99,8 +99,8 @@ export default function SettingsScreen() {
       >
         {/* Profile header */}
         <View style={styles.profileHeader}>
-          <Avatar name={user?.name} size="xl" />
-          <Text style={styles.profileName}>{user?.name}</Text>
+          <Avatar name={user?.full_name} size="xl" />
+          <Text style={styles.profileName}>{user?.full_name}</Text>
           <Badge label={roleLabel} color="green" />
         </View>
 

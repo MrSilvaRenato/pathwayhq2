@@ -179,9 +179,9 @@ export default function DashboardScreen() {
         {/* Profile card */}
         <Card style={styles.profileCard}>
           <View style={styles.profileRow}>
-            <Avatar name={user?.name} url={athlete?.avatar_url} size="lg" />
+            <Avatar name={user?.full_name} url={athlete?.avatar_url} size="lg" />
             <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>{user?.name ?? '—'}</Text>
+              <Text style={styles.profileName}>{user?.full_name ?? '—'}</Text>
               <Text style={styles.profileSport}>{sportLabel(athlete?.sport)}</Text>
               <View style={styles.badgeRow}>
                 {athlete?.ftem_phase ? (

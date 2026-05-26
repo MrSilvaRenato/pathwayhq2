@@ -30,9 +30,9 @@ export default function AdminDashboardScreen() {
         <Text style={styles.title}>Platform Overview</Text>
       </View>
       <View style={styles.grid}>
-        <StatCard iconName="people-outline"   label="Users"    value={stats?.users} />
-        <StatCard iconName="business-outline" label="Clubs"    value={stats?.clubs} />
-        <StatCard iconName="pulse-outline"    label="Athletes" value={stats?.athletes} />
+        <StatCard iconName="people-outline"   label="Users"    value={stats?.users_total} />
+        <StatCard iconName="business-outline" label="Clubs"    value={stats?.clubs_total} />
+        <StatCard iconName="pulse-outline"    label="Athletes" value={stats?.athletes_active} />
       </View>
     </ScrollView>
   )

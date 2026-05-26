@@ -188,13 +188,13 @@ export default function JoinRequestsScreen() {
             <View style={[styles.card, isPending && styles.cardPending]}>
               <View style={styles.cardTop}>
                 <Avatar
-                  name={item.user?.name ?? item.name}
+                  name={item.user?.full_name ?? item.full_name}
                   url={item.user?.avatar_url}
                   size="md"
                 />
                 <View style={styles.userInfo}>
                   <Text style={styles.userName}>
-                    {item.user?.name ?? item.name ?? 'Unknown'}
+                    {item.user?.full_name ?? item.full_name ?? 'Unknown'}
                   </Text>
                   <Text style={styles.userEmail}>
                     {item.user?.email ?? item.email ?? ''}
