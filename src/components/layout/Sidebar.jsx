@@ -26,6 +26,7 @@ const COACH_NAV = [
       { name: 'Athletes',      href: '/athletes',      icon: Users },
       { name: 'Squads',        href: '/squad',         icon: Layers,   badge: 'squadRequests' },
       { name: 'Join Requests', href: '/join-requests', icon: UserPlus, badge: 'joinRequests' },
+      { name: 'Search Clubs',  href: '/clubs',         icon: Building2 },
     ],
   },
   {

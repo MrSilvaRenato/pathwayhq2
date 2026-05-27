@@ -9,6 +9,7 @@ const SECTIONS = [
     title: 'My Club',
     items: [
       { label: 'Join Requests', icon: 'person-add-outline',   screen: 'JoinRequestsList',  badgeKey: 'joinRequests' },
+      { label: 'Search Clubs',  icon: 'search-outline',        screen: 'ClubsScreen'        },
       { label: 'Squads',        icon: 'layers-outline',        screen: 'SquadsList'         },
       { label: 'Seasons',       icon: 'calendar-outline',      screen: 'SeasonsList'        },
       { label: 'Trophy Cabinet', icon: 'trophy-outline',        screen: 'TrophyCabinetScreen' },

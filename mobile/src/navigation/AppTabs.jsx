@@ -32,6 +32,7 @@ import SettingsScreen from '../screens/shared/SettingsScreen'
 import NotificationsScreen from '../screens/shared/NotificationsScreen'
 import AdminDashboardScreen from '../screens/shared/AdminDashboardScreen'
 import VolunteeringScreen from '../screens/shared/VolunteeringScreen'
+import ClubsScreen from '../screens/shared/ClubsScreen'
 
 const Tab = createBottomTabNavigator()
 const Stack = createNativeStackNavigator()
@@ -105,6 +106,7 @@ function MoreManagerStack({ pendingCount }) {
         {(props) => <MoreScreen {...props} pendingCount={pendingCount} />}
       </S.Screen>
       <S.Screen name="JoinRequestsList"   component={JoinRequestsScreen}    options={{ title: 'Join Requests' }} />
+      <S.Screen name="ClubsScreen"        component={ClubsScreen}            options={{ title: 'Search Clubs' }} />
       <S.Screen name="SquadsList"         component={SquadsScreen}           options={{ title: 'Squads' }} />
       <S.Screen name="SeasonsList"        component={SeasonsScreen}          options={{ title: 'Seasons' }} />
       <S.Screen name="AnnouncementsList"  component={AnnouncementsScreen}    options={{ title: 'Announcements' }} />
