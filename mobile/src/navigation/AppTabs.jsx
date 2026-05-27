@@ -59,9 +59,11 @@ function AthleteStack() {
   const S = createNativeStackNavigator()
   return (
     <S.Navigator screenOptions={HEADER_OPTS}>
-      <S.Screen name="AthleteDashboard" component={DashboardScreen}     options={{ title: 'Dashboard' }} />
-      <S.Screen name="ClubsScreen"       component={ClubsScreen}         options={{ title: 'Search Clubs' }} />
-      <S.Screen name="NotificationsList" component={NotificationsScreen} options={{ title: 'Notifications' }} />
+      <S.Screen name="AthleteDashboard"  component={DashboardScreen}     options={{ title: 'Dashboard' }} />
+      <S.Screen name="CalendarList"      component={CalendarScreen}       options={{ title: 'Calendar' }} />
+      <S.Screen name="VolunteeringScreen" component={VolunteeringScreen}  options={{ title: 'Volunteering' }} />
+      <S.Screen name="ClubsScreen"       component={ClubsScreen}          options={{ title: 'Search Clubs' }} />
+      <S.Screen name="NotificationsList" component={NotificationsScreen}  options={{ title: 'Notifications' }} />
     </S.Navigator>
   )
 }

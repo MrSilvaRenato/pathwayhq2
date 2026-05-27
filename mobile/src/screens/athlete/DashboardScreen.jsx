@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useLayoutEffect } from 'react'
 import {
   View, Text, ScrollView, Modal, Pressable, TouchableOpacity, TextInput,
-  ActivityIndicator, RefreshControl, Image, Alert, StyleSheet, Dimensions,
+  ActivityIndicator, RefreshControl, Image, Alert, StyleSheet, Dimensions, Linking,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -518,6 +518,15 @@ export default function DashboardScreen() {
                   <Text style={styles.squadRequestLink}>Request squad change →</Text>
                 </TouchableOpacity>
               ) : null}
+              {athlete?.slug ? (
+                <TouchableOpacity
+                  onPress={() => Linking.openURL(`https://pathwayhq.com/athlete/${athlete.slug}`)}
+                  style={styles.viewProfileBtn}
+                >
+                  <Ionicons name="person-circle-outline" size={14} color={colors.primary} />
+                  <Text style={styles.viewProfileText}>View my profile</Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
           </View>
         </View>
@@ -560,7 +569,7 @@ export default function DashboardScreen() {
               {events.length > 1 ? (
                 <View style={styles.nextSessionFooter}>
                   <Text style={styles.nextSessionFooterText}>{events.length - 1} more upcoming</Text>
-                  <TouchableOpacity>
+                  <TouchableOpacity onPress={() => navigation.navigate('CalendarList')}>
                     <Text style={styles.nextSessionFooterLink}>View calendar →</Text>
                   </TouchableOpacity>
                 </View>
@@ -578,7 +587,7 @@ export default function DashboardScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>📢 Announcements</Text>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('Announcements')}>
                 <Text style={styles.sectionLink}>All →</Text>
               </TouchableOpacity>
             </View>
@@ -595,7 +604,7 @@ export default function DashboardScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>🏆 My Milestones</Text>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('Milestones')}>
                 <Text style={styles.sectionLink}>All →</Text>
               </TouchableOpacity>
             </View>
@@ -623,7 +632,7 @@ export default function DashboardScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>🤝 Volunteer Spots</Text>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('VolunteeringScreen')}>
                 <Text style={styles.sectionLink}>All →</Text>
               </TouchableOpacity>
             </View>
@@ -774,6 +783,12 @@ const styles = StyleSheet.create({
   ftemBadgeText: { fontSize: font.xs, fontWeight: '800' },
   ftemBadgeLabel: { fontSize: font.xs, color: colors.textMuted },
   squadRequestLink: { fontSize: font.xs, fontWeight: '600', color: colors.primary },
+  viewProfileBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10, alignSelf: 'flex-start',
+    backgroundColor: '#ecfdf5', borderRadius: radius.md, borderWidth: 1, borderColor: '#d1fae5',
+    paddingHorizontal: 10, paddingVertical: 6,
+  },
+  viewProfileText: { fontSize: font.xs, fontWeight: '700', color: colors.primary },
 
   nextSessionCard: {
     backgroundColor: '#7c3aed', borderRadius: radius.lg,
