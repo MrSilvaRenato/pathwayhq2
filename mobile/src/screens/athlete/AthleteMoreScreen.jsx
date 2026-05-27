@@ -8,9 +8,10 @@ const SECTIONS = [
   {
     title: 'Activity',
     items: [
-      { label: 'Calendar',     icon: 'calendar-outline',      screen: 'CalendarList' },
-      { label: 'Volunteering', icon: 'hand-left-outline',     screen: 'VolunteeringScreen' },
-      { label: 'Search Clubs', icon: 'search-outline',        screen: 'ClubsScreen' },
+      { label: 'Calendar',       icon: 'calendar-outline',      screen: 'CalendarList' },
+      { label: 'Volunteering',   icon: 'hand-left-outline',     screen: 'VolunteeringScreen' },
+      { label: 'Trophy Cabinet', icon: 'trophy-outline',        screen: 'TrophyCabinetScreen' },
+      { label: 'Search Clubs',   icon: 'search-outline',        screen: 'ClubsScreen' },
     ],
   },
   {

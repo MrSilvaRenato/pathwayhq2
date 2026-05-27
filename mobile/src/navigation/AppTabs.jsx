@@ -83,8 +83,9 @@ function AthleteMoreStack() {
       <S.Screen name="AthleteMoreList" options={{ title: 'More' }}>
         {() => <AthleteMoreScreen />}
       </S.Screen>
-      <S.Screen name="CalendarList"       component={CalendarScreen}       options={{ title: 'Calendar' }} />
+      <S.Screen name="CalendarList"        component={CalendarScreen}       options={{ title: 'Calendar' }} />
       <S.Screen name="VolunteeringScreen" component={VolunteeringScreen}   options={{ title: 'Volunteering' }} />
+      <S.Screen name="TrophyCabinetScreen" component={TrophyCabinetScreen} options={{ title: 'Trophy Cabinet' }} />
       <S.Screen name="ClubsScreen"        component={ClubsScreen}          options={{ title: 'Search Clubs' }} />
       <S.Screen name="NotificationsList"  component={NotificationsScreen}  options={{ title: 'Notifications' }} />
       <S.Screen name="SettingsList"       component={SettingsScreen}        options={{ title: 'Settings' }} />
