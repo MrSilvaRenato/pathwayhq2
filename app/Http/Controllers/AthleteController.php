@@ -20,6 +20,18 @@ class AthleteController extends Controller
 
         $query = Athlete::where('club_id', $clubId)
             ->where('invite_status', '!=', 'rejected')
+            // Exclude athletes who have transferred to another club
+            ->whereNot(function ($q) use ($clubId) {
+                $q->whereNotNull('user_id')
+                  ->where('is_active', false)
+                  ->whereExists(function ($sub) use ($clubId) {
+                      $sub->selectRaw('1')
+                          ->from('athletes as a2')
+                          ->whereColumn('a2.user_id', 'athletes.user_id')
+                          ->where('a2.club_id', '!=', $clubId)
+                          ->where('a2.is_active', true);
+                  });
+            })
             ->with(['squads:id,name', 'user:id,phone,email'])
             ->orderBy('last_name')->orderBy('first_name');
 
