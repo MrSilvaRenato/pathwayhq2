@@ -18,10 +18,10 @@ api.interceptors.request.use(async (cfg) => {
 api.interceptors.response.use(
   (r) => r,
   async (err) => {
-    const isAuthRoute = ['/auth/login', '/auth/register'].some((p) =>
-      err.config?.url?.includes(p)
-    )
-    if (err.response?.status === 401 && !isAuthRoute) {
+    const url = err.config?.url ?? ''
+    const isAuthRoute   = ['/auth/login', '/auth/register'].some((p) => url.includes(p))
+    const isPublicRoute = url.includes('/clubs/public/')
+    if (err.response?.status === 401 && !isAuthRoute && !isPublicRoute) {
       await AsyncStorage.removeItem('phq_token')
     }
     return Promise.reject(err)
