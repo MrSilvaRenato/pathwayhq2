@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback, useLayoutEffect } from 'react'
+import { useState, useEffect, useCallback, useLayoutEffect, useRef } from 'react'
 import {
   View, Text, ScrollView, Modal, Pressable, TouchableOpacity, TextInput,
   ActivityIndicator, RefreshControl, Image, Alert, StyleSheet, Dimensions, Linking,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
-import { useNavigation } from '@react-navigation/native'
+import { useNavigation, useFocusEffect } from '@react-navigation/native'
 import Constants from 'expo-constants'
 import { useAuth } from '../../contexts/AuthContext'
 import api from '../../lib/api'
@@ -258,7 +258,7 @@ export default function DashboardScreen() {
     }
   }
 
-  useEffect(() => { fetchAll() }, [])
+  useFocusEffect(useCallback(() => { fetchAll() }, []))
 
   useLayoutEffect(() => {
     navigation.setOptions({
