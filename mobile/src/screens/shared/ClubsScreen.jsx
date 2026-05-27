@@ -2,11 +2,12 @@ import { useState, useEffect, useMemo } from 'react'
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   FlatList, ActivityIndicator, Image, Modal, Pressable,
-  ScrollView,
+  ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import api from '../../lib/api'
+import { useAuth } from '../../contexts/AuthContext'
 import { colors, font, spacing, radius } from '../../lib/theme'
 import { SPORTS } from '../../lib/constants'
 
@@ -150,88 +151,224 @@ const c = StyleSheet.create({
 
 // ── detail sheet ──────────────────────────────────────────────────────────────
 function ClubDetailSheet({ club, onClose }) {
-  if (!club) return null
+  const { user } = useAuth()
+  const [clubDetail,   setClubDetail]   = useState(null)
+  const [joinStatus,   setJoinStatus]   = useState(null)
+  const [showJoinForm, setShowJoinForm] = useState(false)
+  const [joinMessage,  setJoinMessage]  = useState('')
+  const [joinSaving,   setJoinSaving]   = useState(false)
+  const [joinDone,     setJoinDone]     = useState(false)
+  const [joinError,    setJoinError]    = useState('')
+
+  const isAthlete = user && !['club_admin', 'coach', 'site_admin'].includes(user?.role)
+
+  useEffect(() => {
+    setClubDetail(null)
+    setJoinStatus(null)
+    setShowJoinForm(false)
+    setJoinDone(false)
+    setJoinMessage('')
+    api.get(`/clubs/public/${club.slug}`).then(r => setClubDetail(r.data)).catch(() => {})
+    if (isAthlete) {
+      api.get(`/clubs/public/${club.slug}/my-join-status`)
+        .then(r => setJoinStatus(r.data?.status ?? null))
+        .catch(() => {})
+    }
+  }, [club.slug])
+
+  async function sendJoinRequest() {
+    setJoinSaving(true)
+    setJoinError('')
+    try {
+      await api.post(`/clubs/public/${club.slug}/join-request`, { message: joinMessage })
+      setJoinDone(true)
+      setJoinStatus('pending')
+    } catch (err) {
+      setJoinError(err?.response?.data?.message ?? 'Something went wrong.')
+    } finally { setJoinSaving(false) }
+  }
+
+  const managerFirstName = clubDetail?.managerFirstName
   const sportMeta = SPORTS.find(s => s.value === club.sport)
 
   return (
     <Modal visible animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={sh.backdrop} onPress={onClose}>
-        <Pressable style={sh.sheet} onPress={e => e.stopPropagation()}>
-          <View style={sh.handle} />
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={sh.content}>
-            {/* Header */}
-            <View style={sh.header}>
-              <View style={sh.logoWrap}>
-                {club.logo_url ? (
-                  <Image source={{ uri: club.logo_url }} style={sh.logo} resizeMode="cover" />
-                ) : (
-                  <Text style={sh.logoEmoji}>{sportMeta?.emoji ?? '🏅'}</Text>
-                )}
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%' }}>
+          <Pressable style={sh.sheet} onPress={e => e.stopPropagation()}>
+            <View style={sh.handle} />
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={sh.content}
+              keyboardShouldPersistTaps="handled"
+            >
+              {/* Header */}
+              <View style={sh.header}>
+                <View style={sh.logoWrap}>
+                  {club.logo_url ? (
+                    <Image source={{ uri: club.logo_url }} style={sh.logo} resizeMode="cover" />
+                  ) : (
+                    <Text style={sh.logoEmoji}>{sportMeta?.emoji ?? '🏅'}</Text>
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={sh.name}>{club.name}</Text>
+                  {club.city ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
+                      <Ionicons name="location-outline" size={13} color={colors.textMuted} />
+                      <Text style={sh.location}>{club.city}{club.state ? `, ${club.state}` : ''}</Text>
+                    </View>
+                  ) : null}
+                  {club.is_claimed && managerFirstName ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
+                      <Ionicons name="person-circle-outline" size={13} color={colors.textMuted} />
+                      <Text style={sh.location}>Managed by {managerFirstName}</Text>
+                    </View>
+                  ) : null}
+                </View>
+                <TouchableOpacity style={sh.closeBtn} onPress={onClose}>
+                  <Ionicons name="close" size={16} color={colors.textSecondary} />
+                </TouchableOpacity>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={sh.name}>{club.name}</Text>
-                {club.city ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
-                    <Ionicons name="location-outline" size={13} color={colors.textMuted} />
-                    <Text style={sh.location}>{club.city}{club.state ? `, ${club.state}` : ''}</Text>
+
+              {/* Badges */}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: spacing.md }}>
+                {sportMeta ? (
+                  <View style={sh.chip}>
+                    <Text style={sh.chipText}>{sportMeta.emoji} {sportMeta.label}</Text>
+                  </View>
+                ) : null}
+                {club.founded_year ? (
+                  <View style={sh.chip}>
+                    <Text style={sh.chipText}>Est. {club.founded_year}</Text>
+                  </View>
+                ) : null}
+                {club.is_claimed ? (
+                  <View style={[sh.chip, sh.chipGreen]}>
+                    <Ionicons name="checkmark-circle" size={12} color="#059669" />
+                    <Text style={[sh.chipText, { color: '#059669' }]}>Verified</Text>
+                  </View>
+                ) : (
+                  <View style={[sh.chip, sh.chipAmber]}>
+                    <Text style={[sh.chipText, { color: '#b45309' }]}>Unclaimed</Text>
+                  </View>
+                )}
+                {sportMeta?.in2032 ? (
+                  <View style={[sh.chip, sh.chipGreen]}>
+                    <Ionicons name="flash" size={11} color="#059669" />
+                    <Text style={[sh.chipText, { color: '#059669' }]}>Brisbane 2032</Text>
                   </View>
                 ) : null}
               </View>
-              <TouchableOpacity style={sh.closeBtn} onPress={onClose}>
-                <Ionicons name="close" size={16} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
 
-            {/* Badges */}
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: spacing.md }}>
-              {sportMeta ? (
-                <View style={sh.chip}>
-                  <Text style={sh.chipText}>{sportMeta.emoji} {sportMeta.label}</Text>
+              {club.description ? (
+                <View style={sh.descBox}>
+                  <Text style={sh.descText}>{club.description}</Text>
                 </View>
               ) : null}
-              {club.founded_year ? (
-                <View style={sh.chip}>
-                  <Text style={sh.chipText}>Est. {club.founded_year}</Text>
+
+              {/* Info rows */}
+              {[
+                club.email    && { label: 'Email',    value: club.email },
+                club.phone    && { label: 'Phone',    value: club.phone },
+                club.website  && { label: 'Website',  value: club.website },
+                club.address  && { label: 'Address',  value: club.address },
+              ].filter(Boolean).map(row => (
+                <View key={row.label} style={sh.infoRow}>
+                  <Text style={sh.infoLabel}>{row.label}</Text>
+                  <Text style={sh.infoValue} numberOfLines={2}>{row.value}</Text>
                 </View>
-              ) : null}
-              {club.is_claimed ? (
-                <View style={[sh.chip, sh.chipGreen]}>
-                  <Ionicons name="checkmark-circle" size={12} color="#059669" />
-                  <Text style={[sh.chipText, { color: '#059669' }]}>Verified</Text>
-                </View>
-              ) : (
-                <View style={[sh.chip, sh.chipAmber]}>
-                  <Text style={[sh.chipText, { color: '#b45309' }]}>Unclaimed</Text>
+              ))}
+
+              {/* ── Join section (athletes only, claimed clubs) ── */}
+              {isAthlete && club.is_claimed && (
+                <View style={sh.joinSection}>
+                  {/* Status states */}
+                  {joinStatus === 'pending' && (
+                    <View style={sh.joinStatusRow}>
+                      <Text style={sh.joinStatusText}>⏳ Join request pending review</Text>
+                    </View>
+                  )}
+                  {(joinStatus === 'approved' || joinStatus === 'member') && (
+                    <View style={[sh.joinStatusRow, sh.joinStatusGreen]}>
+                      <Ionicons name="checkmark-circle" size={16} color="#059669" />
+                      <Text style={[sh.joinStatusText, { color: '#059669' }]}>You're a member</Text>
+                    </View>
+                  )}
+                  {joinStatus === 'rejected' && (
+                    <View style={[sh.joinStatusRow, sh.joinStatusRed]}>
+                      <Text style={[sh.joinStatusText, { color: '#dc2626' }]}>Request declined</Text>
+                    </View>
+                  )}
+
+                  {/* Request button / inline form */}
+                  {joinStatus === null && !joinDone && !showJoinForm && (
+                    <TouchableOpacity style={sh.joinBtn} onPress={() => setShowJoinForm(true)} activeOpacity={0.85}>
+                      <Ionicons name="person-add-outline" size={18} color="#fff" />
+                      <Text style={sh.joinBtnText}>Request to join</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {joinStatus === null && showJoinForm && !joinDone && (
+                    <View style={sh.joinFormWrap}>
+                      {/* Who's sending */}
+                      <View style={sh.joinUserRow}>
+                        <View style={sh.joinAvatar}>
+                          <Text style={sh.joinAvatarText}>{user?.full_name?.[0]?.toUpperCase() ?? '?'}</Text>
+                        </View>
+                        <View style={{ flex: 1, minWidth: 0 }}>
+                          <Text style={sh.joinUserName} numberOfLines={1}>{user?.full_name}</Text>
+                          <Text style={sh.joinUserEmail} numberOfLines={1}>{user?.email}</Text>
+                        </View>
+                        <Text style={sh.sendingAsLabel}>Sending as</Text>
+                      </View>
+                      <TextInput
+                        style={sh.joinTextArea}
+                        value={joinMessage}
+                        onChangeText={setJoinMessage}
+                        placeholder="Introduce yourself, your experience, position…"
+                        placeholderTextColor={colors.textMuted}
+                        multiline
+                        numberOfLines={3}
+                        textAlignVertical="top"
+                      />
+                      {joinError ? (
+                        <View style={sh.joinError}>
+                          <Text style={sh.joinErrorText}>{joinError}</Text>
+                        </View>
+                      ) : null}
+                      <View style={sh.joinButtons}>
+                        <TouchableOpacity style={sh.joinCancelBtn} onPress={() => { setShowJoinForm(false); setJoinError('') }}>
+                          <Text style={sh.joinCancelText}>Cancel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[sh.joinSendBtn, joinSaving && { opacity: 0.6 }]}
+                          onPress={sendJoinRequest}
+                          disabled={joinSaving}
+                        >
+                          {joinSaving
+                            ? <ActivityIndicator size="small" color="#fff" />
+                            : <Ionicons name="send-outline" size={15} color="#fff" />
+                          }
+                          <Text style={sh.joinSendText}>Send request</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Success state */}
+                  {joinDone && (
+                    <View style={sh.joinDoneWrap}>
+                      <Text style={sh.joinDoneEmoji}>🙌</Text>
+                      <Text style={sh.joinDoneTitle}>Request sent!</Text>
+                      <Text style={sh.joinDoneMsg}>The club manager will review your request and get back to you.</Text>
+                    </View>
+                  )}
                 </View>
               )}
-              {sportMeta?.in2032 ? (
-                <View style={[sh.chip, sh.chipGreen]}>
-                  <Ionicons name="flash" size={11} color="#059669" />
-                  <Text style={[sh.chipText, { color: '#059669' }]}>Brisbane 2032</Text>
-                </View>
-              ) : null}
-            </View>
-
-            {club.description ? (
-              <View style={sh.descBox}>
-                <Text style={sh.descText}>{club.description}</Text>
-              </View>
-            ) : null}
-
-            {/* Info rows */}
-            {[
-              club.email    && { label: 'Email',    value: club.email },
-              club.phone    && { label: 'Phone',    value: club.phone },
-              club.website  && { label: 'Website',  value: club.website },
-              club.address  && { label: 'Address',  value: club.address },
-            ].filter(Boolean).map(row => (
-              <View key={row.label} style={sh.infoRow}>
-                <Text style={sh.infoLabel}>{row.label}</Text>
-                <Text style={sh.infoValue} numberOfLines={2}>{row.value}</Text>
-              </View>
-            ))}
-          </ScrollView>
-        </Pressable>
+            </ScrollView>
+          </Pressable>
+        </KeyboardAvoidingView>
       </Pressable>
     </Modal>
   )
@@ -268,6 +405,60 @@ const sh = StyleSheet.create({
   },
   infoLabel: { fontSize: font.sm, color: colors.textMuted, fontWeight: '500', width: 70 },
   infoValue: { flex: 1, fontSize: font.sm, color: colors.text, fontWeight: '600', textAlign: 'right' },
+
+  // Join section
+  joinSection: { marginTop: spacing.md, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.borderLight },
+  joinBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: colors.primary, borderRadius: radius.lg, paddingVertical: 14,
+  },
+  joinBtnText: { fontSize: font.base, fontWeight: '700', color: '#fff' },
+  joinStatusRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: '#fffbeb', borderRadius: radius.lg, paddingVertical: 12,
+    borderWidth: 1, borderColor: '#fde68a',
+  },
+  joinStatusGreen: { backgroundColor: '#ecfdf5', borderColor: '#a7f3d0' },
+  joinStatusRed:   { backgroundColor: '#fef2f2', borderColor: '#fecaca' },
+  joinStatusText:  { fontSize: font.sm, fontWeight: '600', color: '#b45309' },
+
+  // Join form
+  joinFormWrap: { marginTop: spacing.sm },
+  joinUserRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: colors.background, borderRadius: radius.md,
+    padding: 12, marginBottom: spacing.sm,
+  },
+  joinAvatar: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  joinAvatarText:  { fontSize: 13, fontWeight: '800', color: colors.primary },
+  joinUserName:    { fontSize: font.sm, fontWeight: '700', color: colors.text },
+  joinUserEmail:   { fontSize: 11, color: colors.textMuted },
+  sendingAsLabel:  { fontSize: 10, fontWeight: '700', color: colors.textMuted, flexShrink: 0 },
+  joinTextArea: {
+    backgroundColor: colors.background, borderRadius: radius.md,
+    padding: 12, fontSize: font.sm, color: colors.text, lineHeight: 20,
+    minHeight: 72, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.sm,
+  },
+  joinError:     { backgroundColor: '#fef2f2', borderRadius: radius.sm, padding: 10, marginBottom: spacing.sm, borderWidth: 1, borderColor: '#fecaca' },
+  joinErrorText: { fontSize: font.xs, color: '#dc2626' },
+  joinButtons:   { flexDirection: 'row', gap: 8 },
+  joinCancelBtn: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, paddingVertical: 12, alignItems: 'center' },
+  joinCancelText:{ fontSize: font.sm, fontWeight: '600', color: colors.textSecondary },
+  joinSendBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: colors.primary, borderRadius: radius.lg, paddingVertical: 12,
+  },
+  joinSendText: { fontSize: font.sm, fontWeight: '700', color: '#fff' },
+
+  // Join done
+  joinDoneWrap:  { alignItems: 'center', paddingVertical: spacing.md },
+  joinDoneEmoji: { fontSize: 36, marginBottom: 8 },
+  joinDoneTitle: { fontSize: font.base, fontWeight: '800', color: colors.text, marginBottom: 4 },
+  joinDoneMsg:   { fontSize: font.sm, color: colors.textMuted, textAlign: 'center', lineHeight: 20 },
 })
 
 // ── filter button ─────────────────────────────────────────────────────────────
