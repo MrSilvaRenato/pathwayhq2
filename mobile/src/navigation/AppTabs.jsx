@@ -56,7 +56,14 @@ function SimpleStack({ screen: Screen, name, title }) {
 // ── Athlete stacks ────────────────────────────────────────────────────────────
 
 function AthleteStack() {
-  return <SimpleStack screen={DashboardScreen} name="AthleteDashboard" title="Dashboard" />
+  const S = createNativeStackNavigator()
+  return (
+    <S.Navigator screenOptions={HEADER_OPTS}>
+      <S.Screen name="AthleteDashboard" component={DashboardScreen}     options={{ title: 'Dashboard' }} />
+      <S.Screen name="ClubsScreen"       component={ClubsScreen}         options={{ title: 'Search Clubs' }} />
+      <S.Screen name="NotificationsList" component={NotificationsScreen} options={{ title: 'Notifications' }} />
+    </S.Navigator>
+  )
 }
 function AnnouncementsStack() {
   return <SimpleStack screen={AnnouncementsScreen} name="AnnouncementsList" title="Announcements" />

@@ -297,7 +297,9 @@ const f = StyleSheet.create({
 })
 
 // ── main screen ───────────────────────────────────────────────────────────────
-export default function ClubsScreen() {
+export default function ClubsScreen({ route }) {
+  const openSlug = route?.params?.openSlug ?? null
+
   const [clubs,   setClubs]   = useState([])
   const [loading, setLoading] = useState(true)
   const [q,       setQ]       = useState('')
@@ -312,7 +314,14 @@ export default function ClubsScreen() {
 
   useEffect(() => {
     api.get('/clubs/public')
-      .then(r => setClubs(Array.isArray(r.data) ? r.data : []))
+      .then(r => {
+        const list = Array.isArray(r.data) ? r.data : []
+        setClubs(list)
+        if (openSlug) {
+          const match = list.find(c => c.slug === openSlug)
+          if (match) setDetail(match)
+        }
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])

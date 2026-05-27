@@ -280,7 +280,7 @@ export default function RegistrationsScreen() {
                       activeOpacity={0.8}
                     >
                       <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
-                      <Text style={styles.rsvpYesText}>Yes, Register &amp; Pay</Text>
+                      <Text style={styles.rsvpYesText}>Register &amp; Pay</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.rsvpNo}
@@ -288,7 +288,7 @@ export default function RegistrationsScreen() {
                       activeOpacity={0.8}
                     >
                       <Ionicons name="close-circle-outline" size={16} color="#dc2626" />
-                      <Text style={styles.rsvpNoText}>No, Decline</Text>
+                      <Text style={styles.rsvpNoText}>Decline</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -377,7 +377,7 @@ const styles = StyleSheet.create({
   clubName: { fontSize: font.sm, color: colors.textSecondary, marginTop: 2 },
   dateRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 },
   dateText: { fontSize: 11, color: colors.textMuted },
-  feeText: { fontSize: font.lg, fontWeight: '800', color: colors.text, shrink: 0 },
+  feeText: { fontSize: font.lg, fontWeight: '800', color: colors.text, flexShrink: 0 },
 
   avatarFallback: {
     borderRadius: 12, backgroundColor: '#ecfdf5',

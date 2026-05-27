@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useLayoutEffect } from 'react'
 import {
   View, Text, ScrollView, Modal, Pressable, TouchableOpacity, TextInput,
   ActivityIndicator, RefreshControl, Image, Alert, StyleSheet, Dimensions,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
+import { useNavigation } from '@react-navigation/native'
 import { useAuth } from '../../contexts/AuthContext'
 import api from '../../lib/api'
 import { colors, font, spacing, radius } from '../../lib/theme'
@@ -195,6 +196,7 @@ const sqStyles = StyleSheet.create({
 
 export default function DashboardScreen() {
   const { user } = useAuth()
+  const navigation = useNavigation()
   const [profile, setProfile] = useState(null)
   const [milestones, setMilestones] = useState([])
   const [announcements, setAnnouncements] = useState([])
@@ -253,6 +255,20 @@ export default function DashboardScreen() {
   }
 
   useEffect(() => { fetchAll() }, [])
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={() => navigation.navigate('NotificationsList')}
+          style={{ marginRight: 4, padding: 4 }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons name="notifications-outline" size={22} color={colors.primary} />
+        </TouchableOpacity>
+      ),
+    })
+  }, [navigation])
 
   const onRefresh = useCallback(() => {
     setRefreshing(true)
@@ -367,19 +383,28 @@ export default function DashboardScreen() {
                   ) : null}
                 </View>
                 {(athlete?.club_slug ?? club?.slug) ? (
-                  <View style={styles.viewClubChip}>
+                  <TouchableOpacity
+                    style={styles.viewClubChip}
+                    onPress={() => navigation.navigate('ClubsScreen', { openSlug: athlete?.club_slug ?? club?.slug })}
+                    activeOpacity={0.75}
+                  >
                     <Text style={styles.viewClubText}>View club</Text>
                     <Ionicons name="arrow-forward" size={11} color="#fff" />
-                  </View>
+                  </TouchableOpacity>
                 ) : null}
               </View>
             ) : null}
           </View>
         ) : (
-          <View style={styles.noClubCard}>
+          <TouchableOpacity
+            style={styles.noClubCard}
+            onPress={() => navigation.navigate('ClubsScreen')}
+            activeOpacity={0.8}
+          >
             <Ionicons name="people-outline" size={20} color={colors.primary} />
-            <Text style={styles.noClubText}>You are not part of a club yet. Search for clubs to join.</Text>
-          </View>
+            <Text style={styles.noClubText}>You are not part of a club yet. Tap to search for clubs to join.</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+          </TouchableOpacity>
         )}
 
         {invites.map(invite => (
