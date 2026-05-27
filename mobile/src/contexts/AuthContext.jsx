@@ -55,6 +55,25 @@ export function AuthProvider({ children }) {
     setIsImpersonating(false)
   }
 
+  async function impersonate(userId) {
+    const { data } = await api.post(`/admin/impersonate/${userId}`)
+    const currentToken = await AsyncStorage.getItem('phq_token')
+    await AsyncStorage.setItem('phq_admin_token', currentToken)
+    await AsyncStorage.setItem('phq_token', data.token)
+    setUser(data.user)
+    setIsImpersonating(true)
+  }
+
+  async function stopImpersonating() {
+    const adminToken = await AsyncStorage.getItem('phq_admin_token')
+    if (!adminToken) return
+    await AsyncStorage.setItem('phq_token', adminToken)
+    await AsyncStorage.removeItem('phq_admin_token')
+    const r = await api.get('/auth/me')
+    setUser(r.data)
+    setIsImpersonating(false)
+  }
+
   const isAdmin = user?.role === 'club_admin' || user?.role === 'site_admin'
 
   return (
@@ -68,6 +87,8 @@ export function AuthProvider({ children }) {
         refreshUser,
         isAdmin,
         isImpersonating,
+        impersonate,
+        stopImpersonating,
       }}
     >
       {children}
