@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Layers, Calendar, Trophy, Award,
-  BarChart3, Settings, LogOut, Zap, Shield, Dumbbell,
+  BarChart3, Settings, LogOut, Shield, Dumbbell,
   Megaphone, HandHeart, Globe, X, UserPlus, CalendarDays,
   CreditCard, Building2, Bell,
 } from 'lucide-react'
@@ -205,9 +205,7 @@ export default function Sidebar() {
           className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
           onClick={() => setOpen(false)}
         >
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500 shadow-sm shadow-emerald-500/30">
-            <Zap className="h-4 w-4 text-white" />
-          </div>
+          <img src="/icon.png" alt="" className="h-8 w-8 rounded-xl" />
           <span className="text-base font-black text-slate-900 tracking-tight">PathwayHQ</span>
         </Link>
         <button

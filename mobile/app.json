@@ -9,7 +9,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#10b981"
+      "backgroundColor": "#0d1b2a"
     },
     "ios": {
       "supportsTablet": true,
@@ -19,7 +19,7 @@
       "package": "com.pathwayhq.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#10b981"
+        "backgroundColor": "#0d1b2a"
       }
     },
     "web": {
