@@ -6,10 +6,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useNavigation } from '@react-navigation/native'
+import Constants from 'expo-constants'
 import { useAuth } from '../../contexts/AuthContext'
 import api from '../../lib/api'
 import { colors, font, spacing, radius } from '../../lib/theme'
 import { FTEM_PHASES, SPORTS } from '../../lib/constants'
+
+const _apiUrl = Constants.expoConfig?.extra?.apiUrl ?? 'https://ausfairgo.com.au/api'
+const WEB_BASE = _apiUrl.replace(/\/api\/?$/, '')
 
 const SCREEN_W = Dimensions.get('window').width
 
@@ -520,7 +524,7 @@ export default function DashboardScreen() {
               ) : null}
               {athlete?.slug ? (
                 <TouchableOpacity
-                  onPress={() => Linking.openURL(`https://pathwayhq.com/athlete/${athlete.slug}`)}
+                  onPress={() => Linking.openURL(`${WEB_BASE}/athlete/${athlete.slug}`)}
                   style={styles.viewProfileBtn}
                 >
                   <Ionicons name="person-circle-outline" size={14} color={colors.primary} />
@@ -569,7 +573,7 @@ export default function DashboardScreen() {
               {events.length > 1 ? (
                 <View style={styles.nextSessionFooter}>
                   <Text style={styles.nextSessionFooterText}>{events.length - 1} more upcoming</Text>
-                  <TouchableOpacity onPress={() => navigation.navigate('CalendarList')}>
+                  <TouchableOpacity onPress={() => navigation.navigate('AthleteMore', { screen: 'CalendarList' })}>
                     <Text style={styles.nextSessionFooterLink}>View calendar →</Text>
                   </TouchableOpacity>
                 </View>
@@ -632,7 +636,7 @@ export default function DashboardScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>🤝 Volunteer Spots</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('VolunteeringScreen')}>
+              <TouchableOpacity onPress={() => navigation.navigate('AthleteMore', { screen: 'VolunteeringScreen' })}>
                 <Text style={styles.sectionLink}>All →</Text>
               </TouchableOpacity>
             </View>

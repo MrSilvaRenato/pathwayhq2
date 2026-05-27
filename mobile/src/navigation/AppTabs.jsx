@@ -13,6 +13,7 @@ import DashboardScreen from '../screens/athlete/DashboardScreen'
 import MilestonesScreen from '../screens/athlete/MilestonesScreen'
 import AnnouncementsScreen from '../screens/athlete/AnnouncementsScreen'
 import RegistrationsScreen from '../screens/athlete/RegistrationsScreen'
+import AthleteMoreScreen from '../screens/athlete/AthleteMoreScreen'
 
 // Manager screens
 import ManagerDashboardScreen from '../screens/manager/ManagerDashboardScreen'
@@ -60,8 +61,6 @@ function AthleteStack() {
   return (
     <S.Navigator screenOptions={HEADER_OPTS}>
       <S.Screen name="AthleteDashboard"  component={DashboardScreen}     options={{ title: 'Dashboard' }} />
-      <S.Screen name="CalendarList"      component={CalendarScreen}       options={{ title: 'Calendar' }} />
-      <S.Screen name="VolunteeringScreen" component={VolunteeringScreen}  options={{ title: 'Volunteering' }} />
       <S.Screen name="ClubsScreen"       component={ClubsScreen}          options={{ title: 'Search Clubs' }} />
       <S.Screen name="NotificationsList" component={NotificationsScreen}  options={{ title: 'Notifications' }} />
     </S.Navigator>
@@ -75,6 +74,22 @@ function MilestonesStack() {
 }
 function RegistrationsStack() {
   return <SimpleStack screen={RegistrationsScreen} name="RegistrationsList" title="Registrations" />
+}
+
+function AthleteMoreStack() {
+  const S = createNativeStackNavigator()
+  return (
+    <S.Navigator screenOptions={HEADER_OPTS}>
+      <S.Screen name="AthleteMoreList" options={{ title: 'More' }}>
+        {() => <AthleteMoreScreen />}
+      </S.Screen>
+      <S.Screen name="CalendarList"       component={CalendarScreen}       options={{ title: 'Calendar' }} />
+      <S.Screen name="VolunteeringScreen" component={VolunteeringScreen}   options={{ title: 'Volunteering' }} />
+      <S.Screen name="ClubsScreen"        component={ClubsScreen}          options={{ title: 'Search Clubs' }} />
+      <S.Screen name="NotificationsList"  component={NotificationsScreen}  options={{ title: 'Notifications' }} />
+      <S.Screen name="SettingsList"       component={SettingsScreen}        options={{ title: 'Settings' }} />
+    </S.Navigator>
+  )
 }
 
 // ── Manager stacks ────────────────────────────────────────────────────────────
@@ -264,11 +279,11 @@ export default function AppTabs() {
   return (
     <Tab.Navigator screenOptions={tabBarStyle}>
       <Tab.Screen name="Dashboard" component={AthleteStack} options={{
-        title: 'Dashboard',
+        title: 'Home',
         tabBarIcon: ({ color, size }) => <TabIcon name="barbell-outline" color={color} size={size} />,
       }} />
       <Tab.Screen name="Announcements" component={AnnouncementsStack} options={{
-        title: 'Announcements',
+        title: 'News',
         tabBarIcon: ({ color, size }) => <TabIcon name="megaphone-outline" color={color} size={size} />,
       }} />
       <Tab.Screen name="Milestones" component={MilestonesStack} options={{
@@ -276,13 +291,24 @@ export default function AppTabs() {
         tabBarIcon: ({ color, size }) => <TabIcon name="trophy-outline" color={color} size={size} />,
       }} />
       <Tab.Screen name="Registrations" component={RegistrationsStack} options={{
-        title: 'Registrations',
+        title: 'Fees',
         tabBarIcon: ({ color, size }) => <TabIcon name="card-outline" color={color} size={size} />,
       }} />
-      <Tab.Screen name="Settings" component={SettingsStack} options={{
-        title: 'Settings',
-        tabBarIcon: ({ color, size }) => <TabIcon name="settings-outline" color={color} size={size} />,
-      }} />
+      <Tab.Screen
+        name="AthleteMore"
+        options={{
+          title: 'More',
+          tabBarIcon: ({ color, size }) => <TabIcon name="ellipsis-horizontal-outline" color={color} size={size} />,
+        }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault()
+            navigation.navigate('AthleteMore', { screen: 'AthleteMoreList' })
+          },
+        })}
+      >
+        {() => <AthleteMoreStack />}
+      </Tab.Screen>
     </Tab.Navigator>
   )
 }
