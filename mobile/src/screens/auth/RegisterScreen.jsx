@@ -1,171 +1,258 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuth } from '../../contexts/AuthContext'
-import { colors, font, spacing, radius } from '../../lib/theme'
 
-const ROLE_OPTIONS = [
-  { value: 'athlete', label: 'Athlete' },
-  { value: 'parent', label: 'Parent / Guardian' },
-]
+// ── dark-theme palette (matches web slate-950 auth) ───────────────────────────
+const C = {
+  bg:           '#020617',
+  card:         'rgba(255,255,255,0.04)',
+  cardBorder:   'rgba(255,255,255,0.09)',
+  input:        'rgba(255,255,255,0.06)',
+  inputBorder:  'rgba(255,255,255,0.12)',
+  inputErr:     'rgba(239,68,68,0.08)',
+  inputErrBdr:  'rgba(239,68,68,0.4)',
+  text:         '#f8fafc',
+  textMuted:    '#94a3b8',
+  textFaint:    '#64748b',
+  placeholder:  '#475569',
+  primary:      '#10b981',
+  primaryDark:  '#059669',
+  errBg:        'rgba(239,68,68,0.10)',
+  errBorder:    'rgba(239,68,68,0.25)',
+  errText:      '#fca5a5',
+  glowBg:       'rgba(16,185,129,0.08)',
+  divider:      'rgba(255,255,255,0.08)',
+  roleInactive: 'rgba(255,255,255,0.06)',
+  roleActive:   'rgba(16,185,129,0.15)',
+  roleBorder:   'rgba(255,255,255,0.12)',
+  roleBdrActive:'rgba(16,185,129,0.5)',
+}
+
+function strengthInfo(pw) {
+  if (!pw) return null
+  if (pw.length < 6) return { label: 'Too short', color: '#ef4444', pct: 0.2 }
+  const score =
+    (pw.length >= 8 ? 1 : 0) +
+    (/[A-Z]/.test(pw) ? 1 : 0) +
+    (/[0-9]/.test(pw) ? 1 : 0) +
+    (/[^A-Za-z0-9]/.test(pw) ? 1 : 0)
+  if (score <= 1) return { label: 'Weak',   color: '#f97316', pct: 0.4 }
+  if (score <= 2) return { label: 'Good',   color: '#eab308', pct: 0.65 }
+  return             { label: 'Strong', color: '#10b981', pct: 1.0 }
+}
 
 export default function RegisterScreen({ navigation }) {
-  const auth = useAuth()
+  const { register } = useAuth()
+
+  const emailRef = useRef(null)
+  const pwRef    = useRef(null)
+
   const [fullName, setFullName] = useState('')
-  const [email, setEmail] = useState('')
+  const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState('athlete')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [showPw,   setShowPw]   = useState(false)
+  const [role,     setRole]     = useState('athlete')
+  const [loading,  setLoading]  = useState(false)
+  const [error,    setError]    = useState('')
+
+  const strength = strengthInfo(password)
+  const hasError = !!error
 
   async function handleRegister() {
     if (!fullName.trim() || !email.trim() || !password) {
       setError('Please fill in all fields.')
       return
     }
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters.')
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.')
       return
     }
     setError('')
     setLoading(true)
     try {
-      await auth.register({
-        name: fullName.trim(),
+      await register({
+        full_name: fullName.trim(),
         email: email.trim().toLowerCase(),
         password,
         role,
       })
     } catch (e) {
-      const msg =
+      setError(
+        e?.response?.data?.error ??
         e?.response?.data?.message ??
         e?.response?.data?.errors?.email?.[0] ??
         'Registration failed. Please try again.'
-      setError(msg)
+      )
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <SafeAreaView style={s.safe}>
+      {/* Subtle background glow */}
+      <View style={s.glow} pointerEvents="none" />
+
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
-          contentContainerStyle={styles.scroll}
+          contentContainerStyle={s.scroll}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          {/* Brand mark */}
-          <View style={styles.brandWrap}>
-            <View style={styles.iconBox}>
-              <Ionicons name="flash" size={28} color="#fff" />
+          {/* Logo + heading */}
+          <View style={s.logoWrap}>
+            <View style={s.logoBox}>
+              <Ionicons name="flash" size={26} color="#fff" />
             </View>
-            <Text style={styles.brandName}>PathwayHQ</Text>
-            <Text style={styles.tagline}>Create your account</Text>
+            <Text style={s.brandName}>PathwayHQ</Text>
+            <Text style={s.heading}>Create your account</Text>
+            <Text style={s.subtitle}>Join your club on PathwayHQ</Text>
           </View>
 
           {/* Card */}
-          <View style={styles.card}>
-            <Text style={styles.heading}>Get started</Text>
-
-            {error ? (
-              <View style={styles.errorBanner}>
-                <Text style={styles.errorText}>{error}</Text>
+          <View style={s.card}>
+            {/* Error banner */}
+            {!!error && (
+              <View style={s.errorBanner}>
+                <Ionicons name="alert-circle-outline" size={15} color={C.errText} style={{ flexShrink: 0, marginTop: 1 }} />
+                <Text style={s.errorText}>{error}</Text>
               </View>
-            ) : null}
+            )}
 
-            <Text style={styles.label}>Full Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Jane Smith"
-              placeholderTextColor={colors.textMuted}
-              autoCapitalize="words"
-              autoCorrect={false}
-              value={fullName}
-              onChangeText={setFullName}
-              returnKeyType="next"
-            />
-
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="you@example.com"
-              placeholderTextColor={colors.textMuted}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              value={email}
-              onChangeText={setEmail}
-              returnKeyType="next"
-            />
-
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Min. 8 characters"
-              placeholderTextColor={colors.textMuted}
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-              returnKeyType="done"
-            />
-
-            <Text style={styles.label}>I am a...</Text>
-            <View style={styles.roleRow}>
-              {ROLE_OPTIONS.map((opt) => (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[
-                    styles.roleBtn,
-                    role === opt.value && styles.roleBtnActive,
-                  ]}
-                  onPress={() => setRole(opt.value)}
-                >
-                  <Text
-                    style={[
-                      styles.roleBtnText,
-                      role === opt.value && styles.roleBtnTextActive,
-                    ]}
-                  >
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+            {/* Section divider */}
+            <View style={s.dividerRow}>
+              <View style={s.dividerLine} />
+              <Text style={s.dividerLabel}>YOUR DETAILS</Text>
+              <View style={s.dividerLine} />
             </View>
-            <Text style={styles.roleNote}>
-              Managers and coaches are set up by club administrators.
-            </Text>
 
+            {/* Full name */}
+            <View style={s.field}>
+              <Text style={s.label}>Full name</Text>
+              <TextInput
+                style={[s.input, hasError && s.inputError]}
+                value={fullName}
+                onChangeText={setFullName}
+                placeholder="Jane Smith"
+                placeholderTextColor={C.placeholder}
+                autoCapitalize="words"
+                autoCorrect={false}
+                returnKeyType="next"
+                onSubmitEditing={() => emailRef.current?.focus()}
+              />
+            </View>
+
+            {/* Email */}
+            <View style={s.field}>
+              <Text style={s.label}>Email address</Text>
+              <TextInput
+                ref={emailRef}
+                style={[s.input, hasError && s.inputError]}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="you@example.com"
+                placeholderTextColor={C.placeholder}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="next"
+                onSubmitEditing={() => pwRef.current?.focus()}
+              />
+            </View>
+
+            {/* Password */}
+            <View style={s.field}>
+              <Text style={s.label}>Password</Text>
+              <View style={s.inputWrap}>
+                <TextInput
+                  ref={pwRef}
+                  style={[s.input, s.inputPadRight, hasError && s.inputError]}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Min. 6 characters"
+                  placeholderTextColor={C.placeholder}
+                  secureTextEntry={!showPw}
+                  returnKeyType="done"
+                  onSubmitEditing={handleRegister}
+                />
+                <TouchableOpacity
+                  style={s.eyeBtn}
+                  onPress={() => setShowPw(v => !v)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons
+                    name={showPw ? 'eye-off-outline' : 'eye-outline'}
+                    size={18}
+                    color={C.textFaint}
+                  />
+                </TouchableOpacity>
+              </View>
+              {/* Strength bar */}
+              {strength && (
+                <View style={s.strengthWrap}>
+                  <View style={s.strengthTrack}>
+                    <View style={[s.strengthFill, { width: `${strength.pct * 100}%`, backgroundColor: strength.color }]} />
+                  </View>
+                  <Text style={[s.strengthLabel, { color: strength.color }]}>{strength.label}</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Role picker */}
+            <View style={s.field}>
+              <Text style={s.label}>I am a...</Text>
+              <View style={s.roleRow}>
+                {[
+                  { value: 'athlete', label: 'Athlete', icon: 'barbell-outline' },
+                  { value: 'parent',  label: 'Parent / Guardian', icon: 'people-outline' },
+                ].map(opt => (
+                  <TouchableOpacity
+                    key={opt.value}
+                    style={[s.roleBtn, role === opt.value && s.roleBtnActive]}
+                    onPress={() => setRole(opt.value)}
+                    activeOpacity={0.75}
+                  >
+                    <Ionicons
+                      name={opt.icon}
+                      size={18}
+                      color={role === opt.value ? C.primary : C.textFaint}
+                      style={{ marginBottom: 4 }}
+                    />
+                    <Text style={[s.roleBtnText, role === opt.value && s.roleBtnTextActive]}>
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <Text style={s.roleNote}>Coaches and managers are set up by club administrators.</Text>
+            </View>
+
+            {/* Submit */}
             <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
+              style={[s.submitBtn, loading && s.submitBtnDisabled]}
               onPress={handleRegister}
               disabled={loading}
+              activeOpacity={0.85}
             >
-              {loading ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={styles.buttonText}>Create account</Text>
-              )}
+              {loading
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Text style={s.submitBtnText}>Create account</Text>}
             </TouchableOpacity>
           </View>
 
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Already have an account? </Text>
+          {/* Footer */}
+          <View style={s.footer}>
+            <Text style={s.footerText}>Already have an account? </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-              <Text style={styles.footerLink}>Sign in</Text>
+              <Text style={s.footerLink}>Sign in →</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -174,151 +261,137 @@ export default function RegisterScreen({ navigation }) {
   )
 }
 
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: colors.background,
+const s = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: C.bg },
+
+  glow: {
+    position: 'absolute',
+    top: -60, left: '10%',
+    width: '80%', height: 280,
+    borderRadius: 140,
+    backgroundColor: C.glowBg,
   },
+
   scroll: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: spacing.lg,
-    paddingTop: spacing.md,
+    paddingHorizontal: 24,
+    paddingVertical: 40,
   },
-  brandWrap: {
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  iconBox: {
-    width: 64,
-    height: 64,
-    borderRadius: 18,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+
+  // Logo / heading
+  logoWrap: { alignItems: 'center', marginBottom: 32 },
+  logoBox: {
+    width: 56, height: 56, borderRadius: 16,
+    backgroundColor: C.primary,
+    justifyContent: 'center', alignItems: 'center',
+    marginBottom: 14,
+    shadowColor: C.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45, shadowRadius: 16, elevation: 8,
   },
   brandName: {
-    fontSize: font.xxl,
-    fontWeight: '800',
-    color: colors.text,
-    letterSpacing: -0.5,
+    fontSize: 22, fontWeight: '800', color: C.text,
+    letterSpacing: -0.5, marginBottom: 10,
   },
-  tagline: {
-    fontSize: font.sm,
-    color: colors.textSecondary,
-    marginTop: 4,
-  },
+  heading:  { fontSize: 26, fontWeight: '900', color: C.text, marginBottom: 6 },
+  subtitle: { fontSize: 14, color: C.textMuted },
+
+  // Card
   card: {
-    backgroundColor: colors.surface,
     borderRadius: 20,
-    padding: spacing.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  heading: {
-    fontSize: font.xl,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: spacing.md,
-  },
-  errorBanner: {
-    backgroundColor: colors.errorLight,
-    borderRadius: radius.sm,
-    padding: spacing.sm + 4,
-    marginBottom: spacing.md,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.error,
-  },
-  errorText: {
-    color: colors.error,
-    fontSize: font.sm,
-    fontWeight: '500',
-  },
-  label: {
-    fontSize: font.sm,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginBottom: 6,
-    marginTop: spacing.sm,
-  },
-  input: {
+    backgroundColor: C.card,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    fontSize: font.base,
-    color: colors.text,
-    backgroundColor: '#fafafa',
+    borderColor: C.cardBorder,
+    padding: 24,
+    marginBottom: 24,
   },
-  roleRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 2,
+
+  // Error
+  errorBanner: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    backgroundColor: C.errBg, borderWidth: 1, borderColor: C.errBorder,
+    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
+    marginBottom: 20,
   },
+  errorText: { flex: 1, fontSize: 13, color: C.errText, lineHeight: 18 },
+
+  // Divider
+  dividerRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: C.divider },
+  dividerLabel: {
+    fontSize: 10, fontWeight: '700', color: C.textFaint,
+    letterSpacing: 1.2,
+  },
+
+  // Fields
+  field:    { marginBottom: 18 },
+  label:    { fontSize: 13, fontWeight: '600', color: '#cbd5e1', marginBottom: 8 },
+
+  input: {
+    backgroundColor: C.input,
+    borderWidth: 1, borderColor: C.inputBorder,
+    borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14,
+    fontSize: 15, color: C.text,
+  },
+  inputError:    { backgroundColor: C.inputErr, borderColor: C.inputErrBdr },
+  inputPadRight: { paddingRight: 48 },
+
+  inputWrap: { position: 'relative' },
+  eyeBtn: {
+    position: 'absolute', right: 14,
+    top: 0, bottom: 0, justifyContent: 'center',
+  },
+
+  // Strength bar
+  strengthWrap: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8,
+  },
+  strengthTrack: {
+    flex: 1, height: 4, borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    overflow: 'hidden',
+  },
+  strengthFill: { height: '100%', borderRadius: 2 },
+  strengthLabel: { fontSize: 11, fontWeight: '600', minWidth: 52, textAlign: 'right' },
+
+  // Role
+  roleRow: { flexDirection: 'row', gap: 12 },
   roleBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.border,
+    flex: 1, paddingVertical: 14,
+    borderRadius: 12, borderWidth: 1.5,
+    borderColor: C.roleBorder,
+    backgroundColor: C.roleInactive,
     alignItems: 'center',
-    backgroundColor: '#fafafa',
   },
   roleBtnActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryLight,
+    borderColor: C.roleBdrActive,
+    backgroundColor: C.roleActive,
   },
-  roleBtnText: {
-    fontSize: font.sm,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  roleBtnTextActive: {
-    color: colors.primaryDark,
-  },
+  roleBtnText: { fontSize: 13, fontWeight: '600', color: C.textFaint },
+  roleBtnTextActive: { color: C.primary },
   roleNote: {
-    fontSize: font.xs,
-    color: colors.textMuted,
-    marginTop: 8,
-    fontStyle: 'italic',
+    fontSize: 11, color: C.textFaint, marginTop: 10, fontStyle: 'italic', lineHeight: 15,
   },
-  button: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    paddingVertical: 15,
-    alignItems: 'center',
-    marginTop: spacing.lg,
+
+  // Submit
+  submitBtn: {
+    backgroundColor: C.primary,
+    borderRadius: 12, paddingVertical: 15,
+    alignItems: 'center', marginTop: 4,
+    shadowColor: C.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
   },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: font.md,
-    fontWeight: '700',
-  },
+  submitBtnDisabled: { opacity: 0.55 },
+  submitBtnText:     { color: '#fff', fontSize: 15, fontWeight: '700' },
+
+  // Footer
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: spacing.lg,
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
   },
-  footerText: {
-    color: colors.textSecondary,
-    fontSize: font.sm,
-  },
-  footerLink: {
-    color: colors.primary,
-    fontSize: font.sm,
-    fontWeight: '700',
-  },
+  footerText: { fontSize: 14, color: C.textMuted },
+  footerLink: { fontSize: 14, fontWeight: '700', color: C.primary },
 })
