@@ -12,6 +12,7 @@ const SECTIONS = [
       { label: 'Squads',        icon: 'layers-outline',        screen: 'SquadsList'         },
       { label: 'Seasons',       icon: 'calendar-outline',      screen: 'SeasonsList'        },
       { label: 'Trophy Cabinet', icon: 'trophy-outline',        screen: 'TrophyCabinetScreen' },
+      { label: 'Volunteering',  icon: 'hand-left-outline',     screen: 'VolunteeringScreen'  },
     ],
   },
   {

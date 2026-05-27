@@ -31,6 +31,7 @@ import TrophyCabinetScreen from '../screens/manager/TrophyCabinetScreen'
 import SettingsScreen from '../screens/shared/SettingsScreen'
 import NotificationsScreen from '../screens/shared/NotificationsScreen'
 import AdminDashboardScreen from '../screens/shared/AdminDashboardScreen'
+import VolunteeringScreen from '../screens/shared/VolunteeringScreen'
 
 const Tab = createBottomTabNavigator()
 const Stack = createNativeStackNavigator()
@@ -110,6 +111,7 @@ function MoreManagerStack({ pendingCount }) {
       <S.Screen name="BroadcastScreen"    component={ClubBroadcastScreen}    options={{ title: 'Broadcast' }} />
       <S.Screen name="AnalyticsScreen"      component={AnalyticsScreen}        options={{ title: 'Analytics' }} />
       <S.Screen name="TrophyCabinetScreen" component={TrophyCabinetScreen}    options={{ title: 'Trophy Cabinet' }} />
+      <S.Screen name="VolunteeringScreen"  component={VolunteeringScreen}     options={{ title: 'Volunteering' }} />
       <S.Screen name="SettingsList"        component={SettingsScreen}         options={{ title: 'Settings' }} />
       <S.Screen name="NotificationsList"   component={NotificationsScreen}    options={{ title: 'Notifications' }} />
     </S.Navigator>
