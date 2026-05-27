@@ -245,6 +245,20 @@ class AthleteController extends Controller
             'squad_ids'    => 'nullable|array',
         ]);
 
+        // Block reactivation if the athlete has since joined another club
+        if (isset($data['is_active']) && $data['is_active'] === true && $athlete->user_id) {
+            $activeElsewhere = Athlete::where('user_id', $athlete->user_id)
+                ->where('club_id', '!=', $athlete->club_id)
+                ->where('is_active', true)
+                ->exists();
+
+            if ($activeElsewhere) {
+                return response()->json([
+                    'message' => 'This athlete is currently active at another club and cannot be reactivated here.',
+                ], 422);
+            }
+        }
+
         $athlete->update($data);
 
         if (isset($data['squad_ids'])) {
