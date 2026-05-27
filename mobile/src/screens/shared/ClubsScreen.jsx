@@ -195,7 +195,7 @@ function ClubDetailSheet({ club, onClose }) {
   return (
     <Modal visible animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={sh.backdrop} onPress={onClose}>
-        <KeyboardAvoidingView behavior="padding" style={{ width: '100%' }}>
+        <KeyboardAvoidingView behavior="padding" style={{ width: '100%', maxHeight: '85%' }}>
           <Pressable style={sh.sheet} onPress={e => e.stopPropagation()}>
             <View style={sh.handle} />
 
@@ -375,7 +375,7 @@ const sh = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   sheet: {
     backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28,
-    maxHeight: '80%', paddingTop: 4,
+    flex: 1, paddingTop: 4,
   },
   handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#e2e8f0', alignSelf: 'center', marginVertical: 10 },
   content: { padding: spacing.md, paddingBottom: spacing.md },
