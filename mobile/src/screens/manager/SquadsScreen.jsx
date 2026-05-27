@@ -26,7 +26,7 @@ function sportEmoji(sport) {
 }
 
 function athleteName(a) {
-  return a.name ?? `${a.first_name ?? ''} ${a.last_name ?? ''}`.trim() || '—'
+  return a.name ?? (`${a.first_name ?? ''} ${a.last_name ?? ''}`.trim() || '—')
 }
 
 // ── Pending squad requests ────────────────────────────────────────────────────
