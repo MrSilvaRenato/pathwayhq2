@@ -4,7 +4,7 @@ import {
   FlatList, ActivityIndicator, Image, Modal, Pressable,
   ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import api from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
@@ -152,6 +152,7 @@ const c = StyleSheet.create({
 // ── detail sheet ──────────────────────────────────────────────────────────────
 function ClubDetailSheet({ club, onClose }) {
   const { user } = useAuth()
+  const insets = useSafeAreaInsets()
   const [clubDetail,   setClubDetail]   = useState(null)
   const [joinStatus,   setJoinStatus]   = useState(null)
   const [showJoinForm, setShowJoinForm] = useState(false)
@@ -199,7 +200,7 @@ function ClubDetailSheet({ club, onClose }) {
             <View style={sh.handle} />
             <ScrollView
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={sh.content}
+              contentContainerStyle={[sh.content, { paddingBottom: spacing.xl + insets.bottom }]}
               keyboardShouldPersistTaps="handled"
             >
               {/* Header */}
