@@ -26,16 +26,17 @@ class EventController extends Controller
             ])
             ->orderBy('start_time', 'asc');
 
-        // Athletes only see their squad's events + club-wide events (no squad)
+        // Athletes see their squad's events + club-wide events.
+        // If not yet assigned to any squad, show all club events so new members aren't left blank.
         if ($user->role === 'athlete') {
-            $athlete  = Athlete::where('user_id', $userId)->where('invite_status', 'accepted')->first();
+            $athlete  = Athlete::where('user_id', $userId)->where('invite_status', 'accepted')->where('is_active', true)->first();
             $squadIds = $athlete ? $athlete->squads()->pluck('squads.id')->toArray() : [];
-            $query->where(function ($q) use ($squadIds) {
-                $q->whereNull('squad_id');
-                if (!empty($squadIds)) {
-                    $q->orWhereIn('squad_id', $squadIds);
-                }
-            });
+            if (!empty($squadIds)) {
+                $query->where(function ($q) use ($squadIds) {
+                    $q->whereNull('squad_id')->orWhereIn('squad_id', $squadIds);
+                });
+            }
+            // If athlete has no squad assignments yet, no additional filter — show all club events
         }
 
         return response()->json(

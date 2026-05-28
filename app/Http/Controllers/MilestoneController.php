@@ -22,7 +22,7 @@ class MilestoneController extends Controller
 
         // Athletes only see their own milestones
         if ($user->role === 'athlete') {
-            $athlete = \App\Models\Athlete::where('user_id', $user->id)->first();
+            $athlete = \App\Models\Athlete::where('user_id', $user->id)->where('invite_status', 'accepted')->where('is_active', true)->first();
             if ($athlete) {
                 $query->where('athlete_id', $athlete->id);
             } else {
