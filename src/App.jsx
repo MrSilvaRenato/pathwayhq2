@@ -24,6 +24,7 @@ import Analytics     from './pages/app/Analytics'
 import Settings      from './pages/app/Settings'
 import SiteAdmin     from './pages/app/SiteAdmin'
 import ClaimProfile      from './pages/ClaimProfile'
+import ResetPassword    from './pages/ResetPassword'
 import JoinRequests     from './pages/app/JoinRequests'
 import Seasons          from './pages/app/Seasons'
 import MyRegistrations  from './pages/app/MyRegistrations'
@@ -58,7 +59,8 @@ export default function App() {
           {/* Auth — redirect old URLs to home modal */}
           <Route path="/login"  element={<Navigate to="/?modal=login"  replace />} />
           <Route path="/signup" element={<Navigate to="/?modal=signup" replace />} />
-          <Route path="/claim/:token" element={<ClaimProfile />} />
+          <Route path="/claim/:token"    element={<ClaimProfile />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* App */}
           <Route path="/" element={<PrivateRoute><AppLayout /></PrivateRoute>}>

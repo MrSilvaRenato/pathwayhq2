@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 use App\Models\User;
 use App\Models\Athlete;
 use App\Models\Notification;
+use App\Services\MailService;
 
 class AuthController extends Controller
 {
@@ -90,6 +92,65 @@ class AuthController extends Controller
     public function me(Request $request)
     {
         return response()->json($this->userPayload($request->user()));
+    }
+
+    public function forgotPassword(Request $request)
+    {
+        $data = $request->validate(['email' => 'required|email']);
+
+        $user = User::where('email', $data['email'])->first();
+
+        // Always return success — never reveal whether the email exists
+        if (!$user) {
+            return response()->json(['ok' => true]);
+        }
+
+        $rawToken = Str::random(64);
+
+        DB::table('password_reset_tokens')->updateOrInsert(
+            ['email' => $user->email],
+            ['token' => Hash::make($rawToken), 'created_at' => now()]
+        );
+
+        $resetUrl = config('app.url') . '/reset-password?token=' . $rawToken . '&email=' . urlencode($user->email);
+
+        MailService::passwordReset($user, $resetUrl);
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $data = $request->validate([
+            'email'    => 'required|email',
+            'token'    => 'required|string',
+            'password' => 'required|min:6',
+        ]);
+
+        $record = DB::table('password_reset_tokens')
+            ->where('email', $data['email'])
+            ->first();
+
+        if (!$record) {
+            return response()->json(['message' => 'Invalid or expired reset link.'], 422);
+        }
+
+        // Expire after 60 minutes
+        if (now()->diffInMinutes($record->created_at) > 60) {
+            DB::table('password_reset_tokens')->where('email', $data['email'])->delete();
+            return response()->json(['message' => 'This reset link has expired. Please request a new one.'], 422);
+        }
+
+        if (!Hash::check($data['token'], $record->token)) {
+            return response()->json(['message' => 'Invalid or expired reset link.'], 422);
+        }
+
+        $user = User::where('email', $data['email'])->firstOrFail();
+        $user->update(['password_hash' => Hash::make($data['password'])]);
+
+        DB::table('password_reset_tokens')->where('email', $data['email'])->delete();
+
+        return response()->json(['ok' => true]);
     }
 
     /**

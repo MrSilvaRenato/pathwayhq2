@@ -2,8 +2,83 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Zap, Eye, EyeOff, AlertCircle, CheckCircle, X, Dumbbell } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import api from '../lib/api'
 
 const inputCls = "w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+
+function ForgotForm({ onBack }) {
+  const [email,   setEmail]   = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error,   setError]   = useState('')
+  const [sent,    setSent]    = useState(false)
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+    try {
+      await api.post('/auth/forgot-password', { email })
+      setSent(true)
+    } catch {
+      setError('Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="w-full">
+      <div className="text-center mb-7">
+        <h2 className="text-2xl font-black text-white">Reset password</h2>
+        <p className="text-slate-400 text-sm mt-1">
+          {sent ? 'Check your inbox' : "Enter your email and we'll send a reset link"}
+        </p>
+      </div>
+
+      {sent ? (
+        <div className="space-y-5">
+          <div className="flex flex-col items-center gap-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-5 py-6 text-center">
+            <CheckCircle className="h-8 w-8 text-emerald-400" />
+            <p className="text-sm text-emerald-300 font-medium">
+              If an account exists for <span className="font-bold">{email}</span>, a reset link is on its way. Check your spam folder too.
+            </p>
+          </div>
+          <button onClick={onBack} className="w-full rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 py-3 text-sm font-semibold text-slate-300 transition-all">
+            ← Back to sign in
+          </button>
+        </div>
+      ) : (
+        <>
+          {error && (
+            <div className="mb-4 flex items-start gap-3 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3">
+              <AlertCircle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+              <p className="text-sm text-red-300">{error}</p>
+            </div>
+          )}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Email address</label>
+              <input type="email" required autoFocus
+                value={email} onChange={e => setEmail(e.target.value)}
+                className={inputCls} placeholder="you@example.com" />
+            </div>
+            <button type="submit" disabled={loading}
+              className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed py-3.5 text-sm font-bold transition-all shadow-lg shadow-emerald-500/25">
+              {loading
+                ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />Sending…</span>
+                : 'Send reset link'}
+            </button>
+          </form>
+          <p className="text-center text-sm text-slate-500 mt-6">
+            <button onClick={onBack} className="text-slate-400 hover:text-slate-300 transition-colors">
+              ← Back to sign in
+            </button>
+          </p>
+        </>
+      )}
+    </div>
+  )
+}
 
 function LoginForm({ onSwitch, claimToken }) {
   const { login } = useAuth()
@@ -12,6 +87,9 @@ function LoginForm({ onSwitch, claimToken }) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPw, setShowPw] = useState(false)
+  const [showForgot, setShowForgot] = useState(false)
+
+  if (showForgot) return <ForgotForm onBack={() => setShowForgot(false)} />
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -55,7 +133,13 @@ function LoginForm({ onSwitch, claimToken }) {
             className={inputCls} placeholder="you@example.com" />
         </div>
         <div>
-          <label className="text-sm font-medium text-slate-300 mb-2 block">Password</label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm font-medium text-slate-300">Password</label>
+            <button type="button" onClick={() => setShowForgot(true)}
+              className="text-xs text-slate-500 hover:text-emerald-400 transition-colors">
+              Forgot password?
+            </button>
+          </div>
           <div className="relative">
             <input type={showPw ? 'text' : 'password'} required autoComplete="current-password"
               value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))}

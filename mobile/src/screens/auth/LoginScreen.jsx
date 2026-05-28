@@ -1,11 +1,12 @@
 import { useState, useRef } from 'react'
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, Pressable,
   ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuth } from '../../contexts/AuthContext'
+import api from '../../lib/api'
 
 // ── dark-theme palette (matches web slate-950 auth) ───────────────────────────
 const C = {
@@ -28,15 +29,116 @@ const C = {
   glowBg:       'rgba(16,185,129,0.08)',
 }
 
+function ForgotModal({ visible, onClose }) {
+  const [email,   setEmail]   = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error,   setError]   = useState('')
+  const [sent,    setSent]    = useState(false)
+
+  function reset() { setEmail(''); setError(''); setSent(false) }
+
+  async function handleSend() {
+    if (!email.trim()) { setError('Please enter your email address.'); return }
+    setError(''); setLoading(true)
+    try {
+      await api.post('/auth/forgot-password', { email: email.trim().toLowerCase() })
+      setSent(true)
+    } catch {
+      setError('Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={() => { reset(); onClose() }}>
+      <Pressable style={fm.backdrop} onPress={() => { reset(); onClose() }}>
+        <Pressable style={fm.sheet} onPress={e => e.stopPropagation()}>
+          <View style={fm.handle} />
+          <View style={fm.header}>
+            <Text style={fm.title}>{sent ? 'Check your email' : 'Forgot password?'}</Text>
+            <TouchableOpacity style={fm.closeBtn} onPress={() => { reset(); onClose() }}>
+              <Ionicons name="close" size={16} color="#94a3b8" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={fm.body}>
+            {sent ? (
+              <>
+                <View style={fm.successBox}>
+                  <Ionicons name="checkmark-circle" size={32} color="#10b981" style={{ marginBottom: 10 }} />
+                  <Text style={fm.successText}>
+                    If an account exists for <Text style={{ fontWeight: '700' }}>{email}</Text>, a reset link is on its way. Check your spam folder too.
+                  </Text>
+                </View>
+                <TouchableOpacity style={fm.btn} onPress={() => { reset(); onClose() }}>
+                  <Text style={fm.btnText}>Done</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={fm.subtitle}>Enter your email and we'll send a link to reset your password.</Text>
+                {!!error && (
+                  <View style={fm.errorBox}>
+                    <Ionicons name="alert-circle-outline" size={14} color="#fca5a5" />
+                    <Text style={fm.errorText}>{error}</Text>
+                  </View>
+                )}
+                <Text style={fm.label}>Email address</Text>
+                <TextInput
+                  style={fm.input}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="you@example.com"
+                  placeholderTextColor="#475569"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoFocus
+                />
+                <TouchableOpacity style={[fm.btn, loading && { opacity: 0.6 }]} onPress={handleSend} disabled={loading}>
+                  {loading
+                    ? <ActivityIndicator color="#fff" size="small" />
+                    : <Text style={fm.btnText}>Send reset link</Text>}
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  )
+}
+
+const fm = StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: '#0f172a', borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)', alignSelf: 'center', marginTop: 10, marginBottom: 6 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' },
+  title: { fontSize: 16, fontWeight: '800', color: '#f8fafc' },
+  closeBtn: { width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center' },
+  body: { padding: 20, paddingBottom: 36, gap: 12 },
+  subtitle: { fontSize: 13, color: '#94a3b8', lineHeight: 20 },
+  label: { fontSize: 12, fontWeight: '600', color: '#cbd5e1', marginBottom: -4 },
+  input: { backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, fontSize: 14, color: '#f8fafc' },
+  btn: { backgroundColor: '#10b981', borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 4 },
+  btnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  errorBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(239,68,68,0.10)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.25)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
+  errorText: { fontSize: 13, color: '#fca5a5', flex: 1 },
+  successBox: { alignItems: 'center', backgroundColor: 'rgba(16,185,129,0.08)', borderWidth: 1, borderColor: 'rgba(16,185,129,0.2)', borderRadius: 14, padding: 20, marginBottom: 4 },
+  successText: { fontSize: 13, color: '#6ee7b7', textAlign: 'center', lineHeight: 20 },
+})
+
 export default function LoginScreen({ navigation }) {
   const { login } = useAuth()
   const pwRef = useRef(null)
 
-  const [email,    setEmail]   = useState('')
-  const [password, setPassword] = useState('')
-  const [showPw,   setShowPw]  = useState(false)
-  const [loading,  setLoading] = useState(false)
-  const [error,    setError]   = useState('')
+  const [email,       setEmail]       = useState('')
+  const [password,    setPassword]    = useState('')
+  const [showPw,      setShowPw]      = useState(false)
+  const [loading,     setLoading]     = useState(false)
+  const [error,       setError]       = useState('')
+  const [showForgot,  setShowForgot]  = useState(false)
 
   async function handleLogin() {
     if (!email.trim() || !password) {
@@ -113,7 +215,7 @@ export default function LoginScreen({ navigation }) {
             <View style={s.field}>
               <View style={s.labelRow}>
                 <Text style={s.label}>Password</Text>
-                <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} onPress={() => setShowForgot(true)}>
                   <Text style={s.forgotLink}>Forgot password?</Text>
                 </TouchableOpacity>
               </View>
@@ -165,6 +267,8 @@ export default function LoginScreen({ navigation }) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <ForgotModal visible={showForgot} onClose={() => setShowForgot(false)} />
     </SafeAreaView>
   )
 }

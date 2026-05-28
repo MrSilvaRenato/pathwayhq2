@@ -556,4 +556,27 @@ HTML
             Log::error('[MailService] seasonPaidOnlineToManager failed', ['error' => $e->getMessage()]);
         }
     }
+
+    public static function passwordReset(User $user, string $resetUrl): void
+    {
+        try {
+            $name = htmlspecialchars($user->full_name ?? $user->email, ENT_QUOTES, 'UTF-8');
+            $html = self::layout(
+                'Reset your PathwayHQ password',
+                <<<HTML
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#111827;">Reset your password</p>
+<p style="margin:0 0 16px;color:#4b5563;">Hi {$name},</p>
+<p style="margin:0 0 16px;color:#4b5563;">We received a request to reset the password on your PathwayHQ account. Click the button below to choose a new password.</p>
+HTML
+                . self::button('Reset my password', $resetUrl)
+                . <<<HTML
+<p style="margin:16px 0 0;font-size:13px;color:#9ca3af;">This link expires in 60 minutes. If you didn't request a password reset you can safely ignore this email — your password will not be changed.</p>
+HTML
+            );
+
+            self::send($user->email, $user->full_name ?? $user->email, 'Reset your PathwayHQ password', $html);
+        } catch (\Throwable $e) {
+            Log::error('[MailService] passwordReset failed', ['error' => $e->getMessage()]);
+        }
+    }
 }
