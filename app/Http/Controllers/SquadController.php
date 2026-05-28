@@ -27,7 +27,7 @@ class SquadController extends Controller
     public function athletes(Request $request, $id)
     {
         $squad = Squad::where('id', $id)
-            ->where('club_id', $request->user()->club_id)
+            ->where('club_id', $request->user()->club_id ?? $request->user()->resolveClubId())
             ->firstOrFail();
 
         $athletes = $squad->athletes()
