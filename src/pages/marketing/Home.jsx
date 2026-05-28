@@ -70,8 +70,11 @@ export default function Home() {
       {/* Nav */}
       <nav className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/95 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-          <Link to="/" className="flex items-center" onClick={() => setMobileOpen(false)}>
-            <img src="/logo.png" alt="PathwayHQ" className="h-9 w-auto" />
+          <Link to="/" className="flex items-center gap-2.5" onClick={() => setMobileOpen(false)}>
+            <img src="/icon.png" alt="" className="h-9 w-9 rounded-xl" />
+            <span className="text-lg font-extrabold tracking-tight">
+              <span className="text-white">Pathway</span><span className="text-emerald-400">HQ</span>
+            </span>
           </Link>
 
           <div className="hidden md:flex items-center gap-7">
@@ -434,8 +437,11 @@ export default function Home() {
       <footer className="border-t border-white/5 px-4 sm:px-6 py-12">
         <div className="mx-auto max-w-7xl">
           <div className="flex flex-col md:flex-row items-center justify-between gap-8 mb-8">
-            <Link to="/" className="flex items-center">
-              <img src="/logo.png" alt="PathwayHQ" className="h-8 w-auto" />
+            <Link to="/" className="flex items-center gap-2.5">
+              <img src="/icon.png" alt="" className="h-9 w-9 rounded-xl" />
+              <span className="text-base font-extrabold tracking-tight">
+                <span className="text-white">Pathway</span><span className="text-emerald-400">HQ</span>
+              </span>
             </Link>
             <div className="flex flex-wrap justify-center gap-6 text-sm text-slate-500">
               <a href="#features"     className="hover:text-slate-300 transition-colors">Features</a>
