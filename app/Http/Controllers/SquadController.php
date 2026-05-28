@@ -130,6 +130,7 @@ class SquadController extends Controller
 
         $athlete = Athlete::where('user_id', $user->id)
             ->where('invite_status', 'accepted')
+            ->where('is_active', true)
             ->firstOrFail();
 
         $squad = Squad::where('id', $id)->where('club_id', $athlete->club_id)->firstOrFail();
