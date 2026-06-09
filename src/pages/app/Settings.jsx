@@ -579,9 +579,50 @@ export default function Settings() {
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50">
                   <Zap className="h-5 w-5 text-emerald-500" />
                 </div>
-                <div>
-                  <p className="font-bold text-slate-900 capitalize">{planInfo?.tier ?? 'free'} Plan</p>
-                  <p className="text-xs text-slate-400">{SUBSCRIPTION_TIERS?.[planInfo?.tier]?.price ?? '$0/mo'}</p>
+                <div className="flex items-center gap-2">
+                  <div>
+                    <p className="font-bold text-slate-900 capitalize">{planInfo?.tier ?? 'free'} Plan</p>
+                    <p className="text-xs text-slate-400">{SUBSCRIPTION_TIERS?.[planInfo?.tier]?.price ?? '$0/mo'}</p>
+                  </div>
+                  {/* Free plan tooltip */}
+                  {(!planInfo || planInfo.tier === 'free') && (
+                    <div className="relative group/freetip self-start mt-0.5">
+                      <button type="button" className="h-4 w-4 rounded-full bg-slate-200 hover:bg-slate-300 border border-slate-300 flex items-center justify-center transition-colors">
+                        <span className="text-[9px] font-black text-slate-600 leading-none">?</span>
+                      </button>
+                      <div className="absolute bottom-full left-0 mb-2 w-60 rounded-xl bg-slate-900 border border-white/10 shadow-2xl p-3 invisible group-hover/freetip:visible opacity-0 group-hover/freetip:opacity-100 transition-all duration-150 z-50 pointer-events-none">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Free plan limits</p>
+                        <ul className="space-y-1.5 mb-3">
+                          {[
+                            '8 active athletes',
+                            '1 squad',
+                            '3 announcements / month',
+                            'Public club profile',
+                            'Athlete join requests',
+                          ].map(f => (
+                            <li key={f} className="flex items-center gap-2 text-[11px] text-slate-300">
+                              <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />{f}
+                            </li>
+                          ))}
+                        </ul>
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Locked on free</p>
+                        <ul className="space-y-1.5">
+                          {[
+                            'Calendar & sessions',
+                            'Season registrations',
+                            'Club broadcast messages',
+                            'Volunteering management',
+                            'Analytics dashboard',
+                            'Trophy cabinet',
+                          ].map(f => (
+                            <li key={f} className="flex items-center gap-2 text-[11px] text-slate-500">
+                              <div className="h-1.5 w-1.5 rounded-full bg-slate-600 shrink-0" />{f}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
               {planInfo?.status === 'active' || planInfo?.tier !== 'free' ? (
@@ -593,12 +634,15 @@ export default function Settings() {
               ) : null}
             </div>
 
-            {/* Usage bars */}
-            {planInfo?.usage && (
+            {/* Usage bars — limits read from frontend constants so display is always correct */}
+            {planInfo?.usage && (() => {
+              const tier = planInfo.tier ?? 'free'
+              const tierLimits = SUBSCRIPTION_TIERS[tier] ?? SUBSCRIPTION_TIERS.free
+              return (
               <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 space-y-3">
                 {[
-                  { label: 'Athletes', used: planInfo.usage.athletes, limit: planInfo.limits?.athletes },
-                  { label: 'Squads',   used: planInfo.usage.squads,   limit: planInfo.limits?.squads },
+                  { label: 'Athletes', used: planInfo.usage.athletes, limit: tierLimits.athletes },
+                  { label: 'Squads',   used: planInfo.usage.squads,   limit: tierLimits.squads   },
                 ].map(({ label, used, limit }) => {
                   const unlimited = limit === -1
                   const pct = unlimited ? 0 : Math.min(100, Math.round((used / limit) * 100))
