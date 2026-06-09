@@ -79,7 +79,22 @@ jobs:
         working-directory: mobile/android/app
         run: echo "$KEYSTORE_BASE64" | base64 --decode > release.keystore
 
-      # 10 — Build APK (always release so JS bundle is included in the APK)
+      # 10 — Generate debug keystore when no custom keystore is provided
+      - name: Generate debug keystore (fallback signing)
+        if: env.KEYSTORE_BASE64 == ''
+        run: |
+          mkdir -p $HOME/.android
+          keytool -genkey -v \
+            -keystore $HOME/.android/debug.keystore \
+            -storepass android \
+            -alias androiddebugkey \
+            -keypass android \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+      # 11 — Build APK (always release so JS bundle is included in the APK)
       - name: Build APK
         working-directory: mobile/android
         run: |
@@ -99,7 +114,7 @@ jobs:
               -Pandroid.injected.signing.key.password=android
           fi
 
-      # 11 — Upload APK as downloadable artifact
+      # 12 — Upload APK as downloadable artifact
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
