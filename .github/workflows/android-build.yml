@@ -40,23 +40,46 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      # 5 — Install dependencies
+      # 5 — Cache node_modules
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: mobile/node_modules
+          key: node-modules-${{ hashFiles('mobile/package.json') }}
+          restore-keys: node-modules-
+
+      # 6 — Cache Gradle files
+      - name: Cache Gradle wrapper
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/wrapper
+          key: gradle-wrapper-${{ hashFiles('mobile/android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-wrapper-
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/caches
+          key: gradle-caches-${{ hashFiles('mobile/android/**/*.gradle', 'mobile/android/**/*.gradle.kts') }}
+          restore-keys: gradle-caches-
+
+      # 7 — Install dependencies
       - name: Install npm dependencies
         working-directory: mobile
         run: npm install
 
-      # 6 — Generate native android/ folder from Expo config
+      # 8 — Generate native android/ folder from Expo config
       - name: Expo prebuild (generate android/)
         working-directory: mobile
         run: npx expo prebuild --platform android --clean --no-install
 
-      # 7 — Write keystore from GitHub secret (only if secret is set)
+      # 9 — Write keystore from GitHub secret (only if secret is set)
       - name: Write release keystore
         if: env.KEYSTORE_BASE64 != ''
         working-directory: mobile/android/app
         run: echo "$KEYSTORE_BASE64" | base64 --decode > release.keystore
 
-      # 8 — Build APK (always release so JS bundle is included in the APK)
+      # 10 — Build APK (always release so JS bundle is included in the APK)
       - name: Build APK
         working-directory: mobile/android
         run: |
@@ -76,13 +99,11 @@ jobs:
               -Pandroid.injected.signing.key.password=android
           fi
 
-      # 9 — Upload APK as downloadable artifact
+      # 11 — Upload APK as downloadable artifact
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: pathwayhq-apk
-          path: |
-            mobile/android/app/build/outputs/apk/release/app-release.apk
-            mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          path: mobile/android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: warn
           retention-days: 30
