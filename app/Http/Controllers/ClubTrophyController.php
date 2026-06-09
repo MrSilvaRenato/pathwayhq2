@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use App\Models\ClubTrophy;
+use App\Models\Club;
+use App\Services\PlanService;
 
 class ClubTrophyController extends Controller
 {
@@ -23,6 +25,10 @@ class ClubTrophyController extends Controller
 
     public function store(Request $request)
     {
+        $clubId = $request->user()->club_id ?? $request->user()->resolveClubId();
+        $club   = Club::find($clubId);
+        if ($err = PlanService::checkFeature($club, 'trophy_cabinet', 'elite')) return $err;
+
         $data = $request->validate([
             'title'       => 'required|string|max:255',
             'description' => 'nullable|string',

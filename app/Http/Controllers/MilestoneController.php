@@ -7,6 +7,8 @@ use Illuminate\Support\Str;
 use App\Models\Milestone;
 use App\Models\Athlete;
 use App\Models\Notification;
+use App\Models\Club;
+use App\Services\PlanService;
 
 class MilestoneController extends Controller
 {
@@ -44,6 +46,9 @@ class MilestoneController extends Controller
 
     public function store(Request $request)
     {
+        $club = Club::find($request->user()->resolveClubId());
+        if ($err = PlanService::checkFeature($club, 'milestones')) return $err;
+
         $data = $request->validate([
             'athlete_id'           => 'nullable|string',
             'title'                => 'required|string',
