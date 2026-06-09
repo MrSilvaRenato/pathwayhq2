@@ -21,6 +21,7 @@ use App\Http\Controllers\ClubJoinRequestController;
 use App\Http\Controllers\SeasonController;
 use App\Http\Controllers\SeasonRegistrationController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\SubscriptionController;
 
 // ─── Health check ────────────────────────────────────────────────────────────
 Route::get('/health', fn() => response()->json([
@@ -49,7 +50,8 @@ Route::post('/clubs/public/{slug}/claim', [ClubClaimController::class, 'store'])
 Route::get('/clubs/public/{slug}/seasons', [SeasonController::class, 'publicList']);
 
 // Stripe webhook (no auth)
-Route::post('/stripe/webhook', [SeasonRegistrationController::class, 'stripeWebhook']);
+Route::post('/stripe/webhook',                [SeasonRegistrationController::class, 'stripeWebhook']);
+Route::post('/stripe/subscription-webhook',   [SubscriptionController::class, 'webhook']);
 
 // ─── Authenticated routes ─────────────────────────────────────────────────────
 Route::middleware('auth:api')->group(function () {
@@ -66,7 +68,9 @@ Route::middleware('auth:api')->group(function () {
     // Club
     Route::get('/club',         [ClubController::class, 'mine']);
     Route::put('/club',         [ClubController::class, 'update']);
-    Route::get('/club/plan',    [ClubController::class, 'plan']);
+    Route::get('/club/plan',                    [ClubController::class, 'plan']);
+    Route::post('/subscription/checkout',       [SubscriptionController::class, 'checkout']);
+    Route::post('/subscription/portal',         [SubscriptionController::class, 'portal']);
     Route::get('/clubs/all',    [ClubController::class, 'all']);     // site_admin only
 
     // Athletes
