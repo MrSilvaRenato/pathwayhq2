@@ -10,6 +10,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import api from '../../lib/api'
 import { colors, font, spacing, radius } from '../../lib/theme'
 import ImageUpload from '../../components/ImageUpload'
+import UpgradeSheet, { parseUpgradeError } from '../../components/UpgradeSheet'
 
 // ── Category config ────────────────────────────────────────────────────────────
 const CATEGORIES = {
@@ -403,6 +404,7 @@ export default function AnnouncementsScreen() {
   const [filter, setFilter] = useState('all')
   const [showModal, setShowModal] = useState(false)
   const [editItem, setEditItem] = useState(null)
+  const [upgrade, setUpgrade] = useState(null)
 
   async function load() {
     try {
@@ -430,7 +432,14 @@ export default function AnnouncementsScreen() {
       setEditItem(null)
       load()
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.message ?? 'Failed to save.')
+      const up = parseUpgradeError(e)
+      if (up) {
+        setShowModal(false)
+        setEditItem(null)
+        setUpgrade(up)
+      } else {
+        Alert.alert('Error', e?.response?.data?.message ?? 'Failed to save.')
+      }
       throw e
     }
   }
@@ -560,6 +569,13 @@ export default function AnnouncementsScreen() {
           onSave={handleSave}
         />
       )}
+
+      <UpgradeSheet
+        visible={!!upgrade}
+        message={upgrade?.message}
+        requiredPlan={upgrade?.requiredPlan}
+        onClose={() => setUpgrade(null)}
+      />
     </SafeAreaView>
   )
 }

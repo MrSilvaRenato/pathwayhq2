@@ -7,6 +7,7 @@ import {
 import api from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
+import UpgradePrompt from '../../components/UpgradePrompt'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const FTEM_META = {
@@ -40,7 +41,7 @@ function initials(first = '', last = '') {
 }
 
 // ── Squad form modal (create + edit) ─────────────────────────────────────────
-function SquadModal({ squad, onClose, onSaved }) {
+function SquadModal({ squad, onClose, onSaved, onUpgrade }) {
   const toast = useToast()
   const [form, setForm]   = useState({ name: squad?.name ?? '', description: squad?.description ?? '' })
   const [saving, setSaving] = useState(false)
@@ -59,8 +60,14 @@ function SquadModal({ squad, onClose, onSaved }) {
         toast.success('Squad created')
       }
       onClose()
-    } catch {
-      toast.error(squad ? 'Failed to save' : 'Failed to create')
+    } catch (err) {
+      const d = err?.response?.data
+      if (d?.upgrade_required) {
+        onClose()
+        onUpgrade?.({ message: d.error ?? 'Upgrade to add more squads.', requiredPlan: d.required_plan ?? 'pro' })
+      } else {
+        toast.error(squad ? 'Failed to save' : 'Failed to create')
+      }
     } finally {
       setSaving(false)
     }
@@ -597,6 +604,7 @@ export default function Squads() {
   const [selectedId,  setSelectedId]  = useState(null)
   const [editSquad,   setEditSquad]   = useState(null)  // null = closed, false = new, object = edit
   const [deleteSquad, setDeleteSquad] = useState(null)
+  const [upgrade,     setUpgrade]     = useState(null)
 
   const load = useCallback(() => {
     api.get('/squads')
@@ -757,6 +765,7 @@ export default function Squads() {
           squad={editSquad || null}
           onClose={() => setEditSquad(null)}
           onSaved={handleSaved}
+          onUpgrade={up => { setEditSquad(null); setUpgrade(up) }}
         />
       )}
 
@@ -766,6 +775,15 @@ export default function Squads() {
           squad={deleteSquad}
           onClose={() => setDeleteSquad(null)}
           onDeleted={handleDeleted}
+        />
+      )}
+
+      {/* Upgrade prompt */}
+      {upgrade && (
+        <UpgradePrompt
+          message={upgrade.message}
+          requiredPlan={upgrade.requiredPlan}
+          onClose={() => setUpgrade(null)}
         />
       )}
     </div>
