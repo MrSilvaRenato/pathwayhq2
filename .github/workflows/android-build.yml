@@ -11,6 +11,11 @@ jobs:
   build:
     name: Build APK
     runs-on: ubuntu-latest
+    env:
+      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
     steps:
       # 1 — Checkout code
@@ -46,27 +51,23 @@ jobs:
         working-directory: mobile
         run: npx expo prebuild --platform android --clean --no-install
 
-      # 7 — Write keystore from GitHub secret
+      # 7 — Write keystore from GitHub secret (only if secret is set)
       - name: Write release keystore
-        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        if: env.KEYSTORE_BASE64 != ''
         working-directory: mobile/android/app
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > release.keystore
+        run: echo "$KEYSTORE_BASE64" | base64 --decode > release.keystore
 
       # 8 — Build release APK (signed) or debug APK (no keystore needed)
       - name: Build APK
         working-directory: mobile/android
-        env:
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           if [ -f "app/release.keystore" ]; then
             echo "Building signed RELEASE APK"
             ./gradlew assembleRelease \
               -Pandroid.injected.signing.store.file=$(pwd)/app/release.keystore \
-              -Pandroid.injected.signing.store.password=$KEYSTORE_PASSWORD \
-              -Pandroid.injected.signing.key.alias=$KEY_ALIAS \
-              -Pandroid.injected.signing.key.password=$KEY_PASSWORD
+              -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
+              -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+              -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
           else
             echo "No keystore found — building DEBUG APK"
             ./gradlew assembleDebug
