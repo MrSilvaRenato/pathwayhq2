@@ -590,7 +590,7 @@ export default function Settings() {
                       <button type="button" className="h-4 w-4 rounded-full bg-slate-200 hover:bg-slate-300 border border-slate-300 flex items-center justify-center transition-colors">
                         <span className="text-[9px] font-black text-slate-600 leading-none">?</span>
                       </button>
-                      <div className="absolute bottom-full left-0 mb-2 w-60 rounded-xl bg-slate-900 border border-white/10 shadow-2xl p-3 invisible group-hover/freetip:visible opacity-0 group-hover/freetip:opacity-100 transition-all duration-150 z-50 pointer-events-none">
+                      <div className="absolute top-full left-0 mt-2 w-60 rounded-xl bg-slate-900 border border-white/10 shadow-2xl p-3 invisible group-hover/freetip:visible opacity-0 group-hover/freetip:opacity-100 transition-all duration-150 z-50 pointer-events-none">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Free plan limits</p>
                         <ul className="space-y-1.5 mb-3">
                           {[
