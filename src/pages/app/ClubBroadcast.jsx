@@ -6,6 +6,7 @@ import {
 import api from '../../lib/api'
 import { FTEM_PHASES } from '../../lib/constants'
 import { useToast } from '../../contexts/ToastContext'
+import UpgradePrompt from '../../components/UpgradePrompt'
 
 function initials(first = '', last = '') {
   return `${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase() || '?'
@@ -23,6 +24,7 @@ export default function ClubBroadcast() {
   const [form,      setForm]      = useState({ title: '', body: '', link: '' })
   const [confirming, setConfirming] = useState(false)
   const [sending,   setSending]   = useState(false)
+  const [upgrade,   setUpgrade]   = useState(null)
   const [lastSent,  setLastSent]  = useState(null)
 
   useEffect(() => {
@@ -88,7 +90,12 @@ export default function ClubBroadcast() {
       setSelected(new Set())
       toast.success(`Sent to ${data.count} athlete${data.count !== 1 ? 's' : ''}`)
     } catch (err) {
-      toast.error(err?.response?.data?.message ?? 'Failed to send')
+      const d = err?.response?.data
+      if (d?.upgrade_required) {
+        setUpgrade({ message: d.error ?? 'Upgrade to send broadcast messages.', requiredPlan: d.required_plan ?? 'pro' })
+      } else {
+        toast.error(d?.message ?? 'Failed to send')
+      }
     } finally {
       setSending(false)
     }
@@ -332,6 +339,14 @@ export default function ClubBroadcast() {
         </div>
 
       </div>
+
+      {upgrade && (
+        <UpgradePrompt
+          message={upgrade.message}
+          requiredPlan={upgrade.requiredPlan}
+          onClose={() => setUpgrade(null)}
+        />
+      )}
     </div>
   )
 }
