@@ -244,6 +244,7 @@ export default function Analytics() {
   } = computed
 
   return (
+    <>
     <div className="p-4 md:p-5 max-w-7xl mx-auto space-y-4 pb-8">
 
       {/* ── Page header ── */}
@@ -488,5 +489,6 @@ export default function Analytics() {
         requiredPlan={upgrade.requiredPlan}
       />
     )}
+    </>
   )
 }
