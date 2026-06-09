@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   View, Text, ScrollView, Modal, Pressable, TouchableOpacity,
-  ActivityIndicator, RefreshControl, Image, StyleSheet, Dimensions,
+  ActivityIndicator, RefreshControl, Image, StyleSheet, Dimensions, Linking,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -266,6 +266,7 @@ export default function ManagerDashboardScreen() {
   const [milestones, setMilestones] = useState([])
   const [announcements, setAnnouncements] = useState([])
   const [volunteering, setVolunteering] = useState([])
+  const [planInfo, setPlanInfo] = useState(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [attendanceModal, setAttendanceModal] = useState(null)
@@ -273,7 +274,7 @@ export default function ManagerDashboardScreen() {
 
   async function fetchAll() {
     try {
-      const [cl, at, ev, mi, an, vo, notif] = await Promise.allSettled([
+      const [cl, at, ev, mi, an, vo, notif, pl] = await Promise.allSettled([
         api.get('/club'),
         api.get('/athletes'),
         api.get('/events'),
@@ -281,6 +282,7 @@ export default function ManagerDashboardScreen() {
         api.get('/announcements'),
         api.get('/volunteering'),
         api.get('/notifications'),
+        api.get('/club/plan'),
       ])
       if (cl.status === 'fulfilled') setClub(cl.value.data ?? null)
       if (at.status === 'fulfilled') {
@@ -309,6 +311,7 @@ export default function ManagerDashboardScreen() {
         const list = Array.isArray(notif.value.data) ? notif.value.data : notif.value.data?.data ?? []
         setUnreadCount(list.filter(n => !n.is_read).length)
       }
+      if (pl.status === 'fulfilled') setPlanInfo(pl.value.data ?? null)
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -401,6 +404,65 @@ export default function ManagerDashboardScreen() {
             </TouchableOpacity>
           </View>
         ) : null}
+
+        {planInfo && planInfo.tier === 'free' && (
+          <TouchableOpacity
+            style={styles.planCard}
+            onPress={() => Linking.openURL('https://ausfairgo.com.au/pricing')}
+            activeOpacity={0.85}
+          >
+            <View style={styles.planCardInner}>
+              <View style={styles.planIconWrap}>
+                <Ionicons name="flash" size={20} color="#d97706" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <Text style={styles.planTitle}>Free plan</Text>
+                  <View style={styles.planLimitedBadge}>
+                    <Text style={styles.planLimitedText}>Limited</Text>
+                  </View>
+                </View>
+                <View style={{ flexDirection: 'row', gap: 16, marginBottom: 8 }}>
+                  <View>
+                    <Text style={styles.planUsageLabel}>Athletes</Text>
+                    <Text style={styles.planUsageValue}>{planInfo.usage?.athletes ?? 0} / {planInfo.limits?.athletes}</Text>
+                    <View style={styles.planBar}>
+                      <View style={[styles.planBarFill, { width: `${Math.min(100, ((planInfo.usage?.athletes ?? 0) / (planInfo.limits?.athletes || 1)) * 100)}%` }]} />
+                    </View>
+                  </View>
+                  <View>
+                    <Text style={styles.planUsageLabel}>Squads</Text>
+                    <Text style={styles.planUsageValue}>{planInfo.usage?.squads ?? 0} / {planInfo.limits?.squads}</Text>
+                    <View style={styles.planBar}>
+                      <View style={[styles.planBarFill, { width: `${Math.min(100, ((planInfo.usage?.squads ?? 0) / (planInfo.limits?.squads || 1)) * 100)}%` }]} />
+                    </View>
+                  </View>
+                </View>
+                <View style={styles.planUpgradeBtn}>
+                  <Ionicons name="flash" size={12} color="#fff" />
+                  <Text style={styles.planUpgradeBtnText}>Upgrade to Pro — unlock all features</Text>
+                  <Ionicons name="chevron-forward" size={12} color="#fff" />
+                </View>
+              </View>
+            </View>
+          </TouchableOpacity>
+        )}
+        {planInfo && planInfo.tier !== 'free' && (
+          <View style={styles.planCardPro}>
+            <View style={styles.planProIconWrap}>
+              <Ionicons name="flash" size={16} color="#059669" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.planProTitle}>{planInfo.tier.charAt(0).toUpperCase() + planInfo.tier.slice(1)} plan</Text>
+              <Text style={styles.planProSub}>
+                {planInfo.tier === 'elite'
+                  ? 'All features · Unlimited athletes'
+                  : `${planInfo.usage?.athletes ?? 0}/${planInfo.limits?.athletes} athletes · ${planInfo.usage?.squads ?? 0}/${planInfo.limits?.squads} squads`}
+              </Text>
+            </View>
+            <Ionicons name="checkmark-circle" size={20} color="#059669" />
+          </View>
+        )}
 
         <View style={styles.statsGrid}>
           {stats.map((s, i) => (
@@ -729,6 +791,46 @@ const styles = StyleSheet.create({
   milestoneMeta: { fontSize: 10, color: colors.textMuted, marginTop: 2 },
   ftemBadge: { borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 3 },
   ftemBadgeText: { fontSize: 10, fontWeight: '700' },
+
+  planCard: {
+    backgroundColor: '#fffbeb', borderWidth: 1.5, borderColor: '#fcd34d',
+    borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.md,
+    shadowColor: '#d97706', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 3,
+  },
+  planCardInner: { flexDirection: 'row', gap: 12 },
+  planIconWrap: {
+    width: 44, height: 44, borderRadius: 12,
+    backgroundColor: '#fef3c7', borderWidth: 1, borderColor: '#fde68a',
+    alignItems: 'center', justifyContent: 'center', marginTop: 2,
+  },
+  planTitle: { fontSize: font.base, fontWeight: '800', color: '#92400e' },
+  planLimitedBadge: {
+    backgroundColor: '#fde68a', borderRadius: 999,
+    paddingHorizontal: 8, paddingVertical: 2,
+  },
+  planLimitedText: { fontSize: 10, fontWeight: '700', color: '#b45309' },
+  planUsageLabel: { fontSize: 10, fontWeight: '600', color: '#b45309', marginBottom: 1 },
+  planUsageValue: { fontSize: font.sm, fontWeight: '800', color: '#92400e', marginBottom: 4 },
+  planBar: { width: 64, height: 6, backgroundColor: '#fde68a', borderRadius: 3, overflow: 'hidden' },
+  planBarFill: { height: '100%', backgroundColor: '#f59e0b', borderRadius: 3 },
+  planUpgradeBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: '#d97706', borderRadius: radius.md,
+    paddingHorizontal: 12, paddingVertical: 8,
+    alignSelf: 'flex-start',
+  },
+  planUpgradeBtnText: { fontSize: font.xs, fontWeight: '700', color: '#fff' },
+  planCardPro: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#ecfdf5', borderWidth: 1, borderColor: '#a7f3d0',
+    borderRadius: radius.lg, padding: 12, marginBottom: spacing.md,
+  },
+  planProIconWrap: {
+    width: 36, height: 36, borderRadius: 10,
+    backgroundColor: '#d1fae5', alignItems: 'center', justifyContent: 'center',
+  },
+  planProTitle: { fontSize: font.base, fontWeight: '800', color: '#065f46' },
+  planProSub: { fontSize: font.xs, color: '#059669', marginTop: 1 },
 
   volCard: {
     flexDirection: 'row', alignItems: 'center', gap: 8,

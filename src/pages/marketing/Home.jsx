@@ -20,10 +20,22 @@ const FEATURES = [
 ]
 
 const PRICING = [
-  { tier: 'Free',    price: '$0',   period: '/mo', athletes: 'Up to 15 athletes',  features: ['Basic athlete profiles', 'Training calendar', 'Announcements', 'Public club profile'],                             cta: 'Start free',   highlight: false },
-  { tier: 'Starter', price: '$29',  period: '/mo', athletes: 'Up to 50 athletes',  features: ['Everything in Free', 'Squads & rosters', 'Milestone tracking', 'Trophy cabinet'],                                   cta: 'Get started',  highlight: false },
-  { tier: 'Pro',     price: '$79',  period: '/mo', athletes: 'Up to 200 athletes', features: ['Everything in Starter', 'Analytics dashboard', 'Volunteering module', 'Parent portal', 'Brisbane 2032 pathway'],     cta: 'Most popular', highlight: true  },
-  { tier: 'Elite',   price: '$149', period: '/mo', athletes: 'Unlimited athletes', features: ['Everything in Pro', 'Priority support', 'Custom branding', 'API access', 'Dedicated onboarding'],                    cta: "Let's go",     highlight: false },
+  {
+    tier: 'Free', price: '$0', period: '/mo', athletes: 'Up to 15 athletes',
+    features: ['Athlete profiles & roster', '1 squad', '3 announcements/month', 'Public club profile', 'Athlete join requests'],
+    cta: 'Start free', highlight: false,
+  },
+  {
+    tier: 'Pro', price: '$29', period: '/mo', athletes: 'Up to 100 athletes',
+    badge: 'Most popular',
+    features: ['Everything in Free', 'Up to 5 squads', 'Unlimited announcements', 'Calendar & sessions', 'Season registrations & payments', 'Club broadcast messages', 'Volunteering management', 'Analytics dashboard'],
+    cta: 'Start Pro', highlight: true,
+  },
+  {
+    tier: 'Elite', price: '$79', period: '/mo', athletes: 'Unlimited athletes',
+    features: ['Everything in Pro', 'Unlimited squads', 'Trophy cabinet', 'Remove PathwayHQ branding', 'Priority support'],
+    cta: 'Start Elite', highlight: false,
+  },
 ]
 
 const NAV_LINKS = [
@@ -357,42 +369,79 @@ export default function Home() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="py-20 sm:py-24 border-b border-white/5">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+      <section id="pricing" className="py-20 sm:py-28 relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 h-px w-full max-w-4xl bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent" />
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-px w-full max-w-4xl bg-gradient-to-r from-transparent via-white/5 to-transparent" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[600px] w-[900px] rounded-full bg-emerald-600/5 blur-[100px]" />
+        </div>
+        <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
+
+          {/* Header */}
           <div className="text-center mb-14">
-            <h2 className="text-3xl sm:text-4xl font-black tracking-tight mb-4">Simple, honest pricing</h2>
-            <p className="text-slate-400">Start free. Scale as your club grows. No surprises.</p>
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-1.5 text-xs font-semibold text-emerald-400 mb-5">
+              <Zap className="h-3 w-3" /> Simple, honest pricing
+            </div>
+            <h2 className="text-4xl sm:text-5xl font-black tracking-tight mb-4">
+              Plans for every club
+            </h2>
+            <p className="text-slate-400 text-lg max-w-xl mx-auto">
+              Start free — no credit card needed. Upgrade when your club grows.
+              <span className="block text-emerald-400 font-semibold mt-1">Athletes always join free.</span>
+            </p>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+          {/* Cards */}
+          <div className="grid md:grid-cols-3 gap-6 items-start">
             {PRICING.map(p => (
-              <div key={p.tier} className={`rounded-2xl p-6 border flex flex-col ${p.highlight
-                ? 'border-emerald-500/50 bg-emerald-500/10 ring-1 ring-emerald-500/20 shadow-xl shadow-emerald-500/10'
-                : 'border-white/5 bg-white/[0.03]'}`}>
-                {p.highlight && (
-                  <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-bold text-emerald-400 w-fit">
-                    ⭐ Most popular
+              <div key={p.tier} className={`relative rounded-2xl border flex flex-col transition-transform ${
+                p.highlight
+                  ? 'border-emerald-500/50 bg-gradient-to-b from-emerald-500/10 to-emerald-500/5 shadow-2xl shadow-emerald-500/15 md:-translate-y-3'
+                  : 'border-white/8 bg-white/[0.03] hover:border-white/15'}`}>
+                {p.badge && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-emerald-500 px-4 py-1 text-xs font-black text-white shadow-lg shadow-emerald-500/30 whitespace-nowrap">
+                    ⭐ {p.badge}
                   </div>
                 )}
-                <div className="text-sm font-semibold text-slate-400 mb-1">{p.tier}</div>
-                <div className="text-4xl font-black text-white mb-1">
-                  {p.price}<span className="text-base font-normal text-slate-500">{p.period}</span>
+                <div className="p-7 pb-5">
+                  <p className={`text-xs font-bold uppercase tracking-widest mb-3 ${p.highlight ? 'text-emerald-400' : 'text-slate-500'}`}>{p.tier}</p>
+                  <div className="flex items-end gap-1.5 mb-1">
+                    <span className="text-5xl font-black text-white">{p.price}</span>
+                    <span className="text-slate-400 text-sm mb-2">{p.period} AUD</span>
+                  </div>
+                  <p className="text-slate-500 text-sm mb-6">{p.athletes}</p>
+
+                  <button onClick={() => openModal('signup')}
+                    className={`w-full rounded-xl py-3.5 text-sm font-bold transition-all active:scale-95 ${
+                      p.highlight
+                        ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-lg shadow-emerald-500/30'
+                        : 'border border-white/10 bg-white/5 hover:bg-white/10 text-white'}`}>
+                    {p.cta} →
+                  </button>
                 </div>
-                <div className="text-xs text-slate-500 mb-5">{p.athletes}</div>
-                <ul className="space-y-2.5 mb-6 flex-1">
+
+                <div className={`mx-6 border-t ${p.highlight ? 'border-emerald-500/20' : 'border-white/5'}`} />
+
+                <ul className="p-7 pt-5 space-y-3 flex-1">
                   {p.features.map(f => (
-                    <li key={f} className="flex items-start gap-2 text-xs text-slate-400">
-                      <CheckCircle className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" /> {f}
+                    <li key={f} className="flex items-start gap-2.5 text-sm">
+                      <CheckCircle className={`h-4 w-4 shrink-0 mt-0.5 ${p.highlight ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                      <span className={p.highlight ? 'text-slate-200' : 'text-slate-400'}>{f}</span>
                     </li>
                   ))}
                 </ul>
-                <button onClick={() => openModal('signup')}
-                  className={`w-full rounded-xl py-2.5 text-center text-sm font-bold transition-all active:scale-95 ${p.highlight
-                    ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-lg shadow-emerald-500/25'
-                    : 'border border-white/10 bg-white/5 hover:bg-white/10 text-white'}`}>
-                  {p.cta}
-                </button>
               </div>
             ))}
+          </div>
+
+          {/* Footer note */}
+          <div className="mt-10 text-center">
+            <p className="text-slate-500 text-sm">
+              All plans include a public club profile, athlete management, and milestone tracking.
+            </p>
+            <Link to="/pricing" className="inline-flex items-center gap-1.5 text-emerald-400 hover:text-emerald-300 font-semibold text-sm mt-2 transition-colors">
+              See full feature comparison <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
           </div>
         </div>
       </section>

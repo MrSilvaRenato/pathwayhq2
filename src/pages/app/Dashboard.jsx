@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   Users, Trophy, Calendar, ArrowRight, Zap, Dumbbell,
   MapPin, Megaphone, CheckCircle2, XCircle, HandHeart,
-  TrendingUp, Clock, X, HelpCircle, Loader2, Building2, Mail, UserCircle, Trash2,
+  TrendingUp, Clock, X, HelpCircle, Loader2, Building2, Mail, UserCircle, Trash2, CreditCard,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
@@ -206,6 +206,7 @@ function ClubDashboard({ user }) {
   const [events,          setEvents]          = useState([])
   const [announcements,   setAnnouncements]   = useState([])
   const [volunteering,    setVolunteering]    = useState([])
+  const [planInfo,        setPlanInfo]        = useState(null)
   const [loading,         setLoading]         = useState(true)
   const [attendanceModal, setAttendanceModal] = useState(null)
 
@@ -217,7 +218,8 @@ function ClubDashboard({ user }) {
       api.get('/events').catch(() => ({ data: [] })),
       api.get('/announcements').catch(() => ({ data: [] })),
       api.get('/volunteering').catch(() => ({ data: [] })),
-    ]).then(([cl, a, m, e, ann, v]) => {
+      api.get('/club/plan').catch(() => ({ data: null })),
+    ]).then(([cl, a, m, e, ann, v, pl]) => {
       setClub(cl.data ?? null)
       setAthletes(a.data ?? [])
       setMilestones((m.data ?? []).slice(0, 4))
@@ -225,6 +227,7 @@ function ClubDashboard({ user }) {
       setEvents((e.data ?? []).filter(ev => new Date(ev.start_time) >= now).slice(0, 5))
       setAnnouncements((ann.data ?? []).slice(0, 3))
       setVolunteering((v.data ?? []).filter(v => !v.date || new Date(v.date) >= now).slice(0, 3))
+      setPlanInfo(pl.data ?? null)
     }).finally(() => setLoading(false))
   }, [])
 
@@ -270,6 +273,75 @@ function ClubDashboard({ user }) {
           </div>
           <Link to="/settings" className="shrink-0 hidden sm:flex items-center gap-1.5 rounded-xl bg-white/15 hover:bg-white/25 px-3 py-2 text-xs font-semibold text-white transition-colors">
             Club settings <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+      )}
+
+      {/* ── Plan status banner ──────────────────────────────────── */}
+      {planInfo && planInfo.tier === 'free' && (
+        <div className="col-span-full rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 p-4 flex flex-col sm:flex-row sm:items-center gap-4 shadow-sm">
+          <div className="flex items-start gap-3 flex-1 min-w-0">
+            <div className="h-10 w-10 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
+              <Zap className="h-5 w-5 text-amber-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-sm font-black text-amber-800">Free plan</span>
+                <span className="text-[10px] font-bold text-amber-600 bg-amber-100 border border-amber-200 rounded-full px-2 py-0.5">Limited</span>
+              </div>
+              <div className="flex flex-wrap gap-x-5 gap-y-2">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] font-semibold text-amber-700">Athletes</span>
+                    <span className="text-[11px] font-bold text-amber-800 ml-2">{planInfo.usage?.athletes ?? 0} / {planInfo.limits?.athletes}</span>
+                  </div>
+                  <div className="w-28 h-1.5 rounded-full bg-amber-200">
+                    <div
+                      className="h-1.5 rounded-full bg-amber-500 transition-all"
+                      style={{ width: `${Math.min(100, ((planInfo.usage?.athletes ?? 0) / (planInfo.limits?.athletes || 1)) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] font-semibold text-amber-700">Squads</span>
+                    <span className="text-[11px] font-bold text-amber-800 ml-2">{planInfo.usage?.squads ?? 0} / {planInfo.limits?.squads}</span>
+                  </div>
+                  <div className="w-20 h-1.5 rounded-full bg-amber-200">
+                    <div
+                      className="h-1.5 rounded-full bg-amber-500 transition-all"
+                      style={{ width: `${Math.min(100, ((planInfo.usage?.squads ?? 0) / (planInfo.limits?.squads || 1)) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-amber-600">
+                  <XCircle className="h-3.5 w-3.5" /> Calendar, seasons, broadcast locked
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link to="/pricing" className="flex items-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 px-4 py-2.5 text-sm font-bold text-white transition-all shadow-sm shadow-amber-200">
+              <Zap className="h-3.5 w-3.5" /> Upgrade to Pro
+            </Link>
+          </div>
+        </div>
+      )}
+      {planInfo && planInfo.tier !== 'free' && (
+        <div className="col-span-full rounded-xl bg-emerald-50 border border-emerald-100 px-4 py-3 flex items-center gap-3">
+          <div className="h-8 w-8 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+            <Zap className="h-4 w-4 text-emerald-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <span className="text-sm font-black text-emerald-800 capitalize">{planInfo.tier} plan</span>
+            <span className="ml-2 text-xs text-emerald-600">
+              {planInfo.tier === 'elite'
+                ? 'All features unlocked · unlimited athletes'
+                : `${planInfo.usage?.athletes ?? 0} of ${planInfo.limits?.athletes} athletes · ${planInfo.usage?.squads ?? 0} of ${planInfo.limits?.squads} squads`}
+            </span>
+          </div>
+          <Link to="/settings" className="shrink-0 flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition-colors">
+            <CreditCard className="h-3.5 w-3.5" /> Manage billing <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
       )}
