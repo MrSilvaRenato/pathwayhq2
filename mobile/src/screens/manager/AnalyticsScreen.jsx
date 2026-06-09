@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import {
   View, Text, StyleSheet, ActivityIndicator, ScrollView, Dimensions,
 } from 'react-native'
@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons'
 import api from '../../lib/api'
 import { colors, font, spacing, radius } from '../../lib/theme'
 import { FTEM_PHASES, SPORTS } from '../../lib/constants'
+import UpgradeSheet from '../../components/UpgradeSheet'
 
 const SCREEN_W = Dimensions.get('window').width
 
@@ -97,15 +98,20 @@ export default function AnalyticsScreen() {
   const [events,     setEvents]     = useState([])
   const [squads,     setSquads]     = useState([])
   const [loading,    setLoading]    = useState(true)
+  const [upgrade,    setUpgrade]    = useState(null)
   const [lastUpdated] = useState(lastUpdatedLabel())
 
   useEffect(() => {
     Promise.allSettled([
+      api.get('/club/plan'),
       api.get('/athletes'),
       api.get('/milestones'),
       api.get('/events'),
       api.get('/squads'),
-    ]).then(([a, m, e, sq]) => {
+    ]).then(([plan, a, m, e, sq]) => {
+      if (plan.status === 'fulfilled' && plan.value.data?.tier === 'free') {
+        setUpgrade({ message: 'Analytics is available on the Pro plan and above. Upgrade to see detailed club insights.', requiredPlan: 'pro' })
+      }
       if (a.status  === 'fulfilled') setAthletes(Array.isArray(a.value.data)  ? a.value.data  : [])
       if (m.status  === 'fulfilled') setMilestones(Array.isArray(m.value.data) ? m.value.data : [])
       if (e.status  === 'fulfilled') setEvents(Array.isArray(e.value.data)    ? e.value.data  : [])
@@ -391,6 +397,12 @@ export default function AnalyticsScreen() {
 
         <View style={{ height: spacing.xl }} />
       </ScrollView>
+      <UpgradeSheet
+        visible={!!upgrade}
+        message={upgrade?.message}
+        requiredPlan={upgrade?.requiredPlan ?? 'pro'}
+        onClose={null}
+      />
     </SafeAreaView>
   )
 }

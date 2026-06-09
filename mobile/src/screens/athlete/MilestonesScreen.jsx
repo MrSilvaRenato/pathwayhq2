@@ -11,6 +11,7 @@ import api from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
 import { colors, font, spacing, radius } from '../../lib/theme'
 import { FTEM_PHASES } from '../../lib/constants'
+import UpgradeSheet, { parseUpgradeError } from '../../components/UpgradeSheet'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -138,7 +139,7 @@ const BLANK = {
   ftem_phase: 'F1', achieved_at: new Date(), is_shared_with_parent: false,
 }
 
-function AddModal({ athletes, onClose, onSaved }) {
+function AddModal({ athletes, onClose, onSaved, onUpgrade }) {
   const [form, setForm] = useState({ ...BLANK })
   const [saving, setSaving] = useState(false)
   const [showAthletePicker, setShowAthletePicker] = useState(false)
@@ -168,7 +169,9 @@ function AddModal({ athletes, onClose, onSaved }) {
         achieved_at: form.achieved_at.toISOString().slice(0, 10),
       })
       onSaved()
-    } catch {
+    } catch (e) {
+      const up = parseUpgradeError(e)
+      if (up) { onClose(); onUpgrade?.(up); return }
       Alert.alert('Error', 'Failed to save milestone.')
       setSaving(false)
     }
@@ -354,6 +357,7 @@ export default function MilestonesScreen() {
   const [loading, setLoading]       = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [showModal, setShowModal]   = useState(false)
+  const [upgrade, setUpgrade]       = useState(null)
 
   const [q, setQ]                         = useState('')
   const [filterAthlete, setFilterAthlete] = useState('')
@@ -620,8 +624,15 @@ export default function MilestonesScreen() {
             await fetchAll()
             setLoading(false)
           }}
+          onUpgrade={up => { setShowModal(false); setUpgrade(up) }}
         />
       )}
+      <UpgradeSheet
+        visible={!!upgrade}
+        message={upgrade?.message}
+        requiredPlan={upgrade?.requiredPlan ?? 'pro'}
+        onClose={() => setUpgrade(null)}
+      />
 
       {/* Athlete filter sheet */}
       <Modal visible={showAthleteSheet} transparent statusBarTranslucent animationType="slide" onRequestClose={() => setShowAthleteSheet(false)}>

@@ -11,6 +11,7 @@ import * as ImagePicker from 'expo-image-picker'
 import { useAuth } from '../../contexts/AuthContext'
 import api from '../../lib/api'
 import { colors, font, spacing, radius } from '../../lib/theme'
+import UpgradeSheet, { parseUpgradeError } from '../../components/UpgradeSheet'
 
 const CATEGORIES = [
   { value: 'competition', label: 'Competition',    emoji: '🏆', bg: '#fffbeb', border: '#fde68a', text: '#92400e' },
@@ -109,7 +110,7 @@ function TrophyCard({ trophy, isManager, onEdit, onDelete, onTogglePublic }) {
   )
 }
 
-function TrophyModal({ trophy, onClose, onSaved }) {
+function TrophyModal({ trophy, onClose, onSaved, onUpgrade }) {
   const isEdit = !!trophy
   const [form, setForm] = useState(
     trophy
@@ -152,7 +153,9 @@ function TrophyModal({ trophy, onClose, onSaved }) {
         await api.post('/club-trophies', payload)
       }
       onSaved()
-    } catch {
+    } catch (e) {
+      const up = parseUpgradeError(e)
+      if (up) { onClose(); onUpgrade?.(up); return }
       Alert.alert('Error', 'Failed to save trophy.')
       setSaving(false)
     }
@@ -290,6 +293,7 @@ export default function TrophyCabinetScreen() {
   const [refreshing, setRefreshing] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
+  const [upgrade, setUpgrade] = useState(null)
 
   async function load() {
     try {
@@ -409,8 +413,15 @@ export default function TrophyCabinetScreen() {
           trophy={editing}
           onClose={() => { setShowModal(false); setEditing(null) }}
           onSaved={handleSaved}
+          onUpgrade={up => { setShowModal(false); setEditing(null); setUpgrade(up) }}
         />
       ) : null}
+      <UpgradeSheet
+        visible={!!upgrade}
+        message={upgrade?.message}
+        requiredPlan={upgrade?.requiredPlan ?? 'elite'}
+        onClose={() => setUpgrade(null)}
+      />
     </SafeAreaView>
   )
 }
