@@ -56,7 +56,7 @@ jobs:
         working-directory: mobile/android/app
         run: echo "$KEYSTORE_BASE64" | base64 --decode > release.keystore
 
-      # 8 — Build release APK (signed) or debug APK (no keystore needed)
+      # 8 — Build APK (always release so JS bundle is included in the APK)
       - name: Build APK
         working-directory: mobile/android
         run: |
@@ -68,8 +68,12 @@ jobs:
               -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
               -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
           else
-            echo "No keystore found — building DEBUG APK"
-            ./gradlew assembleDebug
+            echo "No custom keystore — building RELEASE APK signed with debug key"
+            ./gradlew assembleRelease \
+              -Pandroid.injected.signing.store.file=$HOME/.android/debug.keystore \
+              -Pandroid.injected.signing.store.password=android \
+              -Pandroid.injected.signing.key.alias=androiddebugkey \
+              -Pandroid.injected.signing.key.password=android
           fi
 
       # 9 — Upload APK as downloadable artifact
