@@ -4,7 +4,7 @@ import {
   ActivityIndicator, RefreshControl, Modal, Alert, ScrollView,
   KeyboardAvoidingView, Platform, Linking,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import api from '../../lib/api'
@@ -146,6 +146,7 @@ function AddModal({ onClose, onSaved, onUpgrade }) {
   const [showDobPicker, setShowDobPicker] = useState(false)
   const [showGenderSheet, setShowGenderSheet]   = useState(false)
   const [showPhaseSheet, setShowPhaseSheet]     = useState(false)
+  const insets = useSafeAreaInsets()
   const debounceRef = useRef(null)
 
   function handleEmailChange(email) {
@@ -354,9 +355,9 @@ function AddModal({ onClose, onSaved, onUpgrade }) {
       )}
 
       {/* Gender sheet */}
-      <Modal visible={showGenderSheet} transparent animationType="slide" onRequestClose={() => setShowGenderSheet(false)}>
+      <Modal visible={showGenderSheet} transparent statusBarTranslucent animationType="slide" onRequestClose={() => setShowGenderSheet(false)}>
         <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setShowGenderSheet(false)} />
-        <View style={s.sheet}>
+        <View style={[s.sheet, { paddingBottom: insets.bottom || 16 }]}>
           <View style={s.sheetHandle} />
           <Text style={s.sheetTitle}>Gender</Text>
           {genderOptions.map(g => (
@@ -374,9 +375,9 @@ function AddModal({ onClose, onSaved, onUpgrade }) {
       </Modal>
 
       {/* Phase sheet */}
-      <Modal visible={showPhaseSheet} transparent animationType="slide" onRequestClose={() => setShowPhaseSheet(false)}>
+      <Modal visible={showPhaseSheet} transparent statusBarTranslucent animationType="slide" onRequestClose={() => setShowPhaseSheet(false)}>
         <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setShowPhaseSheet(false)} />
-        <View style={s.sheet}>
+        <View style={[s.sheet, { paddingBottom: insets.bottom || 16 }]}>
           <View style={s.sheetHandle} />
           <Text style={s.sheetTitle}>FTEM Phase</Text>
           <ScrollView showsVerticalScrollIndicator={false}>
@@ -406,6 +407,7 @@ function AddModal({ onClose, onSaved, onUpgrade }) {
 export default function AthletesScreen({ navigation }) {
   const { user } = useAuth()
   const isAdmin = user?.role === 'club_admin' || user?.role === 'coach'
+  const insets = useSafeAreaInsets()
 
   const [athletes, setAthletes] = useState([])
   const [squads, setSquads]     = useState([])
@@ -611,9 +613,9 @@ export default function AthletesScreen({ navigation }) {
       />
 
       {/* Phase filter sheet */}
-      <Modal visible={showPhaseSheet} transparent animationType="slide" onRequestClose={() => setShowPhaseSheet(false)}>
+      <Modal visible={showPhaseSheet} transparent statusBarTranslucent animationType="slide" onRequestClose={() => setShowPhaseSheet(false)}>
         <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setShowPhaseSheet(false)} />
-        <View style={s.sheet}>
+        <View style={[s.sheet, { paddingBottom: insets.bottom || 16 }]}>
           <View style={s.sheetHandle} />
           <Text style={s.sheetTitle}>Filter by Phase</Text>
           <ScrollView showsVerticalScrollIndicator={false}>
@@ -644,9 +646,9 @@ export default function AthletesScreen({ navigation }) {
       </Modal>
 
       {/* Squad filter sheet */}
-      <Modal visible={showSquadSheet} transparent animationType="slide" onRequestClose={() => setShowSquadSheet(false)}>
+      <Modal visible={showSquadSheet} transparent statusBarTranslucent animationType="slide" onRequestClose={() => setShowSquadSheet(false)}>
         <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setShowSquadSheet(false)} />
-        <View style={s.sheet}>
+        <View style={[s.sheet, { paddingBottom: insets.bottom || 16 }]}>
           <View style={s.sheetHandle} />
           <Text style={s.sheetTitle}>Filter by Squad</Text>
           <ScrollView showsVerticalScrollIndicator={false}>

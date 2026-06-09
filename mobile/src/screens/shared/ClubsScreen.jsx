@@ -23,7 +23,7 @@ const SORT_OPTIONS = [
 // ── bottom-sheet dropdown ─────────────────────────────────────────────────────
 function DropdownSheet({ visible, title, options, value, onSelect, onClose }) {
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent statusBarTranslucent animationType="slide" onRequestClose={onClose}>
       <Pressable style={ds.backdrop} onPress={onClose}>
         <Pressable style={ds.sheet} onPress={e => e.stopPropagation()}>
           <View style={ds.handle} />

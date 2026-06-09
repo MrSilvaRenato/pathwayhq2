@@ -74,7 +74,7 @@ function SpotsBar({ spots, signedUp }) {
 
 function RosterSheet({ visible, opportunity, signups, loading, onClose, onRemove }) {
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent statusBarTranslucent animationType="slide" onRequestClose={onClose}>
       <View style={s.sheetOverlay}>
         <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={onClose} />
         <View style={s.sheet}>

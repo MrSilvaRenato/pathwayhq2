@@ -3,7 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, ScrollView, Alert, Switch, Modal, FlatList, Linking,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuth } from '../../contexts/AuthContext'
 import api from '../../lib/api'
@@ -60,6 +60,7 @@ function VisibilityRow({ iconName, iconColor, label, desc, value, onToggle, disa
 // ─── Modal dropdown picker ─────────────────────────────────────────────────────
 function DropdownPicker({ options, value, onChange, placeholder = 'Select…' }) {
   const [open, setOpen] = useState(false)
+  const insets = useSafeAreaInsets()
   const selected = options.find(o => o.value === value)
   const displayLabel = selected
     ? `${selected.emoji ? selected.emoji + ' ' : ''}${selected.label}`
@@ -74,15 +75,15 @@ function DropdownPicker({ options, value, onChange, placeholder = 'Select…' })
         <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
       </TouchableOpacity>
 
-      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
+      <Modal visible={open} transparent statusBarTranslucent animationType="slide" onRequestClose={() => setOpen(false)}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setOpen(false)} />
-        <View style={styles.pickerSheet}>
+        <View style={[styles.pickerSheet, { paddingBottom: insets.bottom || 16 }]}>
           <View style={styles.pickerHandle} />
           <FlatList
             data={options}
             keyExtractor={o => o.value}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 24 }}
+            contentContainerStyle={{ paddingBottom: 8 }}
             renderItem={({ item }) => {
               const isSelected = item.value === value
               return (

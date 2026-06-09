@@ -39,6 +39,6 @@ export const font = {
   base: 15,
   md: 16,
   lg: 18,
-  xl: 22,
-  xxl: 26,
+  xl: 20,
+  xxl: 22,
 }

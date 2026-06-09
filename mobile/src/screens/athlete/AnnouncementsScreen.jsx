@@ -4,7 +4,7 @@ import {
   TouchableOpacity, RefreshControl, Modal, TextInput,
   KeyboardAvoidingView, Platform, ScrollView, Alert, Pressable,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuth } from '../../contexts/AuthContext'
 import api from '../../lib/api'
@@ -53,6 +53,7 @@ function fmtDate(dt) {
 // ── Filter dropdown ────────────────────────────────────────────────────────────
 function FilterDropdown({ value, onChange }) {
   const [open, setOpen] = useState(false)
+  const insets = useSafeAreaInsets()
   const selected = FILTER_OPTIONS.find(o => o.value === value)
   return (
     <>
@@ -61,9 +62,9 @@ function FilterDropdown({ value, onChange }) {
         <Ionicons name="chevron-down" size={14} color={colors.textMuted} />
       </TouchableOpacity>
 
-      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
+      <Modal visible={open} transparent statusBarTranslucent animationType="slide" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.overlay} onPress={() => setOpen(false)} />
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { paddingBottom: insets.bottom || 16 }]}>
           <View style={styles.sheetHandle} />
           {FILTER_OPTIONS.map(opt => {
             const isSelected = opt.value === value
@@ -80,7 +81,6 @@ function FilterDropdown({ value, onChange }) {
               </TouchableOpacity>
             )
           })}
-          <View style={{ height: spacing.lg }} />
         </View>
       </Modal>
     </>

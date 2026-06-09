@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback, useLayoutEffect, useRef } from 'react
 import {
   View, Text, ScrollView, Modal, Pressable, TouchableOpacity, TextInput,
   ActivityIndicator, RefreshControl, Image, Alert, StyleSheet, Dimensions, Linking,
+  KeyboardAvoidingView, Platform,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useNavigation, useFocusEffect } from '@react-navigation/native'
 import Constants from 'expo-constants'
@@ -72,6 +73,7 @@ function SquadRequestModal({ onClose }) {
   const [selected, setSelected] = useState(null)
   const [reason, setReason] = useState('')
   const [saving, setSaving] = useState(false)
+  const insets = useSafeAreaInsets()
   const [pickerVisible, setPickerVisible] = useState(false)
 
   useEffect(() => {
@@ -95,9 +97,10 @@ function SquadRequestModal({ onClose }) {
   }
 
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Pressable style={sqStyles.backdrop} onPress={onClose}>
-        <Pressable style={sqStyles.sheet} onPress={e => e.stopPropagation()}>
+        <Pressable style={[sqStyles.sheet, { paddingBottom: insets.bottom || 16 }]} onPress={e => e.stopPropagation()}>
           <View style={sqStyles.handle} />
           <View style={sqStyles.headerRow}>
             <Text style={sqStyles.title}>Request squad change</Text>
@@ -148,9 +151,9 @@ function SquadRequestModal({ onClose }) {
         </Pressable>
       </Pressable>
 
-      <Modal visible={pickerVisible} transparent animationType="slide" onRequestClose={() => setPickerVisible(false)}>
+      <Modal visible={pickerVisible} transparent statusBarTranslucent animationType="slide" onRequestClose={() => setPickerVisible(false)}>
         <Pressable style={sqStyles.backdrop} onPress={() => setPickerVisible(false)}>
-          <Pressable style={[sqStyles.sheet, { maxHeight: '60%' }]} onPress={e => e.stopPropagation()}>
+          <Pressable style={[sqStyles.sheet, { maxHeight: '60%', paddingBottom: insets.bottom || 16 }]} onPress={e => e.stopPropagation()}>
             <View style={sqStyles.handle} />
             <Text style={[sqStyles.title, { paddingHorizontal: spacing.md, paddingBottom: 12 }]}>Select squad</Text>
             <ScrollView>
@@ -172,6 +175,7 @@ function SquadRequestModal({ onClose }) {
           </Pressable>
         </Pressable>
       </Modal>
+      </KeyboardAvoidingView>
     </Modal>
   )
 }

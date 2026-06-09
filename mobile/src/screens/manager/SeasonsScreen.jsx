@@ -5,7 +5,7 @@ import {
   KeyboardAvoidingView, Platform, ScrollView, Alert, Pressable,
 } from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import api from '../../lib/api'
 import { colors, font, spacing, radius } from '../../lib/theme'
@@ -54,6 +54,7 @@ function toISODate(date) {
 // ── Dropdown picker (reused pattern) ──────────────────────────────────────────
 function DropdownPicker({ options, value, onChange }) {
   const [open, setOpen] = useState(false)
+  const insets = useSafeAreaInsets()
   const selected = options.find(o => o.value === value)
   return (
     <>
@@ -61,9 +62,9 @@ function DropdownPicker({ options, value, onChange }) {
         <Text style={styles.dropdownBtnText} numberOfLines={1}>{selected?.label ?? 'Select…'}</Text>
         <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
       </TouchableOpacity>
-      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
+      <Modal visible={open} transparent statusBarTranslucent animationType="slide" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.overlay} onPress={() => setOpen(false)} />
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { paddingBottom: insets.bottom || 16 }]}>
           <View style={styles.sheetHandle} />
           {options.map(opt => (
             <TouchableOpacity
@@ -77,7 +78,6 @@ function DropdownPicker({ options, value, onChange }) {
               {opt.value === value && <Ionicons name="checkmark" size={18} color={colors.primary} />}
             </TouchableOpacity>
           ))}
-          <View style={{ height: spacing.lg }} />
         </View>
       </Modal>
     </>

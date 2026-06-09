@@ -5,7 +5,7 @@ import {
   Alert, Pressable, Dimensions,
 } from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuth } from '../../contexts/AuthContext'
 import api from '../../lib/api'
@@ -101,6 +101,7 @@ function defaultRepeatUntil(startISO, recurrence) {
 // ── Dropdown ───────────────────────────────────────────────────────────────────
 function Dropdown({ options, value, onChange, placeholder = 'Select…' }) {
   const [open, setOpen] = useState(false)
+  const insets = useSafeAreaInsets()
   const sel = options.find(o => o.value === value)
   return (
     <>
@@ -110,9 +111,9 @@ function Dropdown({ options, value, onChange, placeholder = 'Select…' }) {
         </Text>
         <Ionicons name="chevron-down" size={15} color={colors.textMuted} />
       </TouchableOpacity>
-      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
+      <Modal visible={open} transparent statusBarTranslucent animationType="slide" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.overlay} onPress={() => setOpen(false)} />
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { paddingBottom: insets.bottom || 16 }]}>
           <View style={styles.sheetHandle} />
           {options.map(opt => (
             <TouchableOpacity
@@ -126,7 +127,6 @@ function Dropdown({ options, value, onChange, placeholder = 'Select…' }) {
               {opt.value === value && <Ionicons name="checkmark" size={18} color={colors.primary} />}
             </TouchableOpacity>
           ))}
-          <View style={{ height: spacing.lg }} />
         </View>
       </Modal>
     </>
@@ -564,6 +564,7 @@ function EventFormModal({ initial, editScope, squads, onClose, onSave }) {
 export default function CalendarScreen() {
   const { user, isAdmin } = useAuth()
   const isManager = user?.role === 'club_admin' || user?.role === 'coach'
+  const insets = useSafeAreaInsets()
 
   const today = new Date()
   const [events, setEvents]         = useState([])
@@ -830,9 +831,9 @@ export default function CalendarScreen() {
       </ScrollView>
 
       {/* Day detail bottom sheet */}
-      <Modal visible={showDay} transparent animationType="slide" onRequestClose={() => setShowDay(false)}>
+      <Modal visible={showDay} transparent statusBarTranslucent animationType="slide" onRequestClose={() => setShowDay(false)}>
         <Pressable style={styles.overlay} onPress={() => setShowDay(false)} />
-        <View style={styles.daySheet}>
+        <View style={[styles.daySheet, { paddingBottom: insets.bottom || 16 }]}>
           <View style={styles.sheetHandle} />
           <View style={styles.daySheetHeader}>
             <View>
@@ -877,9 +878,9 @@ export default function CalendarScreen() {
 
       {/* Series action sheet */}
       {editingEv && showScopeSheet && !showSeriesSheet && (
-        <Modal visible transparent animationType="slide" onRequestClose={closeScopeSheet}>
+        <Modal visible transparent statusBarTranslucent animationType="slide" onRequestClose={closeScopeSheet}>
           <Pressable style={styles.overlay} onPress={closeScopeSheet} />
-          <View style={styles.sheet}>
+          <View style={[styles.sheet, { paddingBottom: insets.bottom || 16 }]}>
             <View style={styles.sheetHandle} />
             <View style={{ padding: spacing.md }}>
               {/* Header */}
@@ -988,9 +989,9 @@ export default function CalendarScreen() {
 
       {/* Series list sheet */}
       {editingEv && showScopeSheet && showSeriesSheet && (
-        <Modal visible transparent animationType="slide" onRequestClose={() => setShowSeriesSheet(false)}>
+        <Modal visible transparent statusBarTranslucent animationType="slide" onRequestClose={() => setShowSeriesSheet(false)}>
           <Pressable style={styles.overlay} onPress={() => setShowSeriesSheet(false)} />
-          <View style={[styles.sheet, { maxHeight: '80%' }]}>
+          <View style={[styles.sheet, { maxHeight: '80%', paddingBottom: insets.bottom || 16 }]}>
             <View style={styles.sheetHandle} />
             <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: 4 }}>
               <TouchableOpacity onPress={() => setShowSeriesSheet(false)} style={{ marginRight: 10 }}>

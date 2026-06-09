@@ -4,7 +4,7 @@ import {
   ActivityIndicator, RefreshControl, Modal, Alert, ScrollView,
   KeyboardAvoidingView, Platform,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import api from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
@@ -240,6 +240,7 @@ function RosterSheet({ squad, isAdmin, onClose, onAthleteCountChanged }) {
   const [addQ,            setAddQ]            = useState('')
   const [adding,          setAdding]          = useState(null)
   const cacheRef = useRef({})
+  const insets = useSafeAreaInsets()
 
   useEffect(() => {
     if (!squad) return
@@ -302,9 +303,9 @@ function RosterSheet({ squad, isAdmin, onClose, onAthleteCountChanged }) {
   const count = athletes?.length ?? (squad?.athletes_count ?? 0)
 
   return (
-    <Modal visible={!!squad} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={!!squad} transparent statusBarTranslucent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={onClose} />
-      <View style={s.rosterSheet}>
+      <View style={[s.rosterSheet, { paddingBottom: insets.bottom || 16 }]}>
         {/* Header */}
         <View style={s.rosterHeader}>
           <View style={s.rosterHeaderLeft}>
@@ -468,6 +469,7 @@ function RosterSheet({ squad, isAdmin, onClose, onAthleteCountChanged }) {
 export default function SquadsScreen() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'club_admin' || user?.role === 'coach'
+  const insets = useSafeAreaInsets()
 
   const [squads,       setSquads]       = useState([])
   const [loading,      setLoading]      = useState(true)
@@ -697,7 +699,7 @@ const s = StyleSheet.create({
 
   // Roster sheet
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },
-  rosterSheet: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '88%', paddingBottom: 32 },
+  rosterSheet: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '88%' },
   rosterHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, backgroundColor: '#ecfdf5', borderTopLeftRadius: 24, borderTopRightRadius: 24, borderBottomWidth: 1, borderBottomColor: '#d1fae5' },
   rosterHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 },
   rosterHeaderIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },

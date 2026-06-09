@@ -4,7 +4,7 @@ import {
   StyleSheet, ActivityIndicator, Alert, Linking,
   Modal, Pressable,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useNavigation } from '@react-navigation/native'
 import { useAuth } from '../../contexts/AuthContext'
@@ -42,10 +42,11 @@ const PHASE_OPTIONS = Object.entries(FTEM_PHASES).map(([value, meta]) => ({
 
 // ── dropdown sheet ────────────────────────────────────────────────────────────
 function DropdownSheet({ visible, title, options, value, onSelect, onClose }) {
+  const insets = useSafeAreaInsets()
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent statusBarTranslucent animationType="slide" onRequestClose={onClose}>
       <Pressable style={ds.backdrop} onPress={onClose}>
-        <Pressable style={ds.sheet} onPress={e => e.stopPropagation()}>
+        <Pressable style={[ds.sheet, { paddingBottom: insets.bottom || 16 }]} onPress={e => e.stopPropagation()}>
           <View style={ds.handle} />
           {title ? <Text style={ds.title}>{title}</Text> : null}
           <ScrollView showsVerticalScrollIndicator={false}>
@@ -63,7 +64,6 @@ function DropdownSheet({ visible, title, options, value, onSelect, onClose }) {
                 )}
               </TouchableOpacity>
             ))}
-            <View style={{ height: 20 }} />
           </ScrollView>
         </Pressable>
       </Pressable>
@@ -279,7 +279,7 @@ export default function AthleteDetailScreen({ route }) {
               {/* Avatar + name + badges */}
               <View style={s.heroWrap}>
                 <Avatar name={name} url={a.avatar_url} size="xl" />
-                <Text style={s.athleteName}>{name}</Text>
+                <Text style={s.athleteName} numberOfLines={2}>{name}</Text>
 
                 <View style={s.badgeRow}>
                   {phaseMeta ? (

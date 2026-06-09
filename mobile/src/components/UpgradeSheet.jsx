@@ -1,11 +1,13 @@
 import { Modal, View, Text, TouchableOpacity, Pressable, Linking, StyleSheet } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const WEB_BASE = 'https://ausfairgo.com.au'
 
 export default function UpgradeSheet({ visible, message, requiredPlan = 'pro', onClose }) {
   const planName  = requiredPlan === 'elite' ? 'Elite' : 'Pro'
   const planPrice = requiredPlan === 'elite' ? '$79/mo' : '$29/mo'
+  const insets    = useSafeAreaInsets()
 
   function openPricing() {
     Linking.openURL(`${WEB_BASE}/pricing`)
@@ -15,7 +17,7 @@ export default function UpgradeSheet({ visible, message, requiredPlan = 'pro', o
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={s.backdrop} onPress={onClose}>
-        <Pressable style={s.sheet} onPress={e => e.stopPropagation()}>
+        <Pressable style={[s.sheet, { paddingBottom: Math.max(insets.bottom, 24) }]} onPress={e => e.stopPropagation()}>
           <View style={s.handle} />
 
           <View style={s.iconWrap}>

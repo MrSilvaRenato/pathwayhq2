@@ -3,7 +3,7 @@ import {
   View, Text, ScrollView, Modal, Pressable, TouchableOpacity,
   ActivityIndicator, RefreshControl, Image, StyleSheet, Dimensions, Linking,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useNavigation } from '@react-navigation/native'
 import { useAuth } from '../../contexts/AuthContext'
@@ -70,6 +70,7 @@ function SkeletonLoader() {
 function AttendanceModal({ event, onClose }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const insets = useSafeAreaInsets()
 
   useEffect(() => {
     api.get(`/events/${event.id}/attendees`)
@@ -159,9 +160,9 @@ function AttendanceModal({ event, onClose }) {
   }
 
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <Pressable style={aStyles.backdrop} onPress={onClose}>
-        <Pressable style={aStyles.sheet} onPress={e => e.stopPropagation()}>
+        <Pressable style={[aStyles.sheet, { paddingBottom: insets.bottom }]} onPress={e => e.stopPropagation()}>
           <View style={aStyles.handle} />
           <View style={aStyles.header}>
             <View style={aStyles.headerTop}>
@@ -240,7 +241,7 @@ const aStyles = StyleSheet.create({
   closeBtn: { width: 36, height: 36, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
   statRow: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.2)', marginTop: 14, paddingTop: 12, alignItems: 'center' },
   statPill: { flex: 1, alignItems: 'center' },
-  statValue: { fontSize: font.xl, fontWeight: '900', color: '#fff', lineHeight: 26 },
+  statValue: { fontSize: font.lg, fontWeight: '900', color: '#fff', lineHeight: 24 },
   statLabel: { fontSize: 10, color: 'rgba(196,181,253,1)', marginTop: 2 },
   statDivider: { width: 1, height: 32, backgroundColor: 'rgba(255,255,255,0.2)' },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },

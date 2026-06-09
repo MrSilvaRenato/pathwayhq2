@@ -4,7 +4,7 @@ import {
   ActivityIndicator, RefreshControl, Modal, Switch, Alert,
   KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import api from '../../lib/api'
@@ -144,6 +144,7 @@ function AddModal({ athletes, onClose, onSaved }) {
   const [showAthletePicker, setShowAthletePicker] = useState(false)
   const [showPhasePicker, setShowPhasePicker]     = useState(false)
   const [showDatePicker, setShowDatePicker]       = useState(false)
+  const insets = useSafeAreaInsets()
 
   const selectedAthlete = useMemo(
     () => athletes.find(a => String(a.id) === String(form.athlete_id)) ?? null,
@@ -276,9 +277,9 @@ function AddModal({ athletes, onClose, onSaved }) {
       </KeyboardAvoidingView>
 
       {/* Athlete sheet */}
-      <Modal visible={showAthletePicker} transparent animationType="slide" onRequestClose={() => setShowAthletePicker(false)}>
+      <Modal visible={showAthletePicker} transparent statusBarTranslucent animationType="slide" onRequestClose={() => setShowAthletePicker(false)}>
         <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setShowAthletePicker(false)} />
-        <View style={s.sheet}>
+        <View style={[s.sheet, { paddingBottom: insets.bottom || 16 }]}>
           <View style={s.sheetHandle} />
           <Text style={s.sheetTitle}>Select Athlete</Text>
           <ScrollView showsVerticalScrollIndicator={false}>
@@ -300,9 +301,9 @@ function AddModal({ athletes, onClose, onSaved }) {
       </Modal>
 
       {/* Phase sheet */}
-      <Modal visible={showPhasePicker} transparent animationType="slide" onRequestClose={() => setShowPhasePicker(false)}>
+      <Modal visible={showPhasePicker} transparent statusBarTranslucent animationType="slide" onRequestClose={() => setShowPhasePicker(false)}>
         <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setShowPhasePicker(false)} />
-        <View style={s.sheet}>
+        <View style={[s.sheet, { paddingBottom: insets.bottom || 16 }]}>
           <View style={s.sheetHandle} />
           <Text style={s.sheetTitle}>Select Phase</Text>
           <ScrollView showsVerticalScrollIndicator={false}>
@@ -346,6 +347,7 @@ function AddModal({ athletes, onClose, onSaved }) {
 export default function MilestonesScreen() {
   const { user } = useAuth()
   const isManager = user?.role === 'club_admin' || user?.role === 'coach'
+  const insets = useSafeAreaInsets()
 
   const [items, setItems]           = useState([])
   const [athletes, setAthletes]     = useState([])
@@ -622,9 +624,9 @@ export default function MilestonesScreen() {
       )}
 
       {/* Athlete filter sheet */}
-      <Modal visible={showAthleteSheet} transparent animationType="slide" onRequestClose={() => setShowAthleteSheet(false)}>
+      <Modal visible={showAthleteSheet} transparent statusBarTranslucent animationType="slide" onRequestClose={() => setShowAthleteSheet(false)}>
         <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setShowAthleteSheet(false)} />
-        <View style={s.sheet}>
+        <View style={[s.sheet, { paddingBottom: insets.bottom || 16 }]}>
           <View style={s.sheetHandle} />
           <Text style={s.sheetTitle}>Filter by Athlete</Text>
           <ScrollView showsVerticalScrollIndicator={false}>
@@ -654,9 +656,9 @@ export default function MilestonesScreen() {
       </Modal>
 
       {/* Phase filter sheet */}
-      <Modal visible={showPhaseSheet} transparent animationType="slide" onRequestClose={() => setShowPhaseSheet(false)}>
+      <Modal visible={showPhaseSheet} transparent statusBarTranslucent animationType="slide" onRequestClose={() => setShowPhaseSheet(false)}>
         <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setShowPhaseSheet(false)} />
-        <View style={s.sheet}>
+        <View style={[s.sheet, { paddingBottom: insets.bottom || 16 }]}>
           <View style={s.sheetHandle} />
           <Text style={s.sheetTitle}>Filter by Phase</Text>
           <ScrollView showsVerticalScrollIndicator={false}>
