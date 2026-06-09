@@ -43,7 +43,7 @@ jobs:
       # 5 — Install dependencies
       - name: Install npm dependencies
         working-directory: mobile
-        run: npm ci
+        run: npm install
 
       # 6 — Generate native android/ folder from Expo config
       - name: Expo prebuild (generate android/)
