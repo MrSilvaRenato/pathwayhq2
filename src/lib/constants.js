@@ -38,7 +38,7 @@ export const FTEM_PHASES = {
 export const STATES = ['QLD', 'NSW', 'VIC', 'WA', 'SA', 'TAS', 'ACT', 'NT']
 
 export const SUBSCRIPTION_TIERS = {
-  free:  { label: 'Free',  price: '$0/mo',  athletes: 15,  squads: 1,   announcements: 3 },
+  free:  { label: 'Free',  price: '$0/mo',  athletes: 8,   squads: 1,   announcements: 3 },
   pro:   { label: 'Pro',   price: '$29/mo', athletes: 100, squads: 5,   announcements: -1 },
   elite: { label: 'Elite', price: '$79/mo', athletes: -1,  squads: -1,  announcements: -1 },
 }

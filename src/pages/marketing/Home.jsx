@@ -21,7 +21,7 @@ const FEATURES = [
 
 const PRICING = [
   {
-    tier: 'Free', price: '$0', period: '/mo', athletes: 'Up to 15 athletes',
+    tier: 'Free', price: '$0', period: '/mo', athletes: 'Up to 8 athletes',
     features: ['Athlete profiles & roster', '1 squad', '3 announcements/month', 'Public club profile', 'Athlete join requests'],
     cta: 'Start free', highlight: false,
   },

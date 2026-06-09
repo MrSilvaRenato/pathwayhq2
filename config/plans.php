@@ -7,7 +7,7 @@ return [
         'price_aud'  => 0,
         'stripe_price_id' => null,
         'limits' => [
-            'athletes'      => 15,
+            'athletes'      => 8,
             'squads'        => 1,
             'announcements' => 3,   // per month
         ],

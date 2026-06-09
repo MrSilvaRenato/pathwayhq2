@@ -13,7 +13,7 @@ const PLANS = [
     cta: 'Get started free',
     highlight: false,
     features: [
-      { text: 'Up to 15 active athletes',      included: true },
+      { text: 'Up to 8 active athletes',        included: true },
       { text: '1 squad',                        included: true },
       { text: '3 announcements per month',      included: true },
       { text: 'Public club profile',            included: true },
