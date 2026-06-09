@@ -600,18 +600,36 @@ export default function Settings() {
                   { label: 'Athletes', used: planInfo.usage.athletes, limit: planInfo.limits?.athletes },
                   { label: 'Squads',   used: planInfo.usage.squads,   limit: planInfo.limits?.squads },
                 ].map(({ label, used, limit }) => {
-                  const pct = limit === -1 ? 0 : Math.min(100, Math.round((used / limit) * 100))
+                  const unlimited = limit === -1
+                  const overLimit = !unlimited && used > limit
+                  const pct       = unlimited ? 0 : Math.min(100, Math.round((used / limit) * 100))
                   return (
                     <div key={label}>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="font-medium text-slate-600">{label}</span>
-                        <span className="text-slate-400">{used} / {limit === -1 ? '∞' : limit}</span>
+                      <div className="flex items-center justify-between text-xs mb-1 gap-2">
+                        <span className="font-medium text-slate-600 flex items-center gap-1.5">
+                          {label}
+                          {overLimit && (
+                            <span className="text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 rounded-full px-1.5 py-0.5 leading-none">
+                              Over limit
+                            </span>
+                          )}
+                        </span>
+                        <span className={overLimit ? 'font-bold text-red-600' : 'text-slate-400'}>
+                          {used} / {unlimited ? '∞' : limit}
+                        </span>
                       </div>
-                      {limit !== -1 && (
+                      {!unlimited && (
                         <div className="h-1.5 w-full rounded-full bg-slate-200 overflow-hidden">
-                          <div className={`h-full rounded-full transition-all ${pct >= 90 ? 'bg-red-400' : pct >= 70 ? 'bg-amber-400' : 'bg-emerald-400'}`}
-                            style={{ width: `${pct}%` }} />
+                          <div
+                            className={`h-full rounded-full transition-all ${overLimit ? 'bg-red-500' : pct >= 90 ? 'bg-red-400' : pct >= 70 ? 'bg-amber-400' : 'bg-emerald-400'}`}
+                            style={{ width: `${pct}%` }}
+                          />
                         </div>
+                      )}
+                      {overLimit && (
+                        <p className="text-[11px] text-red-500 mt-1 leading-snug">
+                          Existing {label.toLowerCase()} are kept — upgrade to add more.
+                        </p>
                       )}
                     </div>
                   )

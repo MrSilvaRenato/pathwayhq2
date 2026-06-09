@@ -22,18 +22,39 @@ const FEATURES = [
 const PRICING = [
   {
     tier: 'Free', price: '$0', period: '/mo', athletes: 'Up to 8 athletes',
-    features: ['Athlete profiles & roster', '1 squad', '3 announcements/month', 'Public club profile', 'Athlete join requests'],
+    features: [
+      'Up to 8 active athletes',
+      '1 squad',
+      '3 announcements/month',
+      'Public club profile',
+      'Athlete join requests',
+    ],
     cta: 'Start free', highlight: false,
   },
   {
     tier: 'Pro', price: '$29', period: '/mo', athletes: 'Up to 100 athletes',
     badge: 'Most popular',
-    features: ['Everything in Free', 'Up to 5 squads', 'Unlimited announcements', 'Calendar & sessions', 'Season registrations & payments', 'Club broadcast messages', 'Volunteering management', 'Analytics dashboard'],
+    features: [
+      'Everything in Free',
+      'Up to 100 athletes · 5 squads',
+      'Unlimited announcements',
+      'Calendar & sessions',
+      'Season registrations & payments',
+      'Club broadcast messages',
+      'Volunteering management',
+      'Analytics dashboard',
+    ],
     cta: 'Start Pro', highlight: true,
   },
   {
     tier: 'Elite', price: '$79', period: '/mo', athletes: 'Unlimited athletes',
-    features: ['Everything in Pro', 'Unlimited squads', 'Trophy cabinet', 'Remove PathwayHQ branding', 'Priority support'],
+    features: [
+      'Everything in Pro',
+      'Unlimited athletes & squads',
+      'Trophy cabinet',
+      'Remove PathwayHQ branding',
+      'Priority support',
+    ],
     cta: 'Start Elite', highlight: false,
   },
 ]
