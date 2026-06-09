@@ -3,6 +3,7 @@ import { Plus, X, Pencil, Trash2, Trophy, Image, Loader2, Globe, GlobeLock } fro
 import api from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
+import UpgradePrompt from '../../components/UpgradePrompt'
 
 const CATEGORIES = [
   { value: 'competition',  label: 'Competition',  emoji: '🏆', desc: 'League titles, cups, tournaments' },
@@ -102,7 +103,7 @@ function TrophyCard({ trophy, isAdmin, onEdit, onDelete, onTogglePublic }) {
   )
 }
 
-function TrophyModal({ trophy, onClose, onSaved }) {
+function TrophyModal({ trophy, onClose, onSaved, onUpgrade }) {
   const toast = useToast()
   const [form, setForm]       = useState(trophy ? { ...trophy, achieved_at: trophy.achieved_at?.slice(0, 7) || '' } : { ...BLANK })
   const [saving, setSaving]   = useState(false)
@@ -143,9 +144,10 @@ function TrophyModal({ trophy, onClose, onSaved }) {
       }
       toast.success(isEdit ? 'Trophy updated' : 'Trophy added!')
       onSaved()
-    } catch {
-      toast.error('Failed to save')
-      setSaving(false)
+    } catch (err) {
+      const d = err?.response?.data
+      if (d?.upgrade_required) { onClose(); onUpgrade?.({ message: d.error ?? 'Upgrade to use the trophy cabinet.', requiredPlan: d.required_plan ?? 'elite' }) }
+      else { toast.error('Failed to save'); setSaving(false) }
     }
   }
 
@@ -263,10 +265,11 @@ function TrophyModal({ trophy, onClose, onSaved }) {
 export default function ClubTrophies() {
   const { isAdmin } = useAuth()
   const toast = useToast()
-  const [trophies, setTrophies] = useState([])
-  const [loading, setLoading]   = useState(true)
+  const [trophies, setTrophies]   = useState([])
+  const [loading, setLoading]     = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing]     = useState(null)
+  const [upgrade, setUpgrade]     = useState(null)
 
   async function load() {
     try {
@@ -395,6 +398,15 @@ export default function ClubTrophies() {
           trophy={editing}
           onClose={() => { setShowModal(false); setEditing(null) }}
           onSaved={handleSaved}
+          onUpgrade={up => { setShowModal(false); setEditing(null); setUpgrade(up) }}
+        />
+      )}
+
+      {upgrade && (
+        <UpgradePrompt
+          message={upgrade.message}
+          requiredPlan={upgrade.requiredPlan}
+          onClose={() => setUpgrade(null)}
         />
       )}
     </div>

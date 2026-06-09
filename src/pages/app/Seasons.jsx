@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import api from '../../lib/api'
 import { useToast } from '../../contexts/ToastContext'
+import UpgradePrompt from '../../components/UpgradePrompt'
 
 const STATUS_COLOR = {
   draft:  'bg-slate-100 text-slate-600',
@@ -25,7 +26,7 @@ function fmtMoney(cents, currency = 'AUD') {
 }
 
 // ─── Season form modal ────────────────────────────────────────────────────────
-function SeasonModal({ season, onSave, onClose }) {
+function SeasonModal({ season, onSave, onClose, onUpgrade }) {
   const [form, setForm] = useState({
     name: season?.name ?? '',
     description: season?.description ?? '',
@@ -51,7 +52,13 @@ function SeasonModal({ season, onSave, onClose }) {
       }
       onSave()
     } catch (err) {
-      alert(err?.response?.data?.message ?? 'Failed to save season')
+      const d = err?.response?.data
+      if (d?.upgrade_required) {
+        onClose()
+        onUpgrade?.({ message: d.error ?? 'Upgrade to create seasons.', requiredPlan: d.required_plan ?? 'pro' })
+      } else {
+        alert(d?.message ?? 'Failed to save season')
+      }
     } finally { setSaving(false) }
   }
 
@@ -354,6 +361,7 @@ export default function Seasons() {
   const [showModal,  setShowModal]  = useState(false)
   const [editing,    setEditing]    = useState(null)
   const [detail,     setDetail]     = useState(null) // seasonId being viewed
+  const [upgrade,    setUpgrade]    = useState(null)
 
   const loadSeasons = () => {
     api.get('/seasons').then(r => setSeasons(r.data)).catch(() => toast.error('Failed to load seasons'))
@@ -468,6 +476,15 @@ export default function Seasons() {
           season={editing}
           onClose={() => { setShowModal(false); setEditing(null) }}
           onSave={() => { setShowModal(false); setEditing(null); loadSeasons() }}
+          onUpgrade={up => { setShowModal(false); setEditing(null); setUpgrade(up) }}
+        />
+      )}
+
+      {upgrade && (
+        <UpgradePrompt
+          message={upgrade.message}
+          requiredPlan={upgrade.requiredPlan}
+          onClose={() => setUpgrade(null)}
         />
       )}
     </div>

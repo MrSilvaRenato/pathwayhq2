@@ -3,6 +3,7 @@ import { Plus, X, ChevronLeft, ChevronRight, MapPin, Clock, Users, RefreshCw, Tr
 import api from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
+import UpgradePrompt from '../../components/UpgradePrompt'
 
 const TYPE_META = {
   training: { label: 'Training',  pill: 'bg-blue-500',    dot: 'bg-blue-500',    accent: 'border-blue-500',    bg: 'bg-blue-50',    text: 'text-blue-700',    badge: 'bg-blue-100 text-blue-700' },
@@ -113,6 +114,7 @@ export default function Calendar() {
   const [editSaving, setEditSaving]       = useState(false)
   // 'choose' → show scope picker | 'one' → edit this only | 'series' → edit whole series
   const [editScope, setEditScope]         = useState('choose')
+  const [upgrade, setUpgrade]             = useState(null)
 
   async function loadEvents() {
     try {
@@ -293,8 +295,10 @@ export default function Calendar() {
       setQuickForm({ ...BLANK_FORM, start_time: start, end_time: end })
       setShowMoreOpts(false)
       toast.success(count > 1 ? `Added ${count} sessions` : 'Event added')
-    } catch {
-      toast.error('Failed to add event')
+    } catch (err) {
+      const d = err?.response?.data
+      if (d?.upgrade_required) setUpgrade({ message: d.error ?? 'Upgrade to add calendar events.', requiredPlan: d.required_plan ?? 'pro' })
+      else toast.error('Failed to add event')
     } finally {
       setQuickSaving(false)
     }
@@ -330,8 +334,10 @@ export default function Calendar() {
       setShowModal(false)
       setForm({ ...BLANK_FORM })
       toast.success(count > 1 ? `Added ${count} sessions` : 'Event added')
-    } catch {
-      toast.error('Failed to add event')
+    } catch (err) {
+      const d = err?.response?.data
+      if (d?.upgrade_required) { setShowModal(false); setUpgrade({ message: d.error ?? 'Upgrade to add calendar events.', requiredPlan: d.required_plan ?? 'pro' }) }
+      else toast.error('Failed to add event')
     } finally {
       setSaving(false)
     }
@@ -1347,6 +1353,14 @@ function EventList({
           </div>
         )
       })}
+
+      {upgrade && (
+        <UpgradePrompt
+          message={upgrade.message}
+          requiredPlan={upgrade.requiredPlan}
+          onClose={() => setUpgrade(null)}
+        />
+      )}
     </div>
   )
 }

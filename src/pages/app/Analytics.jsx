@@ -3,6 +3,7 @@ import { Users, Trophy, Calendar, TrendingUp, UserMinus } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import api from '../../lib/api'
 import { FTEM_PHASES, SPORTS } from '../../lib/constants'
+import UpgradePrompt from '../../components/UpgradePrompt'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function calcAge(dob) {
@@ -132,14 +133,19 @@ export default function Analytics() {
   const [squads,     setSquads]     = useState([])
   const [loading,    setLoading]    = useState(true)
   const [lastUpdated]               = useState(lastUpdatedLabel())
+  const [upgrade,    setUpgrade]    = useState(null)
 
   useEffect(() => {
     Promise.all([
+      api.get('/club/plan').catch(() => null),
       api.get('/athletes').catch(() => ({ data: [] })),
       api.get('/milestones').catch(() => ({ data: [] })),
       api.get('/events').catch(() => ({ data: [] })),
       api.get('/squads').catch(() => ({ data: [] })),
-    ]).then(([a, m, e, s]) => {
+    ]).then(([plan, a, m, e, s]) => {
+      if (plan?.data?.tier === 'free') {
+        setUpgrade({ message: 'Analytics dashboard is available on the Pro plan and above.', requiredPlan: 'pro' })
+      }
       setAthletes(a.data ?? [])
       setMilestones(m.data ?? [])
       setEvents(e.data ?? [])
@@ -475,5 +481,12 @@ export default function Analytics() {
       </Card>
 
     </div>
+
+    {upgrade && (
+      <UpgradePrompt
+        message={upgrade.message}
+        requiredPlan={upgrade.requiredPlan}
+      />
+    )}
   )
 }

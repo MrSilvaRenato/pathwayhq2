@@ -4,6 +4,7 @@ import api from '../../lib/api'
 import { FTEM_PHASES } from '../../lib/constants'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
+import UpgradePrompt from '../../components/UpgradePrompt'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -179,7 +180,7 @@ const BLANK_FORM = {
   ftem_phase: 'F1', achieved_at: todayISO(), is_shared_with_parent: false,
 }
 
-function AddMilestoneModal({ athletes, onClose, onSaved }) {
+function AddMilestoneModal({ athletes, onClose, onSaved, onUpgrade }) {
   const toast = useToast()
   const [form, setForm] = useState({ ...BLANK_FORM })
   const [saving, setSaving] = useState(false)
@@ -206,9 +207,10 @@ function AddMilestoneModal({ athletes, onClose, onSaved }) {
       await api.post('/milestones', form)
       toast.success('Milestone added!')
       onSaved()
-    } catch {
-      toast.error('Failed to save milestone.')
-      setSaving(false)
+    } catch (err) {
+      const d = err?.response?.data
+      if (d?.upgrade_required) { onClose(); onUpgrade?.({ message: d.error ?? 'Upgrade to record athlete milestones.', requiredPlan: d.required_plan ?? 'pro' }) }
+      else { toast.error('Failed to save milestone.'); setSaving(false) }
     }
   }
 
@@ -345,10 +347,11 @@ export default function Milestones() {
   const { isAdmin } = useAuth()
   const toast = useToast()
 
-  const [items, setItems]       = useState([])
-  const [athletes, setAthletes] = useState([])
-  const [loading, setLoading]   = useState(true)
+  const [items, setItems]         = useState([])
+  const [athletes, setAthletes]   = useState([])
+  const [loading, setLoading]     = useState(true)
   const [showModal, setShowModal] = useState(false)
+  const [upgrade, setUpgrade]     = useState(null)
 
   const [q, setQ]                         = useState('')
   const [filterAthlete, setFilterAthlete] = useState('')
@@ -628,6 +631,15 @@ export default function Milestones() {
           athletes={athletes}
           onClose={() => setShowModal(false)}
           onSaved={handleSaved}
+          onUpgrade={up => { setShowModal(false); setUpgrade(up) }}
+        />
+      )}
+
+      {upgrade && (
+        <UpgradePrompt
+          message={upgrade.message}
+          requiredPlan={upgrade.requiredPlan}
+          onClose={() => setUpgrade(null)}
         />
       )}
     </div>
