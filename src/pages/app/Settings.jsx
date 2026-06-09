@@ -601,35 +601,20 @@ export default function Settings() {
                   { label: 'Squads',   used: planInfo.usage.squads,   limit: planInfo.limits?.squads },
                 ].map(({ label, used, limit }) => {
                   const unlimited = limit === -1
-                  const overLimit = !unlimited && used > limit
-                  const pct       = unlimited ? 0 : Math.min(100, Math.round((used / limit) * 100))
+                  const pct = unlimited ? 0 : Math.min(100, Math.round((used / limit) * 100))
                   return (
                     <div key={label}>
-                      <div className="flex items-center justify-between text-xs mb-1 gap-2">
-                        <span className="font-medium text-slate-600 flex items-center gap-1.5">
-                          {label}
-                          {overLimit && (
-                            <span className="text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 rounded-full px-1.5 py-0.5 leading-none">
-                              Over limit
-                            </span>
-                          )}
-                        </span>
-                        <span className={overLimit ? 'font-bold text-red-600' : 'text-slate-400'}>
-                          {used} / {unlimited ? '∞' : limit}
-                        </span>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="font-medium text-slate-600">{label}</span>
+                        <span className="text-slate-400">{used} / {unlimited ? '∞' : limit}</span>
                       </div>
                       {!unlimited && (
                         <div className="h-1.5 w-full rounded-full bg-slate-200 overflow-hidden">
                           <div
-                            className={`h-full rounded-full transition-all ${overLimit ? 'bg-red-500' : pct >= 90 ? 'bg-red-400' : pct >= 70 ? 'bg-amber-400' : 'bg-emerald-400'}`}
+                            className={`h-full rounded-full transition-all ${pct >= 90 ? 'bg-red-400' : pct >= 70 ? 'bg-amber-400' : 'bg-emerald-400'}`}
                             style={{ width: `${pct}%` }}
                           />
                         </div>
-                      )}
-                      {overLimit && (
-                        <p className="text-[11px] text-red-500 mt-1 leading-snug">
-                          Existing {label.toLowerCase()} are kept — upgrade to add more.
-                        </p>
                       )}
                     </div>
                   )
@@ -641,19 +626,74 @@ export default function Settings() {
             {(!planInfo || planInfo.tier === 'free') && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[
-                  { key: 'pro',   name: 'Pro',   price: '$29/mo', desc: '100 athletes · 5 squads · full toolkit' },
-                  { key: 'elite', name: 'Elite', price: '$79/mo', desc: 'Unlimited athletes & squads · trophy cabinet' },
+                  {
+                    key: 'pro', name: 'Pro', price: '$29/mo',
+                    desc: '100 athletes · 5 squads · full toolkit',
+                    benefits: [
+                      'Up to 100 active athletes',
+                      '5 squads',
+                      'Unlimited announcements',
+                      'Calendar & sessions',
+                      'Season registrations & payments',
+                      'Club broadcast messages',
+                      'Volunteering management',
+                      'Analytics dashboard',
+                    ],
+                  },
+                  {
+                    key: 'elite', name: 'Elite', price: '$79/mo',
+                    desc: 'Unlimited athletes & squads · trophy cabinet',
+                    benefits: [
+                      'Unlimited athletes',
+                      'Unlimited squads',
+                      'Unlimited announcements',
+                      'Calendar & sessions',
+                      'Season registrations & payments',
+                      'Club broadcast messages',
+                      'Volunteering management',
+                      'Analytics dashboard',
+                      'Trophy cabinet',
+                      'Remove PathwayHQ branding',
+                      'Priority support',
+                    ],
+                  },
                 ].map(p => (
-                  <button key={p.key} onClick={() => handleUpgrade(p.key)} disabled={loadingCheckout === p.key}
-                    className="flex flex-col items-start gap-1 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 px-4 py-3 text-left transition-all disabled:opacity-50 group">
-                    <div className="flex items-center justify-between w-full">
-                      <span className="font-black text-emerald-700">{p.name}</span>
-                      <ArrowUpRight className="h-3.5 w-3.5 text-emerald-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                  <div key={p.key} className="relative">
+                    <button
+                      onClick={() => handleUpgrade(p.key)}
+                      disabled={loadingCheckout === p.key}
+                      className="w-full flex flex-col items-start gap-1 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 px-4 py-3 text-left transition-all disabled:opacity-50 group"
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-black text-emerald-700">{p.name}</span>
+                        <ArrowUpRight className="h-3.5 w-3.5 text-emerald-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                      </div>
+                      <span className="text-xs font-bold text-emerald-600">{p.price} AUD/mo</span>
+                      <span className="text-xs text-slate-500">{p.desc}</span>
+                      {loadingCheckout === p.key && <span className="text-xs text-emerald-600">Redirecting…</span>}
+                    </button>
+                    {/* Tooltip trigger — sits on top of card, stops click propagation */}
+                    <div className="absolute top-2.5 right-8 group/tip">
+                      <button
+                        type="button"
+                        onClick={e => e.stopPropagation()}
+                        className="h-4 w-4 rounded-full bg-emerald-200 hover:bg-emerald-300 border border-emerald-300 flex items-center justify-center transition-colors"
+                      >
+                        <span className="text-[9px] font-black text-emerald-700 leading-none">?</span>
+                      </button>
+                      <div className="absolute bottom-full right-0 mb-2 w-56 rounded-xl bg-slate-900 border border-white/10 shadow-2xl p-3 invisible group-hover/tip:visible opacity-0 group-hover/tip:opacity-100 transition-all duration-150 z-50 pointer-events-none">
+                        <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-2">{p.name} plan includes</p>
+                        <ul className="space-y-1.5">
+                          {p.benefits.map(b => (
+                            <li key={b} className="flex items-center gap-2 text-[11px] text-slate-300">
+                              <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
+                              {b}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     </div>
-                    <span className="text-xs font-bold text-emerald-600">{p.price}</span>
-                    <span className="text-xs text-slate-500">{p.desc}</span>
-                    {loadingCheckout === p.key && <span className="text-xs text-emerald-600">Redirecting…</span>}
-                  </button>
+                  </div>
                 ))}
               </div>
             )}
