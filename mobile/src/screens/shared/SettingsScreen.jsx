@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, ScrollView, Alert, Switch, Modal, FlatList,
+  ActivityIndicator, ScrollView, Alert, Switch, Modal, FlatList, Linking,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -584,19 +584,40 @@ export default function SettingsScreen() {
         {club && (
           <SectionCard title="Current plan">
             <View style={styles.planRow}>
-              <View>
-                <Text style={styles.planTier}>{tier.charAt(0).toUpperCase() + tier.slice(1)}</Text>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons
+                    name="flash"
+                    size={18}
+                    color={tier === 'elite' ? '#8b5cf6' : tier === 'pro' ? colors.primary : '#d97706'}
+                  />
+                  <Text style={[styles.planTier, {
+                    color: tier === 'elite' ? '#8b5cf6' : tier === 'pro' ? colors.primary : '#d97706',
+                  }]}>
+                    {tier.charAt(0).toUpperCase() + tier.slice(1)} Plan
+                  </Text>
+                </View>
                 {tierInfo && (
                   <Text style={styles.planMeta}>
-                    Up to {tierInfo.athletes} athletes · {tierInfo.price}
+                    {tierInfo.athletes === -1 ? 'Unlimited athletes' : `Up to ${tierInfo.athletes} athletes`}
+                    {tierInfo.squads === -1 ? ' · Unlimited squads' : tierInfo.squads ? ` · ${tierInfo.squads} squad${tierInfo.squads > 1 ? 's' : ''}` : ''}
+                    {' · '}{tierInfo.price}
                   </Text>
                 )}
               </View>
               <TouchableOpacity
-                style={styles.upgradeBtn}
-                onPress={() => Alert.alert('Upgrade', 'Contact us at support@pathwayhq.com to upgrade your plan.')}
+                style={tier === 'free' ? styles.upgradeBtn : styles.manageBillingBtn}
+                onPress={() => Linking.openURL('https://ausfairgo.com.au/pricing')}
+                activeOpacity={0.8}
               >
-                <Text style={styles.upgradeBtnText}>Contact us to upgrade</Text>
+                <Ionicons
+                  name="open-outline"
+                  size={13}
+                  color={tier === 'free' ? '#fff' : colors.textSecondary}
+                />
+                <Text style={tier === 'free' ? styles.upgradeBtnText : styles.manageBillingBtnText}>
+                  {tier === 'free' ? 'Upgrade plan' : 'Manage billing'}
+                </Text>
               </TouchableOpacity>
             </View>
           </SectionCard>
@@ -764,13 +785,20 @@ const styles = StyleSheet.create({
   primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: font.base },
 
   planRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginTop: spacing.sm },
-  planTier: { fontSize: font.xl, fontWeight: '900', color: colors.primary, textTransform: 'capitalize' },
-  planMeta: { fontSize: font.xs, color: colors.textMuted, marginTop: 2 },
+  planTier: { fontSize: font.lg, fontWeight: '900', textTransform: 'capitalize' },
+  planMeta: { fontSize: font.xs, color: colors.textMuted, marginTop: 4 },
   upgradeBtn: {
-    borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.md,
-    paddingHorizontal: spacing.md, paddingVertical: 10, backgroundColor: colors.surface,
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: '#d97706', borderRadius: radius.md,
+    paddingHorizontal: 12, paddingVertical: 9,
   },
-  upgradeBtnText: { fontSize: font.sm, fontWeight: '600', color: colors.textSecondary },
+  upgradeBtnText: { fontSize: font.sm, fontWeight: '700', color: '#fff' },
+  manageBillingBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.md,
+    paddingHorizontal: 12, paddingVertical: 9, backgroundColor: colors.surface,
+  },
+  manageBillingBtnText: { fontSize: font.sm, fontWeight: '600', color: colors.textSecondary },
 
   signOutBtn: {
     borderWidth: 1.5, borderColor: colors.error, borderRadius: radius.md,
