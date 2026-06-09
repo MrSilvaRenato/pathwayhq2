@@ -97,10 +97,14 @@ function LoginForm({ onSwitch, claimToken }) {
     setError('')
     try {
       await login(form.email, form.password)
-      const pending = sessionStorage.getItem('pendingJoin')
-      if (pending) {
+      const pendingPlan = sessionStorage.getItem('pendingPlan')
+      const pendingJoin = sessionStorage.getItem('pendingJoin')
+      if (pendingPlan) {
+        sessionStorage.removeItem('pendingPlan')
+        navigate('/pricing')
+      } else if (pendingJoin) {
         sessionStorage.removeItem('pendingJoin')
-        navigate(`/club/${pending}?join=1`)
+        navigate(`/club/${pendingJoin}?join=1`)
       } else {
         navigate(claimToken ? `/claim/${claimToken}` : '/dashboard')
       }
@@ -194,10 +198,14 @@ function SignupForm({ onSwitch, claimToken }) {
     setError('')
     try {
       await register({ ...form, role: 'athlete' })
-      const pending = sessionStorage.getItem('pendingJoin')
-      if (pending) {
+      const pendingPlan = sessionStorage.getItem('pendingPlan')
+      const pendingJoin = sessionStorage.getItem('pendingJoin')
+      if (pendingPlan) {
+        sessionStorage.removeItem('pendingPlan')
+        navigate('/pricing')
+      } else if (pendingJoin) {
         sessionStorage.removeItem('pendingJoin')
-        navigate(`/club/${pending}?join=1`)
+        navigate(`/club/${pendingJoin}?join=1`)
       } else {
         navigate(claimToken ? `/claim/${claimToken}` : '/dashboard')
       }

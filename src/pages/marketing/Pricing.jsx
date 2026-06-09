@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Check, Zap, X } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
@@ -75,6 +75,7 @@ export default function Pricing() {
   const { user } = useAuth()
   const navigate  = useNavigate()
   const [loading, setLoading] = useState(null)
+  const didAutoTrigger = useRef(false)
 
   async function handleCta(plan) {
     if (plan.key === 'free') {
@@ -82,7 +83,8 @@ export default function Pricing() {
       return
     }
     if (!user) {
-      navigate(`/?modal=signup`)
+      sessionStorage.setItem('pendingPlan', plan.key)
+      navigate('/?modal=signup')
       return
     }
     setLoading(plan.key)
@@ -93,6 +95,20 @@ export default function Pricing() {
       setLoading(null)
     }
   }
+
+  useEffect(() => {
+    if (!user || didAutoTrigger.current) return
+    const pending = sessionStorage.getItem('pendingPlan')
+    if (!pending) return
+    const plan = PLANS.find(p => p.key === pending)
+    if (plan && plan.key !== 'free') {
+      didAutoTrigger.current = true
+      sessionStorage.removeItem('pendingPlan')
+      handleCta(plan)
+    } else {
+      sessionStorage.removeItem('pendingPlan')
+    }
+  }, [user])
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">

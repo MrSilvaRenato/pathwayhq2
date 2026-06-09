@@ -411,7 +411,11 @@ export default function Home() {
                   </div>
                   <p className="text-slate-500 text-sm mb-6">{p.athletes}</p>
 
-                  <button onClick={() => openModal('signup')}
+                  <button
+                    onClick={() => {
+                      if (p.tier !== 'Free') sessionStorage.setItem('pendingPlan', p.tier.toLowerCase())
+                      openModal('signup')
+                    }}
                     className={`w-full rounded-xl py-3.5 text-sm font-bold transition-all active:scale-95 ${
                       p.highlight
                         ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-lg shadow-emerald-500/30'
