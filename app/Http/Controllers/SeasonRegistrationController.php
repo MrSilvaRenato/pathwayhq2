@@ -153,12 +153,32 @@ class SeasonRegistrationController extends Controller
             return response()->json(['message' => 'Online payment is not configured. Please select "Pay at club".'], 422);
         }
 
+        // Require the club to have completed Stripe Connect onboarding
+        $club = $reg->season->club;
+        if (!$club->stripe_connect_id || $club->stripe_connect_status !== 'active') {
+            return response()->json([
+                'message' => 'Online payment is not available for this club yet. Please select "Pay at club".',
+            ], 422);
+        }
+
         \Stripe\Stripe::setApiKey($stripeKey);
-        $intent = \Stripe\PaymentIntent::create([
-            'amount'   => $reg->season->fee_cents,
-            'currency' => strtolower($reg->season->currency ?? 'aud'),
-            'metadata' => ['registration_id' => $reg->id],
-        ]);
+
+        $amount      = $reg->season->fee_cents;
+        $feePercent  = (float) config('services.stripe.platform_fee_percent', 0);
+        $feeCents    = $feePercent > 0 ? (int) round($amount * $feePercent / 100) : 0;
+
+        $intentParams = [
+            'amount'                    => $amount,
+            'currency'                  => strtolower($reg->season->currency ?? 'aud'),
+            'metadata'                  => ['registration_id' => $reg->id],
+            'transfer_data'             => ['destination' => $club->stripe_connect_id],
+        ];
+
+        if ($feeCents > 0) {
+            $intentParams['application_fee_amount'] = $feeCents;
+        }
+
+        $intent = \Stripe\PaymentIntent::create($intentParams);
 
         $reg->update([
             'payment_method'           => 'stripe',

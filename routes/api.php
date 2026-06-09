@@ -22,6 +22,7 @@ use App\Http\Controllers\SeasonController;
 use App\Http\Controllers\SeasonRegistrationController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\SubscriptionController;
+use App\Http\Controllers\ConnectController;
 
 // ─── Health check ────────────────────────────────────────────────────────────
 Route::get('/health', fn() => response()->json([
@@ -52,6 +53,7 @@ Route::get('/clubs/public/{slug}/seasons', [SeasonController::class, 'publicList
 // Stripe webhook (no auth)
 Route::post('/stripe/webhook',                [SeasonRegistrationController::class, 'stripeWebhook']);
 Route::post('/stripe/subscription-webhook',   [SubscriptionController::class, 'webhook']);
+Route::post('/stripe/connect-webhook',        [ConnectController::class, 'webhook']);
 
 // ─── Authenticated routes ─────────────────────────────────────────────────────
 Route::middleware('auth:api')->group(function () {
@@ -71,6 +73,9 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/club/plan',                    [ClubController::class, 'plan']);
     Route::post('/subscription/checkout',       [SubscriptionController::class, 'checkout']);
     Route::post('/subscription/portal',         [SubscriptionController::class, 'portal']);
+    Route::get('/connect/status',               [ConnectController::class, 'status']);
+    Route::post('/connect/onboard',             [ConnectController::class, 'onboard']);
+    Route::post('/connect/login-link',          [ConnectController::class, 'loginLink']);
     Route::get('/clubs/all',    [ClubController::class, 'all']);     // site_admin only
 
     // Athletes

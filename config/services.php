@@ -36,10 +36,12 @@ return [
     ],
 
     'stripe' => [
-        'secret'          => env('STRIPE_SECRET'),
-        'webhook_secret'  => env('STRIPE_WEBHOOK_SECRET'),
-        'price_pro'       => env('STRIPE_PRICE_PRO'),
-        'price_elite'     => env('STRIPE_PRICE_ELITE'),
+        'secret'                  => env('STRIPE_SECRET'),
+        'webhook_secret'          => env('STRIPE_WEBHOOK_SECRET'),
+        'connect_webhook_secret'  => env('STRIPE_CONNECT_WEBHOOK_SECRET'),
+        'price_pro'               => env('STRIPE_PRICE_PRO'),
+        'price_elite'             => env('STRIPE_PRICE_ELITE'),
+        'platform_fee_percent'    => env('STRIPE_PLATFORM_FEE_PERCENT', 0),
     ],
 
 ];

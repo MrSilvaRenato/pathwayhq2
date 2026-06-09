@@ -15,6 +15,7 @@ class Club extends Model
         'id', 'name', 'sport', 'city', 'state', 'slug', 'description',
         'website', 'contact_email', 'phone', 'is_public', 'is_claimed', 'subscription_tier',
         'stripe_customer_id', 'stripe_subscription_id', 'subscription_status', 'subscription_ends_at',
+        'stripe_connect_id', 'stripe_connect_status',
         'cover_image_url', 'logo_url', 'founded_year',
         'social_facebook', 'social_instagram', 'social_twitter',
         'show_milestones', 'show_athletes_count', 'show_events', 'show_announcements',
