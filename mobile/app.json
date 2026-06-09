@@ -26,7 +26,11 @@
       "favicon": "./assets/favicon.png"
     },
     "extra": {
-      "apiUrl": "https://ausfairgo.com.au/api"
-    }
+      "apiUrl": "https://ausfairgo.com.au/api",
+      "eas": {
+        "projectId": "095289a7-5cb7-4990-9e17-a2f2bbda624b"
+      }
+    },
+    "owner": "rlcs1990"
   }
 }
