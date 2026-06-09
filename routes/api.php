@@ -66,6 +66,7 @@ Route::middleware('auth:api')->group(function () {
     // Club
     Route::get('/club',         [ClubController::class, 'mine']);
     Route::put('/club',         [ClubController::class, 'update']);
+    Route::get('/club/plan',    [ClubController::class, 'plan']);
     Route::get('/clubs/all',    [ClubController::class, 'all']);     // site_admin only
 
     // Athletes

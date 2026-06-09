@@ -8,6 +8,7 @@ use App\Models\Announcement;
 use App\Models\Athlete;
 use App\Models\Notification;
 use App\Models\Club;
+use App\Services\PlanService;
 use App\Models\User;
 use App\Services\MailService;
 
@@ -51,6 +52,9 @@ class AnnouncementController extends Controller
 
     public function store(Request $request)
     {
+        $club = Club::find($request->user()->resolveClubId());
+        if ($err = PlanService::checkAnnouncementLimit($club)) return $err;
+
         $data = $request->validate([
             'title'     => 'required|string|max:200',
             'body'      => 'required|string',
@@ -60,7 +64,7 @@ class AnnouncementController extends Controller
             'pinned'    => 'boolean',
         ]);
 
-        $clubId = $request->user()->resolveClubId();
+        $clubId = $club->id;
 
         $columns  = \Schema::getColumnListing('announcements');
         $newCols  = in_array('posted_at', $columns);

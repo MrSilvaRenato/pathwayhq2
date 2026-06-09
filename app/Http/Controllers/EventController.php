@@ -8,6 +8,8 @@ use App\Models\Event;
 use App\Models\EventRsvp;
 use App\Models\Athlete;
 use App\Models\Notification;
+use App\Models\Club;
+use App\Services\PlanService;
 
 class EventController extends Controller
 {
@@ -62,6 +64,9 @@ class EventController extends Controller
 
     public function store(Request $request)
     {
+        $club = Club::find($request->user()->club_id);
+        if ($err = PlanService::checkFeature($club, 'calendar')) return $err;
+
         $data = $request->validate([
             'title'        => 'required|string',
             'description'  => 'nullable|string',
@@ -74,7 +79,7 @@ class EventController extends Controller
             'repeat_until' => 'nullable|date',
         ]);
 
-        $clubId = $request->user()->club_id;
+        $clubId = $club->id;
 
         $recurrence  = $data['recurrence'] ?? 'none';
         $seriesId    = ($recurrence && $recurrence !== 'none') ? (string) Str::uuid() : null;

@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use App\Models\Season;
 use App\Models\SeasonRegistration;
+use App\Models\Club;
+use App\Services\PlanService;
 
 class SeasonController extends Controller
 {
@@ -44,6 +46,9 @@ class SeasonController extends Controller
     public function store(Request $request)
     {
         if (!in_array($request->user()->role, ['club_admin', 'site_admin'])) abort(403);
+
+        $club = Club::find($request->user()->club_id);
+        if ($err = PlanService::checkFeature($club, 'seasons')) return $err;
 
         $data = $request->validate([
             'name'                  => 'required|string|max:100',

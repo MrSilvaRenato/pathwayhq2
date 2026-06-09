@@ -8,6 +8,7 @@ use App\Models\Squad;
 use App\Models\Athlete;
 use App\Models\User;
 use App\Models\Notification;
+use App\Services\PlanService;
 use App\Models\SquadRequest;
 use App\Models\Club;
 use App\Services\MailService;
@@ -55,6 +56,9 @@ class SquadController extends Controller
 
     public function store(Request $request)
     {
+        $club = $request->user()->club;
+        if ($err = PlanService::checkSquadLimit($club)) return $err;
+
         $data = $request->validate(['name' => 'required|string', 'description' => 'nullable|string']);
         $squad = Squad::create([
             'id'          => (string) Str::uuid(),

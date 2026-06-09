@@ -13,6 +13,7 @@ use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Support\Str;
 use App\Services\MailService;
+use App\Services\PlanService;
 
 class ClubController extends Controller
 {
@@ -118,6 +119,31 @@ class ClubController extends Controller
         return response()->json(Club::find($request->user()->club_id));
     }
 
+    public function plan(Request $request)
+    {
+        $clubId = $request->user()->club_id ?? $request->user()->resolveClubId();
+        $club   = Club::find($clubId);
+        if (!$club) return response()->json(null);
+
+        $tier = $club->subscription_tier ?? 'free';
+
+        return response()->json([
+            'tier'     => $tier,
+            'status'   => $club->subscription_status,
+            'ends_at'  => $club->subscription_ends_at,
+            'limits'   => config("plans.{$tier}.limits"),
+            'features' => config("plans.{$tier}.features"),
+            'usage'    => [
+                'athletes'       => $club->athletes()->where('is_active', true)->count(),
+                'squads'         => \App\Models\Squad::where('club_id', $club->id)->count(),
+                'announcements_this_month' => \App\Models\Announcement::where('club_id', $club->id)
+                    ->whereYear('created_at', now()->year)
+                    ->whereMonth('created_at', now()->month)
+                    ->count(),
+            ],
+        ]);
+    }
+
     // Auth: update my club
     public function update(Request $request)
     {
@@ -185,6 +211,9 @@ class ClubController extends Controller
 
         $clubId = $user->club_id;
         if (!$clubId) return response()->json(['message' => 'No club assigned.'], 403);
+
+        $club = Club::find($clubId);
+        if ($err = PlanService::checkFeature($club, 'broadcast')) return $err;
 
         $data = $request->validate([
             'title'       => 'required|string|max:255',

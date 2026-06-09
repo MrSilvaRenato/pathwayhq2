@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Notification;
 use App\Mail\AthleteInvite;
 use Illuminate\Support\Facades\Mail;
+use App\Services\PlanService;
 
 class AthleteController extends Controller
 {
@@ -134,6 +135,9 @@ class AthleteController extends Controller
 
     public function store(Request $request)
     {
+        $club = $request->user()->club;
+        if ($err = PlanService::checkAthleteLimit($club)) return $err;
+
         $data = $request->validate([
             'first_name'   => 'required|string',
             'last_name'    => 'required|string',

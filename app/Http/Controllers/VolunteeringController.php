@@ -8,6 +8,8 @@ use App\Models\Volunteering;
 use App\Models\VolunteeringSignup;
 use App\Models\Notification;
 use App\Models\User;
+use App\Models\Club;
+use App\Services\PlanService;
 use App\Models\Athlete;
 use App\Models\Club;
 use App\Services\MailService;
@@ -88,6 +90,9 @@ class VolunteeringController extends Controller
 
     public function store(Request $request)
     {
+        $club = Club::find($request->user()->club_id);
+        if ($err = PlanService::checkFeature($club, 'volunteering')) return $err;
+
         $data = $request->validate([
             'title'       => 'required|string',
             'description' => 'nullable|string',
@@ -96,7 +101,7 @@ class VolunteeringController extends Controller
             'spots'       => 'nullable|integer',
         ]);
 
-        $clubId = $request->user()->club_id;
+        $clubId = $club->id;
 
         $volunteering = Volunteering::create(array_merge($data, [
             'id'      => (string) Str::uuid(),
