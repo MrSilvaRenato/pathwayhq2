@@ -23,8 +23,11 @@ import ClubTrophies  from './pages/app/ClubTrophies'
 import Analytics     from './pages/app/Analytics'
 import Settings      from './pages/app/Settings'
 import SiteAdmin     from './pages/app/SiteAdmin'
-import ClaimProfile      from './pages/ClaimProfile'
-import ResetPassword    from './pages/ResetPassword'
+import ClaimProfile          from './pages/ClaimProfile'
+import ResetPassword         from './pages/ResetPassword'
+import SubscriptionSuccess   from './pages/SubscriptionSuccess'
+import SubscriptionCancel    from './pages/SubscriptionCancel'
+import Pricing               from './pages/marketing/Pricing'
 import JoinRequests     from './pages/app/JoinRequests'
 import Seasons          from './pages/app/Seasons'
 import MyRegistrations  from './pages/app/MyRegistrations'
@@ -59,8 +62,11 @@ export default function App() {
           {/* Auth — redirect old URLs to home modal */}
           <Route path="/login"  element={<Navigate to="/?modal=login"  replace />} />
           <Route path="/signup" element={<Navigate to="/?modal=signup" replace />} />
-          <Route path="/claim/:token"    element={<ClaimProfile />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/claim/:token"          element={<ClaimProfile />} />
+          <Route path="/reset-password"        element={<ResetPassword />} />
+          <Route path="/pricing"               element={<Pricing />} />
+          <Route path="/subscription/success"  element={<SubscriptionSuccess />} />
+          <Route path="/subscription/cancel"   element={<SubscriptionCancel />} />
 
           {/* App */}
           <Route path="/" element={<PrivateRoute><AppLayout /></PrivateRoute>}>

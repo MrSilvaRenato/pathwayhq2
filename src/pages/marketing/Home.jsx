@@ -29,7 +29,7 @@ const PRICING = [
 const NAV_LINKS = [
   { label: 'Features',      href: '#features'  },
   { label: 'How it works',  href: '#how'       },
-  { label: 'Pricing',       href: '#pricing'   },
+  { label: 'Pricing',       to: '/pricing'     },
   { label: 'Clubs',         to: '/clubs'       },
   { label: 'Brisbane 2032', to: '/brisbane-2032' },
 ]
@@ -445,7 +445,7 @@ export default function Home() {
             </Link>
             <div className="flex flex-wrap justify-center gap-6 text-sm text-slate-500">
               <a href="#features"     className="hover:text-slate-300 transition-colors">Features</a>
-              <a href="#pricing"      className="hover:text-slate-300 transition-colors">Pricing</a>
+              <Link to="/pricing"     className="hover:text-slate-300 transition-colors">Pricing</Link>
               <Link to="/clubs"         className="hover:text-slate-300 transition-colors">Clubs</Link>
               <Link to="/brisbane-2032" className="hover:text-slate-300 transition-colors">Brisbane 2032</Link>
               <button onClick={() => openModal('login')}  className="hover:text-slate-300 transition-colors">Sign in</button>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Save, ExternalLink, Eye, EyeOff, Phone, Globe, Instagram, Facebook, Twitter, Image, Lock, Unlock, Users, Trophy, Calendar, Megaphone } from 'lucide-react'
+import { Save, ExternalLink, Eye, EyeOff, Phone, Globe, Instagram, Facebook, Twitter, Image, Lock, Unlock, Users, Trophy, Calendar, Megaphone, Zap, CreditCard, Building2, ArrowUpRight, CheckCircle } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import api from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
@@ -56,6 +57,8 @@ export default function Settings() {
   const { user, isAdmin, refreshUser } = useAuth()
   const toast = useToast()
 
+  const [searchParams] = useSearchParams()
+
   const [profile,  setProfile]  = useState({ full_name: '', email: '', phone: '', password: '' })
   const [club,     setClub]     = useState(null)
   const [clubForm, setClubForm] = useState({})
@@ -64,11 +67,24 @@ export default function Settings() {
   const [showPw,   setShowPw]   = useState(false)
   const [athleteProfile, setAthleteProfile] = useState(null)
   const [savingAthlete,  setSavingAthlete]  = useState(false)
+  const [planInfo,  setPlanInfo]  = useState(null)
+  const [connectStatus, setConnectStatus] = useState(null)
+  const [loadingCheckout, setLoadingCheckout] = useState(null)
+  const [loadingPortal,   setLoadingPortal]   = useState(false)
+  const [loadingConnect,  setLoadingConnect]  = useState(false)
+  const [loadingConnectLogin, setLoadingConnectLogin] = useState(false)
 
   useEffect(() => {
+    // Handle connect callback params
+    const connect = searchParams.get('connect')
+    if (connect === 'success') toast.success('Bank account connected successfully!')
+    if (connect === 'refresh') toast.error('Connection expired — please try again.')
+
     if (user?.role === 'athlete') {
       api.get('/athletes/me').then(r => setAthleteProfile(r.data)).catch(() => {})
     }
+    api.get('/club/plan').then(r => setPlanInfo(r.data)).catch(() => {})
+    api.get('/connect/status').then(r => setConnectStatus(r.data)).catch(() => {})
     api.get('/profile').then(r => {
       const d = r.data
       setProfile({ full_name: d.full_name ?? '', email: d.email ?? '', phone: d.phone ?? '', password: '' })
@@ -143,6 +159,39 @@ export default function Settings() {
     } finally {
       setSavingAthlete(false)
     }
+  }
+
+  async function handleUpgrade(plan) {
+    setLoadingCheckout(plan)
+    try {
+      const { data } = await api.post('/subscription/checkout', { plan })
+      window.location.href = data.url
+    } catch { setLoadingCheckout(null) }
+  }
+
+  async function handlePortal() {
+    setLoadingPortal(true)
+    try {
+      const { data } = await api.post('/subscription/portal')
+      window.location.href = data.url
+    } catch { setLoadingPortal(false) }
+  }
+
+  async function handleConnectOnboard() {
+    setLoadingConnect(true)
+    try {
+      const { data } = await api.post('/connect/onboard')
+      window.location.href = data.url
+    } catch { setLoadingConnect(false) }
+  }
+
+  async function handleConnectLogin() {
+    setLoadingConnectLogin(true)
+    try {
+      const { data } = await api.post('/connect/login-link')
+      window.open(data.url, '_blank')
+    } catch { toast.error('Could not open dashboard.') }
+    finally { setLoadingConnectLogin(false) }
   }
 
   const inputCls = "w-full rounded-xl border border-slate-200 px-3.5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all min-h-[48px]"
@@ -520,19 +569,122 @@ export default function Settings() {
         </SectionCard>
       )}
 
-      {/* ── Current plan section ──────────────────────────────────── */}
-      {club && (
-        <SectionCard title="Current plan">
-          <div className="flex items-center justify-between flex-wrap gap-4 mt-4">
-            <div>
-              <span className="text-xl font-black text-emerald-600 capitalize">{club.subscription_tier ?? 'free'}</span>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {SUBSCRIPTION_TIERS?.[club.subscription_tier]?.athletes} · {SUBSCRIPTION_TIERS?.[club.subscription_tier]?.price}
-              </p>
+      {/* ── Subscription plan ─────────────────────────────────────── */}
+      {club && isAdmin && (
+        <SectionCard title="Subscription">
+          <div className="mt-4 space-y-4">
+            {/* Current tier badge */}
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50">
+                  <Zap className="h-5 w-5 text-emerald-500" />
+                </div>
+                <div>
+                  <p className="font-bold text-slate-900 capitalize">{planInfo?.tier ?? 'free'} Plan</p>
+                  <p className="text-xs text-slate-400">{SUBSCRIPTION_TIERS?.[planInfo?.tier]?.price ?? '$0/mo'}</p>
+                </div>
+              </div>
+              {planInfo?.status === 'active' || planInfo?.tier !== 'free' ? (
+                <button onClick={handlePortal} disabled={loadingPortal}
+                  className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50 min-h-[40px]">
+                  <CreditCard className="h-3.5 w-3.5" />
+                  {loadingPortal ? 'Loading…' : 'Manage billing'}
+                </button>
+              ) : null}
             </div>
-            <button className="w-full sm:w-auto rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 active:scale-95 transition-all min-h-[44px]">
-              Contact us to upgrade
-            </button>
+
+            {/* Usage bars */}
+            {planInfo?.usage && (
+              <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 space-y-3">
+                {[
+                  { label: 'Athletes', used: planInfo.usage.athletes, limit: planInfo.limits?.athletes },
+                  { label: 'Squads',   used: planInfo.usage.squads,   limit: planInfo.limits?.squads },
+                ].map(({ label, used, limit }) => {
+                  const pct = limit === -1 ? 0 : Math.min(100, Math.round((used / limit) * 100))
+                  return (
+                    <div key={label}>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="font-medium text-slate-600">{label}</span>
+                        <span className="text-slate-400">{used} / {limit === -1 ? '∞' : limit}</span>
+                      </div>
+                      {limit !== -1 && (
+                        <div className="h-1.5 w-full rounded-full bg-slate-200 overflow-hidden">
+                          <div className={`h-full rounded-full transition-all ${pct >= 90 ? 'bg-red-400' : pct >= 70 ? 'bg-amber-400' : 'bg-emerald-400'}`}
+                            style={{ width: `${pct}%` }} />
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Upgrade options — only show for free plan */}
+            {(!planInfo || planInfo.tier === 'free') && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  { key: 'pro',   name: 'Pro',   price: '$29/mo', desc: '100 athletes · 5 squads · full toolkit' },
+                  { key: 'elite', name: 'Elite', price: '$79/mo', desc: 'Unlimited athletes & squads · trophy cabinet' },
+                ].map(p => (
+                  <button key={p.key} onClick={() => handleUpgrade(p.key)} disabled={loadingCheckout === p.key}
+                    className="flex flex-col items-start gap-1 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 px-4 py-3 text-left transition-all disabled:opacity-50 group">
+                    <div className="flex items-center justify-between w-full">
+                      <span className="font-black text-emerald-700">{p.name}</span>
+                      <ArrowUpRight className="h-3.5 w-3.5 text-emerald-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                    </div>
+                    <span className="text-xs font-bold text-emerald-600">{p.price}</span>
+                    <span className="text-xs text-slate-500">{p.desc}</span>
+                    {loadingCheckout === p.key && <span className="text-xs text-emerald-600">Redirecting…</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* ── Bank account (Stripe Connect) ─────────────────────────── */}
+      {club && isAdmin && (
+        <SectionCard title="Bank account for season payments">
+          <div className="mt-4 space-y-4">
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Connect a bank account so athletes can pay season fees directly to your club via Stripe. Funds land in your account automatically — no manual handling.
+            </p>
+            {connectStatus?.status === 'active' ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                  <CheckCircle className="h-5 w-5 text-emerald-500 shrink-0" />
+                  <div>
+                    <p className="text-sm font-bold text-emerald-700">Bank account connected</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Season payments go directly to your account.</p>
+                  </div>
+                </div>
+                <button onClick={handleConnectLogin} disabled={loadingConnectLogin}
+                  className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50">
+                  <Building2 className="h-3.5 w-3.5" />
+                  {loadingConnectLogin ? 'Loading…' : 'View payouts dashboard'}
+                  <ArrowUpRight className="h-3 w-3" />
+                </button>
+              </div>
+            ) : connectStatus?.status === 'pending' ? (
+              <div className="space-y-3">
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                  <p className="text-sm font-bold text-amber-700">Setup incomplete</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Complete bank account verification to start accepting payments.</p>
+                </div>
+                <button onClick={handleConnectOnboard} disabled={loadingConnect}
+                  className="flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 px-4 py-2.5 text-sm font-bold text-white transition-all disabled:opacity-50">
+                  <Building2 className="h-4 w-4" />
+                  {loadingConnect ? 'Loading…' : 'Continue setup'}
+                </button>
+              </div>
+            ) : (
+              <button onClick={handleConnectOnboard} disabled={loadingConnect}
+                className="flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 px-4 py-2.5 text-sm font-bold text-white transition-all disabled:opacity-50">
+                <Building2 className="h-4 w-4" />
+                {loadingConnect ? 'Loading…' : 'Connect bank account'}
+              </button>
+            )}
           </div>
         </SectionCard>
       )}
