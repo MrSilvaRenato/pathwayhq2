@@ -664,7 +664,8 @@ export default function Settings() {
                   )
                 })}
               </div>
-            )}
+            )
+            })()}
 
             {/* Upgrade options — only show for free plan */}
             {(!planInfo || planInfo.tier === 'free') && (
