@@ -25,6 +25,16 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#0d1b2a"
+        }
+      ]
+    ],
     "extra": {
       "apiUrl": "https://ausfairgo.com.au/api",
       "eas": {
