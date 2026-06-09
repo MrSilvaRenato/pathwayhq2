@@ -389,7 +389,7 @@ export default function ManagerDashboardScreen() {
             )}
             <View style={styles.clubInfo}>
               <Text style={styles.clubLabel}>YOUR CLUB</Text>
-              <Text style={styles.clubName} numberOfLines={1}>{club.name}</Text>
+              <Text style={styles.clubName} numberOfLines={2}>{club.name}</Text>
               <Text style={styles.clubDetail} numberOfLines={1}>
                 {[sportLabel(club.sport), club.city ? `${club.city}${club.state ? `, ${club.state}` : ''}` : null].filter(Boolean).join(' · ')}
               </Text>

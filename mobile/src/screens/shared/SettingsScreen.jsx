@@ -127,7 +127,14 @@ export default function SettingsScreen() {
   const [clubMsg, setClubMsg] = useState({ type: '', text: '' })
 
   const [signingOut, setSigningOut] = useState(false)
+  const [connectStatus, setConnectStatus] = useState(null)
   const appVersion = Constants.expoConfig?.version ?? Constants.manifest?.version ?? '1.0.0'
+
+  useEffect(() => {
+    if (isManager) {
+      api.get('/connect/status').then(r => setConnectStatus(r.data)).catch(() => {})
+    }
+  }, [isManager])
 
   useEffect(() => {
     api.get('/profile').then(r => {
@@ -623,6 +630,49 @@ export default function SettingsScreen() {
           </SectionCard>
         )}
 
+        {/* ── Bank account (Stripe Connect) ──────────────────────────────── */}
+        {isManager && (
+          <SectionCard title="Bank account for season payments">
+            <Text style={styles.bankDesc}>
+              Connect a bank account so athletes can pay season fees directly to your club. Funds land automatically — no manual handling.
+            </Text>
+
+            {connectStatus?.status === 'active' ? (
+              <View style={styles.bankConnected}>
+                <Ionicons name="checkmark-circle" size={18} color="#10b981" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.bankConnectedTitle}>Bank account connected</Text>
+                  <Text style={styles.bankConnectedSub}>Season payments go directly to your account.</Text>
+                </View>
+              </View>
+            ) : connectStatus?.status === 'pending' ? (
+              <View style={styles.bankPending}>
+                <Ionicons name="warning-outline" size={16} color="#d97706" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.bankPendingTitle}>Setup incomplete</Text>
+                  <Text style={styles.bankPendingeSub}>Complete bank account verification to start accepting payments.</Text>
+                </View>
+              </View>
+            ) : null}
+
+            <TouchableOpacity
+              style={styles.bankBtn}
+              onPress={() => Linking.openURL('https://ausfairgo.com.au/settings')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="business-outline" size={14} color="#fff" />
+              <Text style={styles.bankBtnText}>
+                {connectStatus?.status === 'active'
+                  ? 'View payouts dashboard'
+                  : connectStatus?.status === 'pending'
+                  ? 'Continue setup'
+                  : 'Connect bank account'}
+              </Text>
+              <Ionicons name="open-outline" size={13} color="rgba(255,255,255,0.7)" />
+            </TouchableOpacity>
+          </SectionCard>
+        )}
+
         {/* ── Sign out ───────────────────────────────────────────────────── */}
         <View style={{ marginBottom: spacing.md }}>
           <TouchableOpacity
@@ -799,6 +849,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 9, backgroundColor: colors.surface,
   },
   manageBillingBtnText: { fontSize: font.sm, fontWeight: '600', color: colors.textSecondary },
+
+  bankDesc:          { fontSize: font.xs, color: colors.textMuted, lineHeight: 18, marginTop: 6, marginBottom: 14 },
+  bankConnected:     { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: 'rgba(16,185,129,0.08)', borderWidth: 1, borderColor: 'rgba(16,185,129,0.25)', borderRadius: radius.md, padding: 12, marginBottom: 12 },
+  bankConnectedTitle:{ fontSize: font.sm, fontWeight: '700', color: '#10b981' },
+  bankConnectedSub:  { fontSize: font.xs, color: colors.textMuted, marginTop: 2 },
+  bankPending:       { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: 'rgba(217,119,6,0.08)', borderWidth: 1, borderColor: 'rgba(217,119,6,0.25)', borderRadius: radius.md, padding: 12, marginBottom: 12 },
+  bankPendingTitle:  { fontSize: font.sm, fontWeight: '700', color: '#d97706' },
+  bankPendingeSub:   { fontSize: font.xs, color: colors.textMuted, marginTop: 2 },
+  bankBtn:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 13 },
+  bankBtnText:       { fontSize: font.sm, fontWeight: '700', color: '#fff', flex: 1, textAlign: 'center' },
 
   signOutBtn: {
     borderWidth: 1.5, borderColor: colors.error, borderRadius: radius.md,
