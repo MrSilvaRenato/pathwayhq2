@@ -14,6 +14,7 @@ class Club extends Model
     protected $fillable = [
         'id', 'name', 'sport', 'city', 'state', 'slug', 'description',
         'website', 'contact_email', 'phone', 'is_public', 'is_claimed', 'subscription_tier',
+        'stripe_customer_id', 'stripe_subscription_id', 'subscription_status', 'subscription_ends_at',
         'cover_image_url', 'logo_url', 'founded_year',
         'social_facebook', 'social_instagram', 'social_twitter',
         'show_milestones', 'show_athletes_count', 'show_events', 'show_announcements',
@@ -27,7 +28,26 @@ class Club extends Model
         'show_athletes_count' => 'boolean',
         'show_events'         => 'boolean',
         'show_announcements'  => 'boolean',
+        'subscription_ends_at' => 'datetime',
     ];
+
+    public function onPlan(string $plan): bool
+    {
+        return $this->subscription_tier === $plan;
+    }
+
+    public function subscriptionIsActive(): bool
+    {
+        if ($this->subscription_tier === 'free') return true;
+        if (in_array($this->subscription_status, ['active', 'trialing'])) return true;
+        if ($this->subscription_ends_at && $this->subscription_ends_at->isFuture()) return true;
+        return false;
+    }
+
+    public function planLimit(string $key): int|bool
+    {
+        return config("plans.{$this->subscription_tier}.limits.{$key}", 0);
+    }
 
     public function athletes() { return $this->hasMany(Athlete::class); }
     public function users()    { return $this->hasMany(User::class); }
