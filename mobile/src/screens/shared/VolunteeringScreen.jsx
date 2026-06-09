@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons'
 import api from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
 import { colors, font, spacing, radius } from '../../lib/theme'
+import UpgradeSheet, { parseUpgradeError } from '../../components/UpgradeSheet'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -428,6 +429,7 @@ export default function VolunteeringScreen() {
   const [toggling, setToggling]   = useState({})
   const [tab, setTab]             = useState('upcoming')
   const [showAdd, setShowAdd]     = useState(false)
+  const [upgrade, setUpgrade]     = useState(null)
 
   // Roster sheet state
   const [roster, setRoster]       = useState({ visible: false, v: null, signups: [], loading: false })
@@ -453,9 +455,15 @@ export default function VolunteeringScreen() {
   }, [])
 
   async function handleAdd(form) {
-    await api.post('/volunteering', form)
-    await load()
-    setShowAdd(false)
+    try {
+      await api.post('/volunteering', form)
+      await load()
+      setShowAdd(false)
+    } catch (e) {
+      const up = parseUpgradeError(e)
+      if (up) { setShowAdd(false); setUpgrade(up); return }
+      Alert.alert('Error', e?.response?.data?.message ?? 'Failed to create opportunity.')
+    }
   }
 
   async function toggleSignup(v) {
@@ -635,6 +643,12 @@ export default function VolunteeringScreen() {
         loading={roster.loading}
         onClose={closeRoster}
         onRemove={handleRemoveVolunteer}
+      />
+      <UpgradeSheet
+        visible={!!upgrade}
+        message={upgrade?.message}
+        requiredPlan={upgrade?.requiredPlan}
+        onClose={() => setUpgrade(null)}
       />
     </SafeAreaView>
   )

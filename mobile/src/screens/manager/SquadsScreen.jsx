@@ -11,6 +11,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { colors, font, spacing, radius } from '../../lib/theme'
 import { FTEM_PHASES, SPORTS } from '../../lib/constants'
 import Avatar from '../../components/Avatar'
+import UpgradeSheet, { parseUpgradeError } from '../../components/UpgradeSheet'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -158,7 +159,9 @@ function SquadModal({ squad, onClose, onSaved }) {
         onSaved({ ...data, athletes_count: 0 })
       }
       onClose()
-    } catch {
+    } catch (err) {
+      const up = parseUpgradeError(err)
+      if (up) { onClose(); onUpgrade?.(up); return }
       Alert.alert('Error', squad ? 'Failed to save squad.' : 'Failed to create squad.')
       setSaving(false)
     }
@@ -471,6 +474,7 @@ export default function SquadsScreen() {
   const [refreshing,   setRefreshing]   = useState(false)
   const [selectedSquad, setSelectedSquad] = useState(null)
   const [editSquad,    setEditSquad]    = useState(null) // null=closed, false=new, obj=edit
+  const [upgrade,      setUpgrade]      = useState(null)
 
   async function fetchSquads() {
     try {
@@ -588,8 +592,15 @@ export default function SquadsScreen() {
           squad={editSquad || null}
           onClose={() => setEditSquad(null)}
           onSaved={handleSaved}
+          onUpgrade={up => { setEditSquad(null); setUpgrade(up) }}
         />
       )}
+      <UpgradeSheet
+        visible={!!upgrade}
+        message={upgrade?.message}
+        requiredPlan={upgrade?.requiredPlan}
+        onClose={() => setUpgrade(null)}
+      />
     </SafeAreaView>
   )
 }

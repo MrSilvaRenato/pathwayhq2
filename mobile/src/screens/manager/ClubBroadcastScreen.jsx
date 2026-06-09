@@ -9,6 +9,7 @@ import api from '../../lib/api'
 import { colors, font, spacing, radius } from '../../lib/theme'
 import { FTEM_PHASES } from '../../lib/constants'
 import Avatar from '../../components/Avatar'
+import UpgradeSheet, { parseUpgradeError } from '../../components/UpgradeSheet'
 
 function initials(first = '', last = '') {
   return `${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase() || '?'
@@ -23,6 +24,7 @@ export default function ClubBroadcastScreen() {
   const [confirming, setConfirming] = useState(false)
   const [sending,    setSending]    = useState(false)
   const [lastSent,   setLastSent]   = useState(null)
+  const [upgrade,    setUpgrade]    = useState(null)
 
   useEffect(() => {
     api.get('/club/broadcast/athletes')
@@ -82,6 +84,8 @@ export default function ClubBroadcastScreen() {
       setForm({ title: '', body: '', link: '' })
       setSelected(new Set())
     } catch (e) {
+      const up = parseUpgradeError(e)
+      if (up) { setUpgrade(up); setSending(false); return }
       Alert.alert('Error', e?.response?.data?.message ?? 'Failed to send.')
     } finally {
       setSending(false)
@@ -290,6 +294,12 @@ export default function ClubBroadcastScreen() {
           <View style={{ height: spacing.xl }} />
         </ScrollView>
       </KeyboardAvoidingView>
+      <UpgradeSheet
+        visible={!!upgrade}
+        message={upgrade?.message}
+        requiredPlan={upgrade?.requiredPlan}
+        onClose={() => setUpgrade(null)}
+      />
     </SafeAreaView>
   )
 }

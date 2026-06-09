@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useAuth } from '../../contexts/AuthContext'
 import api from '../../lib/api'
 import { colors, font, spacing, radius } from '../../lib/theme'
+import UpgradeSheet, { parseUpgradeError } from '../../components/UpgradeSheet'
 
 // ── Config ─────────────────────────────────────────────────────────────────────
 const TYPE_META = {
@@ -575,6 +576,7 @@ export default function CalendarScreen() {
 
   // Modal state
   const [showAdd, setShowAdd]           = useState(false)
+  const [upgrade, setUpgrade]           = useState(null)
   const [editingEv, setEditingEv]       = useState(null)
   const [editScope, setEditScope]       = useState('one')
   const [showScopeSheet, setShowScopeSheet]   = useState(false)
@@ -695,6 +697,8 @@ export default function CalendarScreen() {
       setSeriesConfirm(null)
       load()
     } catch (e) {
+      const up = parseUpgradeError(e)
+      if (up) { setShowAdd(false); setUpgrade(up); return }
       Alert.alert('Error', e?.response?.data?.message ?? 'Failed to save.')
       throw e
     }
@@ -1057,6 +1061,12 @@ export default function CalendarScreen() {
           onSave={handleSave}
         />
       )}
+      <UpgradeSheet
+        visible={!!upgrade}
+        message={upgrade?.message}
+        requiredPlan={upgrade?.requiredPlan}
+        onClose={() => setUpgrade(null)}
+      />
     </SafeAreaView>
   )
 }

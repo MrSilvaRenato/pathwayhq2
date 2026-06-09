@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons'
 import api from '../../lib/api'
 import { colors, font, spacing, radius } from '../../lib/theme'
 import Avatar from '../../components/Avatar'
+import UpgradeSheet, { parseUpgradeError } from '../../components/UpgradeSheet'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const STATUS_CONFIG = {
@@ -119,7 +120,7 @@ function DateField({ label, value, onChange }) {
 }
 
 // ── Season form modal ──────────────────────────────────────────────────────────
-function SeasonModal({ season, onSave, onClose }) {
+function SeasonModal({ season, onSave, onClose, onUpgrade }) {
   const [form, setForm] = useState({
     name:                  season?.name                  ?? '',
     description:           season?.description           ?? '',
@@ -148,6 +149,8 @@ function SeasonModal({ season, onSave, onClose }) {
       }
       onSave()
     } catch (e) {
+      const up = parseUpgradeError(e)
+      if (up) { onUpgrade?.(up); return }
       Alert.alert('Error', e?.response?.data?.message ?? 'Failed to save season.')
     } finally {
       setSaving(false)
@@ -483,6 +486,7 @@ export default function SeasonsScreen() {
   const [refreshing, setRefreshing] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing]     = useState(null)
+  const [upgrade, setUpgrade]     = useState(null)
   const [detail, setDetail]       = useState(null)
 
   async function load() {
@@ -633,8 +637,15 @@ export default function SeasonsScreen() {
           season={editing}
           onClose={() => { setShowModal(false); setEditing(null) }}
           onSave={() => { setShowModal(false); setEditing(null); load() }}
+          onUpgrade={up => { setShowModal(false); setUpgrade(up) }}
         />
       )}
+      <UpgradeSheet
+        visible={!!upgrade}
+        message={upgrade?.message}
+        requiredPlan={upgrade?.requiredPlan}
+        onClose={() => setUpgrade(null)}
+      />
     </SafeAreaView>
   )
 }

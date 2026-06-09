@@ -12,6 +12,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { colors, font, spacing, radius } from '../../lib/theme'
 import { FTEM_PHASES, SPORTS } from '../../lib/constants'
 import Avatar from '../../components/Avatar'
+import UpgradeSheet, { parseUpgradeError } from '../../components/UpgradeSheet'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -137,7 +138,7 @@ const EMPTY_FORM = {
   gender: 'male', ftem_phase: 'F1', invite_email: '', phone: '',
 }
 
-function AddModal({ onClose, onSaved }) {
+function AddModal({ onClose, onSaved, onUpgrade }) {
   const [form, setForm]             = useState({ ...EMPTY_FORM })
   const [saving, setSaving]         = useState(false)
   const [emailLookup, setEmailLookup]     = useState(null)
@@ -191,6 +192,8 @@ function AddModal({ onClose, onSaved }) {
       else if (data.status === 'invited') msg = `${form.first_name} ${form.last_name} added — invite email sent`
       onSaved(msg)
     } catch (err) {
+      const up = parseUpgradeError(err)
+      if (up) { onClose(); onUpgrade(up); return }
       Alert.alert('Error', err.response?.data?.message ?? 'Failed to add athlete.')
       setSaving(false)
     }
@@ -409,6 +412,7 @@ export default function AthletesScreen({ navigation }) {
   const [loading, setLoading]   = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [showModal, setShowModal]   = useState(false)
+  const [upgrade, setUpgrade]       = useState(null) // { message, requiredPlan }
 
   const [q, setQ]             = useState('')
   const [filterPhase, setFilterPhase] = useState('')
@@ -588,6 +592,7 @@ export default function AthletesScreen({ navigation }) {
       {showModal && (
         <AddModal
           onClose={() => setShowModal(false)}
+          onUpgrade={up => setUpgrade(up)}
           onSaved={async (msg) => {
             setShowModal(false)
             Alert.alert('Success', msg)
@@ -597,6 +602,13 @@ export default function AthletesScreen({ navigation }) {
           }}
         />
       )}
+
+      <UpgradeSheet
+        visible={!!upgrade}
+        message={upgrade?.message}
+        requiredPlan={upgrade?.requiredPlan}
+        onClose={() => setUpgrade(null)}
+      />
 
       {/* Phase filter sheet */}
       <Modal visible={showPhaseSheet} transparent animationType="slide" onRequestClose={() => setShowPhaseSheet(false)}>
