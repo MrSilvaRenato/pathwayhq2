@@ -404,15 +404,22 @@ export default function DashboardScreen() {
             ) : null}
           </View>
         ) : (
-          <TouchableOpacity
-            style={styles.noClubCard}
-            onPress={() => navigation.navigate('ClubsScreen')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="people-outline" size={20} color={colors.primary} />
-            <Text style={styles.noClubText}>You are not part of a club yet. Tap to search for clubs to join.</Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-          </TouchableOpacity>
+          {user?.role === 'parent' ? (
+            <View style={styles.noClubCard}>
+              <Ionicons name="people-outline" size={20} color={colors.primary} />
+              <Text style={styles.noClubText}>No athletes linked yet. Ask your club coach to link you to your child's profile.</Text>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.noClubCard}
+              onPress={() => navigation.navigate('ClubsScreen')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="people-outline" size={20} color={colors.primary} />
+              <Text style={styles.noClubText}>You are not part of a club yet. Tap to search for clubs to join.</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+            </TouchableOpacity>
+          )}
         )}
 
         {invites.map(invite => (
