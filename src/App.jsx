@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ToastProvider } from './contexts/ToastContext'
+import OpenInAppBanner from './components/OpenInAppBanner'
 
 // Marketing
 import Home           from './pages/marketing/Home'
@@ -61,6 +62,7 @@ export default function App() {
     <ToastProvider>
     <AuthProvider>
       <BrowserRouter>
+        <OpenInAppBanner />
         <Routes>
           {/* Marketing */}
           <Route path="/"              element={<Home />} />
