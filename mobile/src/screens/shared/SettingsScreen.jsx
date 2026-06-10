@@ -5,6 +5,7 @@ import {
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
+import * as ImagePicker from 'expo-image-picker'
 import { useAuth } from '../../contexts/AuthContext'
 import api from '../../lib/api'
 import { colors, font, spacing, radius } from '../../lib/theme'
@@ -127,9 +128,19 @@ export default function SettingsScreen() {
   const [savingClub, setSavingClub] = useState(false)
   const [clubMsg, setClubMsg] = useState({ type: '', text: '' })
 
+  // ── Athlete profile state (athletes only) ──────────────────────────────────
+  const [athleteProfile, setAthleteProfile] = useState({ avatar_url: null })
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+
   const [signingOut, setSigningOut] = useState(false)
   const [connectStatus, setConnectStatus] = useState(null)
   const appVersion = Constants.expoConfig?.version ?? Constants.manifest?.version ?? '1.0.0'
+
+  useEffect(() => {
+    if (!isManager) {
+      api.get('/athletes/me').then(r => setAthleteProfile(r.data ?? {})).catch(() => {})
+    }
+  }, [isManager])
 
   useEffect(() => {
     if (isManager) {
@@ -207,6 +218,39 @@ export default function SettingsScreen() {
     }
   }
 
+  async function handleAvatarUpload() {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Please allow access to your photo library in Settings.')
+      return
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.85,
+    })
+    if (result.canceled || !result.assets?.length) return
+    const asset = result.assets[0]
+    const ext = asset.uri.split('.').pop()?.toLowerCase() ?? 'jpg'
+    const mime = ext === 'png' ? 'image/png' : 'image/jpeg'
+    setUploadingAvatar(true)
+    try {
+      const formData = new FormData()
+      formData.append('image', { uri: asset.uri, name: `avatar.${ext}`, type: mime })
+      formData.append('type', 'avatar')
+      const { data } = await api.post('/upload/image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      await api.put('/athletes/me', { avatar_url: data.url })
+      setAthleteProfile(p => ({ ...p, avatar_url: data.url }))
+    } catch {
+      Alert.alert('Upload failed', 'Could not upload profile photo. Please try again.')
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
+
   async function handleSaveClub() {
     if (!clubForm.name?.trim()) {
       setClubMsg({ type: 'error', text: 'Club name is required.' })
@@ -251,7 +295,21 @@ export default function SettingsScreen() {
 
         {/* ── Profile header ─────────────────────────────────────────────── */}
         <View style={styles.profileHeader}>
-          <Avatar name={user?.full_name} size="xl" />
+          <TouchableOpacity
+            style={styles.avatarWrap}
+            onPress={!isManager ? handleAvatarUpload : undefined}
+            disabled={isManager || uploadingAvatar}
+            activeOpacity={isManager ? 1 : 0.75}
+          >
+            <Avatar name={user?.full_name} url={athleteProfile.avatar_url} size="xl" />
+            {!isManager && (
+              <View style={styles.cameraBtn}>
+                {uploadingAvatar
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Ionicons name="camera" size={13} color="#fff" />}
+              </View>
+            )}
+          </TouchableOpacity>
           <Text style={styles.profileName}>{user?.full_name || 'Your account'}</Text>
           <Badge label={roleLabel} color="green" />
         </View>
@@ -714,6 +772,15 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   profileName: { fontSize: font.lg, fontWeight: '700', color: colors.text },
+
+  avatarWrap: { position: 'relative' },
+  cameraBtn: {
+    position: 'absolute', bottom: 0, right: 0,
+    width: 26, height: 26, borderRadius: 13,
+    backgroundColor: colors.primary,
+    justifyContent: 'center', alignItems: 'center',
+    borderWidth: 2, borderColor: colors.surface,
+  },
 
   sectionCard: {
     backgroundColor: colors.surface,
