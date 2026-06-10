@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, ScrollView, Alert, Switch, Modal, FlatList, Linking,
+  ActivityIndicator, ScrollView, Alert, Switch, Modal, FlatList, Linking, Pressable,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -132,6 +132,9 @@ export default function SettingsScreen() {
   // ── Athlete profile state (athletes only) ──────────────────────────────────
   const [athleteProfile, setAthleteProfile] = useState({ avatar_url: null })
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [confirmLeave,   setConfirmLeave]   = useState(false)
+  const [leavingClub,    setLeavingClub]    = useState(false)
+  const insets = useSafeAreaInsets()
 
   const [signingOut, setSigningOut] = useState(false)
   const [connectStatus, setConnectStatus] = useState(null)
@@ -269,27 +272,17 @@ export default function SettingsScreen() {
     }
   }
 
-  async function handleLeaveClub() {
-    const clubName = athleteProfile?.club_name ?? 'your club'
-    Alert.alert(
-      'Leave club',
-      `Are you sure you want to leave ${clubName}? Your history and achievements will be preserved, but you will no longer be on their roster.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Leave club',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete('/athletes/me/leave')
-              setAthleteProfile({ avatar_url: null })
-            } catch (e) {
-              Alert.alert('Error', e?.response?.data?.message ?? 'Could not leave club. Please try again.')
-            }
-          },
-        },
-      ]
-    )
+  async function confirmAndLeave() {
+    setLeavingClub(true)
+    try {
+      await api.delete('/athletes/me/leave')
+      setConfirmLeave(false)
+      setAthleteProfile({ avatar_url: null })
+    } catch (e) {
+      Alert.alert('Error', e?.response?.data?.message ?? 'Could not leave club. Please try again.')
+    } finally {
+      setLeavingClub(false)
+    }
   }
 
   async function handleLogout() {
@@ -797,12 +790,40 @@ export default function SettingsScreen() {
                 </Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.leaveClubBtn} onPress={handleLeaveClub} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.leaveClubBtn} onPress={() => setConfirmLeave(true)} activeOpacity={0.8}>
               <Ionicons name="exit-outline" size={16} color={colors.error} />
               <Text style={styles.leaveClubBtnText}>Leave this club</Text>
             </TouchableOpacity>
           </SectionCard>
         )}
+
+        {/* ── Leave club confirmation sheet ──────────────────────────────── */}
+        <Modal visible={confirmLeave} transparent statusBarTranslucent animationType="slide" onRequestClose={() => setConfirmLeave(false)}>
+          <Pressable style={styles.leaveOverlay} onPress={() => setConfirmLeave(false)} />
+          <View style={[styles.leaveSheet, { paddingBottom: insets.bottom + 16 }]}>
+            <View style={styles.leaveSheetHandle} />
+            <View style={styles.leaveIconWrap}>
+              <Ionicons name="exit-outline" size={28} color={colors.error} />
+            </View>
+            <Text style={styles.leaveSheetTitle}>Leave {athleteProfile?.club_name}?</Text>
+            <Text style={styles.leaveSheetDesc}>
+              You will be removed from their roster. Your history and achievements stay on your profile — you can join another club anytime.
+            </Text>
+            <TouchableOpacity
+              style={[styles.leaveConfirmBtn, leavingClub && { opacity: 0.6 }]}
+              onPress={confirmAndLeave}
+              disabled={leavingClub}
+              activeOpacity={0.85}
+            >
+              {leavingClub
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Text style={styles.leaveConfirmBtnText}>Yes, leave club</Text>}
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.leaveCancelBtn} onPress={() => setConfirmLeave(false)} activeOpacity={0.7}>
+              <Text style={styles.leaveCancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </Modal>
 
         {/* ── Sign out ───────────────────────────────────────────────────── */}
         <View style={{ marginBottom: spacing.md }}>
@@ -1020,6 +1041,42 @@ const styles = StyleSheet.create({
     paddingVertical: 13, backgroundColor: colors.surface,
   },
   leaveClubBtnText: { color: colors.error, fontWeight: '700', fontSize: font.base },
+
+  leaveOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },
+  leaveSheet: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    paddingHorizontal: spacing.md, paddingTop: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.12, shadowRadius: 16, elevation: 24,
+  },
+  leaveSheetHandle: {
+    width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border,
+    alignSelf: 'center', marginBottom: spacing.lg,
+  },
+  leaveIconWrap: {
+    width: 56, height: 56, borderRadius: 16, backgroundColor: '#fef2f2',
+    alignItems: 'center', justifyContent: 'center', alignSelf: 'center',
+    marginBottom: spacing.md,
+  },
+  leaveSheetTitle: {
+    fontSize: font.lg, fontWeight: '800', color: colors.text,
+    textAlign: 'center', marginBottom: spacing.sm,
+  },
+  leaveSheetDesc: {
+    fontSize: font.sm, color: colors.textMuted, textAlign: 'center',
+    lineHeight: 20, marginBottom: spacing.lg,
+  },
+  leaveConfirmBtn: {
+    backgroundColor: colors.error, borderRadius: radius.md,
+    paddingVertical: 15, alignItems: 'center', marginBottom: spacing.sm,
+  },
+  leaveConfirmBtnText: { color: '#fff', fontWeight: '700', fontSize: font.base },
+  leaveCancelBtn: {
+    borderRadius: radius.md, paddingVertical: 14, alignItems: 'center',
+    backgroundColor: colors.background,
+  },
+  leaveCancelBtnText: { color: colors.textSecondary, fontWeight: '600', fontSize: font.base },
 
   signOutBtn: {
     borderWidth: 1.5, borderColor: colors.error, borderRadius: radius.md,
