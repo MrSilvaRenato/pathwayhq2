@@ -73,6 +73,7 @@ export default function Settings() {
   const [loadingPortal,   setLoadingPortal]   = useState(false)
   const [loadingConnect,  setLoadingConnect]  = useState(false)
   const [loadingConnectLogin, setLoadingConnectLogin] = useState(false)
+  const [leavingClub, setLeavingClub] = useState(false)
 
   useEffect(() => {
     // Handle connect callback params
@@ -175,6 +176,20 @@ export default function Settings() {
       const { data } = await api.post('/subscription/portal')
       window.location.href = data.url
     } catch { setLoadingPortal(false) }
+  }
+
+  async function handleLeaveClub() {
+    if (!window.confirm(`Leave ${athleteProfile?.club_name ?? 'this club'}? Your history and achievements will be preserved — you can join another club anytime.`)) return
+    setLeavingClub(true)
+    try {
+      await api.delete('/athletes/me/leave')
+      setAthleteProfile(null)
+      toast.success('You have left the club. Your history is preserved.')
+    } catch (err) {
+      toast.error(err.response?.data?.message ?? 'Could not leave club.')
+    } finally {
+      setLeavingClub(false)
+    }
   }
 
   async function handleConnectOnboard() {
@@ -742,6 +757,27 @@ export default function Settings() {
                 ))}
               </div>
             )}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* ── Club membership (athlete leave) ──────────────────────── */}
+      {user?.role === 'athlete' && athleteProfile?.club_name && (
+        <SectionCard title="Club membership">
+          <div className="mt-4 space-y-4">
+            <div className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+              <div>
+                <p className="text-sm font-bold text-slate-900">{athleteProfile.club_name}</p>
+                <p className="text-xs text-slate-400 mt-0.5">Your history and stats are always preserved, even after leaving.</p>
+              </div>
+            </div>
+            <button
+              onClick={handleLeaveClub}
+              disabled={leavingClub}
+              className="flex items-center gap-2 rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 transition-all disabled:opacity-50"
+            >
+              {leavingClub ? 'Leaving…' : 'Leave this club'}
+            </button>
           </div>
         </SectionCard>
       )}
