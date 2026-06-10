@@ -82,6 +82,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/athletes',                       [AthleteController::class, 'index']);
     Route::get('/athletes/me',                    [AthleteController::class, 'me']);
     Route::put('/athletes/me',                    [AthleteController::class, 'updateMe']);
+    Route::delete('/athletes/me/leave',           [AthleteController::class, 'leaveClub']);
     Route::get('/athletes/invites',               [AthleteController::class, 'invites']);
     Route::post('/athletes',                      [AthleteController::class, 'store']);
     Route::post('/athletes/claim',                [AthleteController::class, 'claim']);

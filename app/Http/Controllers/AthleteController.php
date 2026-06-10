@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use App\Models\Athlete;
+use App\Models\Club;
 use App\Models\Milestone;
 use App\Models\User;
 use App\Models\Notification;
@@ -290,12 +291,69 @@ class AthleteController extends Controller
             return response()->json(['error' => 'Forbidden'], 403);
         }
 
-        $affected = Athlete::where('id', $id)
+        $athlete = Athlete::where('id', $id)
             ->where('club_id', $request->user()->club_id)
-            ->delete();
+            ->first();
 
-        if (!$affected) {
+        if (!$athlete) {
             return response()->json(['error' => 'Not found'], 404);
+        }
+
+        // Soft-deactivate instead of hard-delete so history and stats are preserved.
+        $athlete->squads()->detach();
+        $athlete->update(['is_active' => false]);
+
+        if ($athlete->user_id) {
+            $club = Club::find($request->user()->club_id);
+            Notification::create([
+                'id'      => (string) Str::uuid(),
+                'user_id' => $athlete->user_id,
+                'title'   => 'You have been removed from ' . ($club?->name ?? 'the club'),
+                'body'    => 'Your history and achievements are preserved. You can now search for and join another club.',
+                'link'    => '/clubs',
+                'is_read' => false,
+                'at'      => now()->toDateTimeString(),
+            ]);
+        }
+
+        return response()->json(['ok' => true]);
+    }
+
+    // Athlete voluntarily leaves their current club
+    public function leaveClub(Request $request)
+    {
+        $user = $request->user();
+
+        $athlete = Athlete::where('user_id', $user->id)
+            ->where('invite_status', 'accepted')
+            ->where('is_active', true)
+            ->with('club:id,name')
+            ->first();
+
+        if (!$athlete) {
+            return response()->json(['message' => 'You are not currently a member of any club.'], 404);
+        }
+
+        $clubName    = $athlete->club?->name ?? 'the club';
+        $athleteName = trim("{$athlete->first_name} {$athlete->last_name}");
+
+        $athlete->squads()->detach();
+        $athlete->update(['is_active' => false]);
+
+        $staff = User::where('club_id', $athlete->club_id)
+            ->whereIn('role', ['club_admin', 'coach'])
+            ->get();
+
+        foreach ($staff as $s) {
+            Notification::create([
+                'id'      => (string) Str::uuid(),
+                'user_id' => $s->id,
+                'title'   => "🚪 {$athleteName} has left {$clubName}",
+                'body'    => 'They left voluntarily. Their profile has been deactivated from your roster.',
+                'link'    => '/athletes',
+                'is_read' => false,
+                'at'      => now()->toDateTimeString(),
+            ]);
         }
 
         return response()->json(['ok' => true]);

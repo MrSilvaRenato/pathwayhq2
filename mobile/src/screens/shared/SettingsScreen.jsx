@@ -269,6 +269,29 @@ export default function SettingsScreen() {
     }
   }
 
+  async function handleLeaveClub() {
+    const clubName = athleteProfile?.club_name ?? 'your club'
+    Alert.alert(
+      'Leave club',
+      `Are you sure you want to leave ${clubName}? Your history and achievements will be preserved, but you will no longer be on their roster.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Leave club',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete('/athletes/me/leave')
+              setAthleteProfile({ avatar_url: null })
+            } catch (e) {
+              Alert.alert('Error', e?.response?.data?.message ?? 'Could not leave club. Please try again.')
+            }
+          },
+        },
+      ]
+    )
+  }
+
   async function handleLogout() {
     Alert.alert('Sign out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
@@ -763,6 +786,24 @@ export default function SettingsScreen() {
           </SectionCard>
         )}
 
+        {/* ── Club membership (athlete leave) ───────────────────────────── */}
+        {isAthlete && athleteProfile?.club_name && (
+          <SectionCard title="Club membership">
+            <View style={styles.leaveClubRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.leaveClubName}>{athleteProfile.club_name}</Text>
+                <Text style={styles.leaveClubHint}>
+                  Your history and stats are always kept, even after leaving.
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.leaveClubBtn} onPress={handleLeaveClub} activeOpacity={0.8}>
+              <Ionicons name="exit-outline" size={16} color={colors.error} />
+              <Text style={styles.leaveClubBtnText}>Leave this club</Text>
+            </TouchableOpacity>
+          </SectionCard>
+        )}
+
         {/* ── Sign out ───────────────────────────────────────────────────── */}
         <View style={{ marginBottom: spacing.md }}>
           <TouchableOpacity
@@ -966,6 +1007,19 @@ const styles = StyleSheet.create({
   bankPendingeSub:   { fontSize: font.xs, color: colors.textMuted, marginTop: 2 },
   bankBtn:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 13 },
   bankBtnText:       { fontSize: font.sm, fontWeight: '700', color: '#fff', flex: 1, textAlign: 'center' },
+
+  leaveClubRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: spacing.sm, marginBottom: spacing.sm,
+  },
+  leaveClubName: { fontSize: font.sm, fontWeight: '700', color: colors.text },
+  leaveClubHint: { fontSize: font.xs, color: colors.textMuted, marginTop: 3, lineHeight: 16 },
+  leaveClubBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, borderWidth: 1.5, borderColor: colors.error, borderRadius: radius.md,
+    paddingVertical: 13, backgroundColor: colors.surface,
+  },
+  leaveClubBtnText: { color: colors.error, fontWeight: '700', fontSize: font.base },
 
   signOutBtn: {
     borderWidth: 1.5, borderColor: colors.error, borderRadius: radius.md,
