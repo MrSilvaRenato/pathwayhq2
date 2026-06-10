@@ -8,6 +8,7 @@ use Illuminate\Support\Str;
 use App\Models\User;
 use App\Models\Club;
 use App\Models\Notification;
+use App\Services\MailService;
 
 class CoachController extends Controller
 {
@@ -75,6 +76,9 @@ class CoachController extends Controller
             'role'          => 'coach',
             'club_id'       => $myClubId,
         ]);
+
+        $clubName = Club::find($myClubId)?->name ?? 'your club';
+        MailService::welcomeCoach($coach->email, $coach->full_name, $clubName, $tempPassword);
 
         return response()->json([
             'ok'           => true,

@@ -9,6 +9,7 @@ use App\Models\ClubClaim;
 use App\Models\User;
 use App\Models\Notification;
 use App\Models\ActivityLog;
+use App\Services\MailService;
 
 class ClubClaimController extends Controller
 {
@@ -120,6 +121,7 @@ class ClubClaimController extends Controller
                 'role'          => 'club_admin',
                 'club_id'       => $claim->club_id,
             ]);
+            MailService::welcomeClubAdmin($claim->email, $claim->name, $claim->club->name, $tempPassword);
         }
 
         // Mark club as claimed

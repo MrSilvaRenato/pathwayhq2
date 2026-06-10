@@ -10,6 +10,7 @@ use App\Models\AthleteParent;
 use App\Models\Club;
 use App\Models\User;
 use App\Models\Notification;
+use App\Services\MailService;
 
 class ParentController extends Controller
 {
@@ -51,6 +52,8 @@ class ParentController extends Controller
                 'role'          => 'parent',
                 'club_id'       => null,
             ]);
+            $athleteName = trim($athlete->first_name . ' ' . $athlete->last_name);
+            MailService::welcomeParent($parentUser->email, $parentUser->full_name, $athleteName, $tempPassword);
         }
 
         // Link parent → athlete (idempotent)

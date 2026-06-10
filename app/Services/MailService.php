@@ -557,6 +557,94 @@ HTML
         }
     }
 
+    public static function welcomeCoach(string $email, string $fullName, string $clubName, string $tempPassword): void
+    {
+        try {
+            $name     = htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8');
+            $club     = htmlspecialchars($clubName, ENT_QUOTES, 'UTF-8');
+            $password = htmlspecialchars($tempPassword, ENT_QUOTES, 'UTF-8');
+            $loginUrl = self::appUrl('/login');
+
+            $html = self::layout(
+                "You've been added as a coach at {$club}",
+                <<<HTML
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#111827;">Welcome to {$club}!</p>
+<p style="margin:0 0 16px;color:#4b5563;">Hi {$name},</p>
+<p style="margin:0 0 16px;color:#4b5563;">You've been added as a <strong>coach</strong> at <strong>{$club}</strong> on PathwayHQ. Here are your login details:</p>
+<table cellpadding="0" cellspacing="0" style="background-color:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px;margin-bottom:16px;width:100%;">
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;width:100px;">Email</td><td style="padding:5px 8px;font-weight:600;color:#111827;">{$email}</td></tr>
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;">Password</td><td style="padding:5px 8px;font-weight:600;color:#111827;font-family:monospace;">{$password}</td></tr>
+</table>
+<p style="margin:0 0 16px;color:#4b5563;">Please change your password after your first login.</p>
+HTML
+                . self::button('Log in to PathwayHQ', $loginUrl)
+            );
+
+            self::send($email, $fullName, "Welcome to {$clubName} — your PathwayHQ login", $html);
+        } catch (\Throwable $e) {
+            Log::error('[MailService] welcomeCoach failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    public static function welcomeParent(string $email, string $fullName, string $athleteName, string $tempPassword): void
+    {
+        try {
+            $name     = htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8');
+            $athlete  = htmlspecialchars($athleteName, ENT_QUOTES, 'UTF-8');
+            $password = htmlspecialchars($tempPassword, ENT_QUOTES, 'UTF-8');
+            $loginUrl = self::appUrl('/login');
+
+            $html = self::layout(
+                "You've been linked as a parent/guardian for {$athlete}",
+                <<<HTML
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#111827;">You're linked on PathwayHQ!</p>
+<p style="margin:0 0 16px;color:#4b5563;">Hi {$name},</p>
+<p style="margin:0 0 16px;color:#4b5563;">You've been added as a <strong>parent/guardian</strong> for <strong>{$athlete}</strong> on PathwayHQ. You can follow their development pathway, milestones, and upcoming events.</p>
+<p style="margin:0 0 16px;color:#4b5563;">Here are your login details:</p>
+<table cellpadding="0" cellspacing="0" style="background-color:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px;margin-bottom:16px;width:100%;">
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;width:100px;">Email</td><td style="padding:5px 8px;font-weight:600;color:#111827;">{$email}</td></tr>
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;">Password</td><td style="padding:5px 8px;font-weight:600;color:#111827;font-family:monospace;">{$password}</td></tr>
+</table>
+<p style="margin:0 0 16px;color:#4b5563;">Please change your password after your first login.</p>
+HTML
+                . self::button('Log in to PathwayHQ', $loginUrl)
+            );
+
+            self::send($email, $fullName, "Your PathwayHQ login — follow {$athleteName}'s pathway", $html);
+        } catch (\Throwable $e) {
+            Log::error('[MailService] welcomeParent failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    public static function welcomeClubAdmin(string $email, string $fullName, string $clubName, string $tempPassword): void
+    {
+        try {
+            $name     = htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8');
+            $club     = htmlspecialchars($clubName, ENT_QUOTES, 'UTF-8');
+            $password = htmlspecialchars($tempPassword, ENT_QUOTES, 'UTF-8');
+            $loginUrl = self::appUrl('/login');
+
+            $html = self::layout(
+                "Your club {$club} is now live on PathwayHQ",
+                <<<HTML
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#111827;">Your club is live on PathwayHQ! 🎉</p>
+<p style="margin:0 0 16px;color:#4b5563;">Hi {$name},</p>
+<p style="margin:0 0 16px;color:#4b5563;">Your claim for <strong>{$club}</strong> has been approved. Your club manager account is ready — here are your login details:</p>
+<table cellpadding="0" cellspacing="0" style="background-color:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px;margin-bottom:16px;width:100%;">
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;width:100px;">Email</td><td style="padding:5px 8px;font-weight:600;color:#111827;">{$email}</td></tr>
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;">Password</td><td style="padding:5px 8px;font-weight:600;color:#111827;font-family:monospace;">{$password}</td></tr>
+</table>
+<p style="margin:0 0 16px;color:#4b5563;">Please change your password after your first login. From your dashboard you can add athletes, create squads, manage seasons, and more.</p>
+HTML
+                . self::button('Log in to PathwayHQ', $loginUrl)
+            );
+
+            self::send($email, $fullName, "Welcome to PathwayHQ — {$clubName} is live!", $html);
+        } catch (\Throwable $e) {
+            Log::error('[MailService] welcomeClubAdmin failed', ['error' => $e->getMessage()]);
+        }
+    }
+
     public static function passwordReset(User $user, string $resetUrl): void
     {
         try {
