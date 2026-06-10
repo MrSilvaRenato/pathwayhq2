@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Zap, Eye, EyeOff, AlertCircle, CheckCircle, X, Dumbbell } from 'lucide-react'
+import { Zap, Eye, EyeOff, AlertCircle, CheckCircle, X, Shield, Users, Baby } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import api from '../lib/api'
+import { SPORTS, STATES } from '../lib/constants'
 
 const inputCls = "w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
 
@@ -175,12 +176,14 @@ function LoginForm({ onSwitch, claimToken }) {
 function SignupForm({ onSwitch, claimToken }) {
   const { register } = useAuth()
   const navigate = useNavigate()
-  const [form, setForm]   = useState({ full_name: '', email: '', password: '' })
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [showPw, setShowPw]   = useState(false)
+  const [role,     setRole]    = useState('athlete')
+  const [form,     setForm]    = useState({ full_name: '', email: '', password: '', club_name: '', sport: 'soccer' })
+  const [error,    setError]   = useState('')
+  const [loading,  setLoading] = useState(false)
+  const [showPw,   setShowPw]  = useState(false)
 
-  const set = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
+  const set    = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
+  const isClub = role === 'club_admin'
 
   const pwStrength = (() => {
     const p = form.password
@@ -194,10 +197,17 @@ function SignupForm({ onSwitch, claimToken }) {
   async function handleSubmit(e) {
     e.preventDefault()
     if (form.password.length < 6) { setError('Password must be at least 6 characters'); return }
+    if (isClub && !form.club_name.trim()) { setError('Club / team name is required.'); return }
     setLoading(true)
     setError('')
     try {
-      await register({ ...form, role: 'athlete' })
+      await register({
+        full_name: form.full_name,
+        email:     form.email,
+        password:  form.password,
+        role,
+        ...(isClub && { club_name: form.club_name, sport: form.sport }),
+      })
       const pendingPlan = sessionStorage.getItem('pendingPlan')
       const pendingJoin = sessionStorage.getItem('pendingJoin')
       if (pendingPlan) {
@@ -218,16 +228,38 @@ function SignupForm({ onSwitch, claimToken }) {
 
   return (
     <div className="w-full">
-      <div className="text-center mb-6">
-        <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 mb-3">
-          <Dumbbell className="h-6 w-6 text-emerald-400" />
-        </div>
-        <h2 className="text-2xl font-black text-white">Create your account</h2>
+      <div className="text-center mb-5">
+        <h2 className="text-2xl font-black text-white">
+          {isClub ? 'Register your club' : 'Create your account'}
+        </h2>
         <p className="text-slate-400 text-sm mt-1">Free forever · No credit card needed</p>
       </div>
 
+      {/* Role toggle */}
+      <div className="grid grid-cols-3 gap-2 mb-5">
+        {[
+          { value: 'club_admin', label: 'Club / Team',   Icon: Shield },
+          { value: 'athlete',    label: 'Athlete',        Icon: Users  },
+          { value: 'parent',     label: 'Parent',         Icon: Baby   },
+        ].map(({ value, label, Icon }) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => setRole(value)}
+            className={`flex flex-col items-center gap-1.5 rounded-xl border-2 py-3 px-2 text-xs font-semibold transition-all ${
+              role === value
+                ? 'border-emerald-500 bg-emerald-500/15 text-emerald-400'
+                : 'border-white/10 bg-white/5 text-slate-400 hover:border-white/20'
+            }`}
+          >
+            <Icon className="h-4 w-4" />
+            {label}
+          </button>
+        ))}
+      </div>
+
       {error && (
-        <div className="mb-5 flex items-start gap-3 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3">
+        <div className="mb-4 flex items-start gap-3 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3">
           <AlertCircle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
           <p className="text-sm text-red-300">{error}</p>
         </div>
@@ -263,33 +295,36 @@ function SignupForm({ onSwitch, claimToken }) {
           )}
         </div>
 
-        <p className="text-xs text-slate-500 bg-white/5 border border-white/10 rounded-xl px-4 py-3 leading-relaxed">
-          If a club has already invited you, your profile will be linked automatically after you sign up.
-        </p>
+        {/* Club fields */}
+        {isClub && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Club / team name</label>
+              <input required value={form.club_name} onChange={set('club_name')} className={inputCls} placeholder="Brisbane FC" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Primary sport</label>
+              <select value={form.sport} onChange={set('sport')} className={inputCls + ' bg-slate-800 cursor-pointer'}>
+                {SPORTS.map(s => <option key={s.value} value={s.value}>{s.emoji} {s.label}</option>)}
+              </select>
+            </div>
+          </>
+        )}
+
+        {role === 'athlete' && (
+          <p className="text-xs text-slate-500 bg-white/5 border border-white/10 rounded-xl px-4 py-3 leading-relaxed">
+            If a club has already invited you, your profile will be linked automatically after you sign up.
+          </p>
+        )}
 
         <button type="submit" disabled={loading}
-          className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed py-3.5 text-sm font-bold transition-all shadow-lg shadow-emerald-500/25 mt-2">
+          className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed py-3.5 text-sm font-bold transition-all shadow-lg shadow-emerald-500/25">
           {loading
             ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />Creating account…</span>
-            : <span className="flex items-center justify-center gap-2"><CheckCircle className="h-4 w-4" />Create account</span>}
+            : <span className="flex items-center justify-center gap-2"><CheckCircle className="h-4 w-4" />{isClub ? 'Create club & account' : 'Create account'}</span>}
         </button>
         <p className="text-center text-xs text-slate-500">By registering you agree to our terms of service.</p>
       </form>
-
-      {/* Club manager callout */}
-      <div className="mt-5 rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3.5">
-        <p className="text-xs font-semibold text-slate-300 mb-0.5">Managing a club?</p>
-        <p className="text-xs text-slate-500 leading-relaxed">
-          Find your club in the{' '}
-          <Link to="/clubs" onClick={() => {}} className="text-emerald-400 hover:text-emerald-300 font-semibold">
-            club directory
-          </Link>{' '}
-          and submit a claim request, or contact us at{' '}
-          <a href="mailto:renatoleite.log@gmail.com" className="text-emerald-400 hover:text-emerald-300 font-semibold">
-            renatoleite.log@gmail.com
-          </a>
-        </p>
-      </div>
 
       <p className="text-center text-sm text-slate-500 mt-5">
         Already registered?{' '}
