@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 use App\Models\User;
 use App\Models\Athlete;
+use App\Models\Club;
 use App\Models\Notification;
 use App\Services\MailService;
 
@@ -17,41 +18,71 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $data = $request->validate([
-            'email'     => 'required|email|unique:users',
-            'password'  => 'required|min:6',
-            'full_name' => 'required|string',
+            'email'      => 'required|email|unique:users',
+            'password'   => 'required|min:6',
+            'full_name'  => 'required|string',
+            'role'       => 'nullable|in:athlete,parent,club_admin',
+            'club_name'  => 'required_if:role,club_admin|nullable|string|max:255',
+            'sport'      => 'nullable|string',
+            'city'       => 'nullable|string|max:100',
+            'state'      => 'nullable|string|max:100',
         ]);
+
+        $role   = $data['role'] ?? 'athlete';
+        $clubId = null;
+
+        if ($role === 'club_admin') {
+            $baseSlug = Str::slug($data['club_name']);
+            $slug = $baseSlug;
+            $i    = 1;
+            while (Club::where('slug', $slug)->exists()) {
+                $slug = $baseSlug . '-' . $i++;
+            }
+
+            $club   = Club::create([
+                'id'         => (string) Str::uuid(),
+                'name'       => $data['club_name'],
+                'sport'      => $data['sport'] ?? 'soccer',
+                'city'       => $data['city']  ?? null,
+                'state'      => $data['state'] ?? null,
+                'slug'       => $slug,
+                'is_claimed' => true,
+            ]);
+            $clubId = $club->id;
+        }
 
         $user = User::create([
             'id'            => (string) Str::uuid(),
-            'club_id'       => null,
+            'club_id'       => $clubId,
             'email'         => $data['email'],
             'password_hash' => Hash::make($data['password']),
             'full_name'     => $data['full_name'],
-            'role'          => 'athlete',
+            'role'          => $role,
         ]);
 
-        // Auto-link any pending club invites sent to this email before they had an account
-        $pending = Athlete::where('invite_email', $data['email'])
-            ->whereNull('user_id')
-            ->where('invite_status', 'pending')
-            ->with('club:id,name')
-            ->get();
+        // Auto-link pending club invites for athletes
+        if ($role === 'athlete') {
+            $pending = Athlete::where('invite_email', $data['email'])
+                ->whereNull('user_id')
+                ->where('invite_status', 'pending')
+                ->with('club:id,name')
+                ->get();
 
-        foreach ($pending as $athlete) {
-            $athlete->user_id      = $user->id;
-            $athlete->invite_token = null;
-            $athlete->save();
+            foreach ($pending as $athlete) {
+                $athlete->user_id      = $user->id;
+                $athlete->invite_token = null;
+                $athlete->save();
 
-            Notification::create([
-                'id'      => (string) Str::uuid(),
-                'user_id' => $user->id,
-                'title'   => '🏟️ ' . ($athlete->club->name ?? 'A club') . ' added you to their roster',
-                'body'    => 'Accept to join their team and see your development pathway, sessions, and milestones.',
-                'link'    => '/dashboard',
-                'is_read' => false,
-                'at'      => now()->toDateTimeString(),
-            ]);
+                Notification::create([
+                    'id'      => (string) Str::uuid(),
+                    'user_id' => $user->id,
+                    'title'   => '🏟️ ' . ($athlete->club->name ?? 'A club') . ' added you to their roster',
+                    'body'    => 'Accept to join their team and see your development pathway, sessions, and milestones.',
+                    'link'    => '/dashboard',
+                    'is_read' => false,
+                    'at'      => now()->toDateTimeString(),
+                ]);
+            }
         }
 
         $token = JWTAuth::fromUser($user);

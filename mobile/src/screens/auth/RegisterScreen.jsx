@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuth } from '../../contexts/AuthContext'
+import { SPORTS, STATES } from '../../lib/constants'
 
 // ── dark-theme palette (matches web slate-950 auth) ───────────────────────────
 const C = {
@@ -46,22 +47,32 @@ function strengthInfo(pw) {
   return             { label: 'Strong', color: '#10b981', pct: 1.0 }
 }
 
+const ROLE_OPTIONS = [
+  { value: 'club_admin', label: 'Club / Team Manager', icon: 'shield-outline' },
+  { value: 'athlete',    label: 'Athlete',             icon: 'barbell-outline' },
+  { value: 'parent',     label: 'Parent / Guardian',   icon: 'people-outline'  },
+]
+
 export default function RegisterScreen({ navigation }) {
   const { register } = useAuth()
 
-  const emailRef = useRef(null)
-  const pwRef    = useRef(null)
+  const emailRef    = useRef(null)
+  const pwRef       = useRef(null)
+  const clubRef     = useRef(null)
 
-  const [fullName, setFullName] = useState('')
-  const [email,    setEmail]    = useState('')
-  const [password, setPassword] = useState('')
-  const [showPw,   setShowPw]   = useState(false)
-  const [role,     setRole]     = useState('athlete')
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState('')
+  const [fullName,  setFullName]  = useState('')
+  const [email,     setEmail]     = useState('')
+  const [password,  setPassword]  = useState('')
+  const [showPw,    setShowPw]    = useState(false)
+  const [role,      setRole]      = useState('club_admin')
+  const [clubName,  setClubName]  = useState('')
+  const [sport,     setSport]     = useState('soccer')
+  const [loading,   setLoading]   = useState(false)
+  const [error,     setError]     = useState('')
 
   const strength = strengthInfo(password)
   const hasError = !!error
+  const isClub   = role === 'club_admin'
 
   async function handleRegister() {
     if (!fullName.trim() || !email.trim() || !password) {
@@ -72,14 +83,22 @@ export default function RegisterScreen({ navigation }) {
       setError('Password must be at least 6 characters.')
       return
     }
+    if (isClub && !clubName.trim()) {
+      setError('Club / team name is required.')
+      return
+    }
     setError('')
     setLoading(true)
     try {
       await register({
         full_name: fullName.trim(),
-        email: email.trim().toLowerCase(),
+        email:     email.trim().toLowerCase(),
         password,
         role,
+        ...(isClub && {
+          club_name: clubName.trim(),
+          sport,
+        }),
       })
     } catch (e) {
       setError(
@@ -95,7 +114,6 @@ export default function RegisterScreen({ navigation }) {
 
   return (
     <SafeAreaView style={s.safe}>
-      {/* Subtle background glow */}
       <View style={s.glow} pointerEvents="none" />
 
       <KeyboardAvoidingView
@@ -113,8 +131,8 @@ export default function RegisterScreen({ navigation }) {
               <Ionicons name="flash" size={26} color="#fff" />
             </View>
             <Text style={s.brandName}>PathwayHQ</Text>
-            <Text style={s.heading}>Create your account</Text>
-            <Text style={s.subtitle}>Join your club on PathwayHQ</Text>
+            <Text style={s.heading}>{isClub ? 'Register your club' : 'Create your account'}</Text>
+            <Text style={s.subtitle}>Free forever · No credit card needed</Text>
           </View>
 
           {/* Card */}
@@ -126,6 +144,31 @@ export default function RegisterScreen({ navigation }) {
                 <Text style={s.errorText}>{error}</Text>
               </View>
             )}
+
+            {/* Role picker */}
+            <View style={s.field}>
+              <Text style={s.label}>I am registering as...</Text>
+              <View style={s.roleRow}>
+                {ROLE_OPTIONS.map(opt => (
+                  <TouchableOpacity
+                    key={opt.value}
+                    style={[s.roleBtn, role === opt.value && s.roleBtnActive]}
+                    onPress={() => setRole(opt.value)}
+                    activeOpacity={0.75}
+                  >
+                    <Ionicons
+                      name={opt.icon}
+                      size={18}
+                      color={role === opt.value ? C.primary : C.textFaint}
+                      style={{ marginBottom: 4 }}
+                    />
+                    <Text style={[s.roleBtnText, role === opt.value && s.roleBtnTextActive]}>
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
 
             {/* Section divider */}
             <View style={s.dividerRow}>
@@ -180,8 +223,8 @@ export default function RegisterScreen({ navigation }) {
                   placeholder="Min. 6 characters"
                   placeholderTextColor={C.placeholder}
                   secureTextEntry={!showPw}
-                  returnKeyType="done"
-                  onSubmitEditing={handleRegister}
+                  returnKeyType={isClub ? 'next' : 'done'}
+                  onSubmitEditing={() => isClub ? clubRef.current?.focus() : handleRegister()}
                 />
                 <TouchableOpacity
                   style={s.eyeBtn}
@@ -195,7 +238,6 @@ export default function RegisterScreen({ navigation }) {
                   />
                 </TouchableOpacity>
               </View>
-              {/* Strength bar */}
               {strength && (
                 <View style={s.strengthWrap}>
                   <View style={s.strengthTrack}>
@@ -206,34 +248,52 @@ export default function RegisterScreen({ navigation }) {
               )}
             </View>
 
-            {/* Role picker */}
-            <View style={s.field}>
-              <Text style={s.label}>I am a...</Text>
-              <View style={s.roleRow}>
-                {[
-                  { value: 'athlete', label: 'Athlete', icon: 'barbell-outline' },
-                  { value: 'parent',  label: 'Parent / Guardian', icon: 'people-outline' },
-                ].map(opt => (
-                  <TouchableOpacity
-                    key={opt.value}
-                    style={[s.roleBtn, role === opt.value && s.roleBtnActive]}
-                    onPress={() => setRole(opt.value)}
-                    activeOpacity={0.75}
-                  >
-                    <Ionicons
-                      name={opt.icon}
-                      size={18}
-                      color={role === opt.value ? C.primary : C.textFaint}
-                      style={{ marginBottom: 4 }}
-                    />
-                    <Text style={[s.roleBtnText, role === opt.value && s.roleBtnTextActive]}>
-                      {opt.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <Text style={s.roleNote}>Coaches and managers are set up by club administrators.</Text>
-            </View>
+            {/* Club details — only for club_admin */}
+            {isClub && (
+              <>
+                <View style={s.dividerRow}>
+                  <View style={s.dividerLine} />
+                  <Text style={s.dividerLabel}>CLUB DETAILS</Text>
+                  <View style={s.dividerLine} />
+                </View>
+
+                <View style={s.field}>
+                  <Text style={s.label}>Club / team name</Text>
+                  <TextInput
+                    ref={clubRef}
+                    style={[s.input, hasError && !clubName && s.inputError]}
+                    value={clubName}
+                    onChangeText={setClubName}
+                    placeholder="Brisbane FC"
+                    placeholderTextColor={C.placeholder}
+                    autoCapitalize="words"
+                    autoCorrect={false}
+                    returnKeyType="done"
+                    onSubmitEditing={handleRegister}
+                  />
+                </View>
+
+                <View style={s.field}>
+                  <Text style={s.label}>Primary sport</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 4 }}>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      {SPORTS.slice(0, 8).map(sp => (
+                        <TouchableOpacity
+                          key={sp.value}
+                          onPress={() => setSport(sp.value)}
+                          style={[s.sportChip, sport === sp.value && s.sportChipActive]}
+                          activeOpacity={0.75}
+                        >
+                          <Text style={[s.sportChipText, sport === sp.value && s.sportChipTextActive]}>
+                            {sp.emoji} {sp.label}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </ScrollView>
+                </View>
+              </>
+            )}
 
             {/* Submit */}
             <TouchableOpacity
@@ -244,7 +304,9 @@ export default function RegisterScreen({ navigation }) {
             >
               {loading
                 ? <ActivityIndicator color="#fff" size="small" />
-                : <Text style={s.submitBtnText}>Create account</Text>}
+                : <Text style={s.submitBtnText}>
+                    {isClub ? 'Create club & account' : 'Create account'}
+                  </Text>}
             </TouchableOpacity>
           </View>
 
@@ -279,7 +341,6 @@ const s = StyleSheet.create({
     paddingVertical: 40,
   },
 
-  // Logo / heading
   logoWrap: { alignItems: 'center', marginBottom: 32 },
   logoBox: {
     width: 56, height: 56, borderRadius: 16,
@@ -297,7 +358,6 @@ const s = StyleSheet.create({
   heading:  { fontSize: 26, fontWeight: '900', color: C.text, marginBottom: 6 },
   subtitle: { fontSize: 14, color: C.textMuted },
 
-  // Card
   card: {
     borderRadius: 20,
     backgroundColor: C.card,
@@ -307,7 +367,6 @@ const s = StyleSheet.create({
     marginBottom: 24,
   },
 
-  // Error
   errorBanner: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 10,
     backgroundColor: C.errBg, borderWidth: 1, borderColor: C.errBorder,
@@ -316,7 +375,6 @@ const s = StyleSheet.create({
   },
   errorText: { flex: 1, fontSize: 13, color: C.errText, lineHeight: 18 },
 
-  // Divider
   dividerRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20,
   },
@@ -326,7 +384,6 @@ const s = StyleSheet.create({
     letterSpacing: 1.2,
   },
 
-  // Fields
   field:    { marginBottom: 18 },
   label:    { fontSize: 13, fontWeight: '600', color: '#cbd5e1', marginBottom: 8 },
 
@@ -345,7 +402,6 @@ const s = StyleSheet.create({
     top: 0, bottom: 0, justifyContent: 'center',
   },
 
-  // Strength bar
   strengthWrap: {
     flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8,
   },
@@ -357,8 +413,7 @@ const s = StyleSheet.create({
   strengthFill: { height: '100%', borderRadius: 2 },
   strengthLabel: { fontSize: 11, fontWeight: '600', minWidth: 52, textAlign: 'right' },
 
-  // Role
-  roleRow: { flexDirection: 'row', gap: 12 },
+  roleRow: { flexDirection: 'row', gap: 10 },
   roleBtn: {
     flex: 1, paddingVertical: 14,
     borderRadius: 12, borderWidth: 1.5,
@@ -370,13 +425,22 @@ const s = StyleSheet.create({
     borderColor: C.roleBdrActive,
     backgroundColor: C.roleActive,
   },
-  roleBtnText: { fontSize: 13, fontWeight: '600', color: C.textFaint },
+  roleBtnText:       { fontSize: 11, fontWeight: '600', color: C.textFaint, textAlign: 'center' },
   roleBtnTextActive: { color: C.primary },
-  roleNote: {
-    fontSize: 11, color: C.textFaint, marginTop: 10, fontStyle: 'italic', lineHeight: 15,
-  },
 
-  // Submit
+  sportChip: {
+    paddingHorizontal: 14, paddingVertical: 9,
+    borderRadius: 20, borderWidth: 1.5,
+    borderColor: C.roleBorder,
+    backgroundColor: C.roleInactive,
+  },
+  sportChipActive: {
+    borderColor: C.roleBdrActive,
+    backgroundColor: C.roleActive,
+  },
+  sportChipText:       { fontSize: 13, color: C.textFaint, fontWeight: '600' },
+  sportChipTextActive: { color: C.primary },
+
   submitBtn: {
     backgroundColor: C.primary,
     borderRadius: 12, paddingVertical: 15,
@@ -388,7 +452,6 @@ const s = StyleSheet.create({
   submitBtnDisabled: { opacity: 0.55 },
   submitBtnText:     { color: '#fff', fontSize: 15, fontWeight: '700' },
 
-  // Footer
   footer: {
     flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
   },
