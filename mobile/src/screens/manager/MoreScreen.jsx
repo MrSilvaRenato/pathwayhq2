@@ -1,7 +1,9 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useNavigation } from '@react-navigation/native'
+import { useState } from 'react'
+import { useAuth } from '../../contexts/AuthContext'
 import { colors, font, spacing, radius } from '../../lib/theme'
 
 const SECTIONS = [
@@ -39,6 +41,21 @@ const SECTIONS = [
 
 export default function MoreScreen({ pendingCount = 0 }) {
   const navigation = useNavigation()
+  const { logout } = useAuth()
+  const [signingOut, setSigningOut] = useState(false)
+
+  function handleSignOut() {
+    Alert.alert('Sign out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign out', style: 'destructive',
+        onPress: async () => {
+          setSigningOut(true)
+          try { await logout() } finally { setSigningOut(false) }
+        },
+      },
+    ])
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
@@ -69,6 +86,16 @@ export default function MoreScreen({ pendingCount = 0 }) {
             </View>
           </View>
         ))}
+
+        <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut} disabled={signingOut} activeOpacity={0.8}>
+          {signingOut
+            ? <ActivityIndicator color={colors.error} size="small" />
+            : <>
+                <Ionicons name="log-out-outline" size={18} color={colors.error} />
+                <Text style={styles.signOutText}>Sign out</Text>
+              </>}
+        </TouchableOpacity>
+
         <View style={{ height: spacing.xl }} />
       </ScrollView>
     </SafeAreaView>

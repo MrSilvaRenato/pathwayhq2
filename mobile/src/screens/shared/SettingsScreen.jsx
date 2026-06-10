@@ -108,7 +108,7 @@ function DropdownPicker({ options, value, onChange, placeholder = 'Select…' })
 }
 
 export default function SettingsScreen() {
-  const { user, isAdmin, logout, refreshUser } = useAuth()
+  const { user, isAdmin, refreshUser } = useAuth()
   const isManager = user?.role === 'club_admin'
   const isAthlete = user?.role === 'athlete'
 
@@ -136,7 +136,6 @@ export default function SettingsScreen() {
   const [leavingClub,    setLeavingClub]    = useState(false)
   const insets = useSafeAreaInsets()
 
-  const [signingOut, setSigningOut] = useState(false)
   const [connectStatus, setConnectStatus] = useState(null)
   const appVersion = Constants.expoConfig?.version ?? Constants.manifest?.version ?? '1.0.0'
 
@@ -283,19 +282,6 @@ export default function SettingsScreen() {
     } finally {
       setLeavingClub(false)
     }
-  }
-
-  async function handleLogout() {
-    Alert.alert('Sign out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign out', style: 'destructive',
-        onPress: async () => {
-          setSigningOut(true)
-          try { await logout() } finally { setSigningOut(false) }
-        },
-      },
-    ])
   }
 
   const roleLabel = ROLES[user?.role] ?? user?.role ?? 'User'
@@ -825,21 +811,6 @@ export default function SettingsScreen() {
           </View>
         </Modal>
 
-        {/* ── Sign out ───────────────────────────────────────────────────── */}
-        <View style={{ marginBottom: spacing.md }}>
-          <TouchableOpacity
-            style={styles.signOutBtn}
-            onPress={handleLogout}
-            disabled={signingOut}
-          >
-            {signingOut ? (
-              <ActivityIndicator color={colors.error} size="small" />
-            ) : (
-              <Text style={styles.signOutText}>Sign out</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-
         <Text style={styles.version}>PathwayHQ v{appVersion}</Text>
         <View style={{ height: spacing.xl }} />
       </ScrollView>
@@ -1077,12 +1048,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   leaveCancelBtnText: { color: colors.textSecondary, fontWeight: '600', fontSize: font.base },
-
-  signOutBtn: {
-    borderWidth: 1.5, borderColor: colors.error, borderRadius: radius.md,
-    paddingVertical: 14, alignItems: 'center', backgroundColor: colors.surface,
-  },
-  signOutText: { color: colors.error, fontWeight: '700', fontSize: font.base },
 
   errorBanner: {
     backgroundColor: colors.errorLight ?? '#fef2f2', borderRadius: radius.sm,
