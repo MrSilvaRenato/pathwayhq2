@@ -291,7 +291,7 @@ function ClubDetailSheet({ club, onClose }) {
                   <Text style={sh.joinStatusText}>⏳ Join request pending review</Text>
                 </View>
               )}
-              {(joinStatus === 'approved' || joinStatus === 'member') && (
+              {joinStatus === 'member' && (
                 <View style={[sh.joinStatusRow, sh.joinStatusGreen]}>
                   <Ionicons name="checkmark-circle" size={16} color="#059669" />
                   <Text style={[sh.joinStatusText, { color: '#059669' }]}>You're a member</Text>
@@ -302,13 +302,13 @@ function ClubDetailSheet({ club, onClose }) {
                   <Text style={[sh.joinStatusText, { color: '#dc2626' }]}>Request declined</Text>
                 </View>
               )}
-              {joinStatus === null && !joinDone && !showJoinForm && (
+              {(joinStatus === null || joinStatus === 'approved') && !joinDone && !showJoinForm && (
                 <TouchableOpacity style={sh.joinBtn} onPress={() => setShowJoinForm(true)} activeOpacity={0.85}>
                   <Ionicons name="person-add-outline" size={18} color="#fff" />
                   <Text style={sh.joinBtnText}>Request to join</Text>
                 </TouchableOpacity>
               )}
-              {joinStatus === null && showJoinForm && !joinDone && (
+              {(joinStatus === null || joinStatus === 'approved') && showJoinForm && !joinDone && (
                 <View>
                   <View style={sh.joinUserRow}>
                     <View style={sh.joinAvatar}>
