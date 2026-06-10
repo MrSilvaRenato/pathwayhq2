@@ -110,6 +110,7 @@ function DropdownPicker({ options, value, onChange, placeholder = 'Select…' })
 export default function SettingsScreen() {
   const { user, isAdmin, logout, refreshUser } = useAuth()
   const isManager = user?.role === 'club_admin'
+  const isAthlete = user?.role === 'athlete'
 
   // ── Profile state ──────────────────────────────────────────────────────────
   const [profile, setProfile] = useState({
@@ -137,10 +138,10 @@ export default function SettingsScreen() {
   const appVersion = Constants.expoConfig?.version ?? Constants.manifest?.version ?? '1.0.0'
 
   useEffect(() => {
-    if (!isManager) {
+    if (isAthlete) {
       api.get('/athletes/me').then(r => setAthleteProfile(r.data ?? {})).catch(() => {})
     }
-  }, [isManager])
+  }, [isAthlete])
 
   useEffect(() => {
     if (isManager) {
@@ -297,12 +298,12 @@ export default function SettingsScreen() {
         <View style={styles.profileHeader}>
           <TouchableOpacity
             style={styles.avatarWrap}
-            onPress={!isManager ? handleAvatarUpload : undefined}
-            disabled={isManager || uploadingAvatar}
-            activeOpacity={isManager ? 1 : 0.75}
+            onPress={isAthlete ? handleAvatarUpload : undefined}
+            disabled={!isAthlete || uploadingAvatar}
+            activeOpacity={isAthlete ? 0.75 : 1}
           >
             <Avatar name={user?.full_name} url={athleteProfile.avatar_url} size="xl" />
-            {!isManager && (
+            {isAthlete && (
               <View style={styles.cameraBtn}>
                 {uploadingAvatar
                   ? <ActivityIndicator size="small" color="#fff" />
@@ -312,6 +313,11 @@ export default function SettingsScreen() {
           </TouchableOpacity>
           <Text style={styles.profileName}>{user?.full_name || 'Your account'}</Text>
           <Badge label={roleLabel} color="green" />
+          {isAthlete && (
+            <Text style={styles.changePhotoHint}>
+              {uploadingAvatar ? 'Uploading…' : 'Tap photo to change'}
+            </Text>
+          )}
         </View>
 
         {/* ── Profile section ────────────────────────────────────────────── */}
@@ -323,6 +329,31 @@ export default function SettingsScreen() {
               </Text>
             </View>
           ) : null}
+
+          {/* Photo row — athletes only */}
+          {isAthlete && (
+            <>
+              <SubHeading icon="person-circle-outline" label="Profile photo" />
+              <TouchableOpacity
+                style={styles.photoRow}
+                onPress={handleAvatarUpload}
+                disabled={uploadingAvatar}
+                activeOpacity={0.75}
+              >
+                <Avatar name={user?.full_name} url={athleteProfile.avatar_url} size="lg" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.photoRowTitle}>
+                    {athleteProfile.avatar_url ? 'Change profile photo' : 'Add profile photo'}
+                  </Text>
+                  <Text style={styles.photoRowDesc}>PNG or JPG · max 5 MB · square recommended</Text>
+                </View>
+                {uploadingAvatar
+                  ? <ActivityIndicator size="small" color={colors.primary} />
+                  : <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />}
+              </TouchableOpacity>
+              <View style={styles.divider} />
+            </>
+          )}
 
           <Text style={styles.label}>Full name</Text>
           <TextInput
@@ -772,6 +803,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   profileName: { fontSize: font.lg, fontWeight: '700', color: colors.text },
+  changePhotoHint: { fontSize: font.xs, color: colors.textMuted, marginTop: 2 },
 
   avatarWrap: { position: 'relative' },
   cameraBtn: {
@@ -781,6 +813,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
     borderWidth: 2, borderColor: colors.surface,
   },
+
+  photoRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    paddingVertical: spacing.sm, marginBottom: spacing.sm,
+  },
+  photoRowTitle: { fontSize: font.sm, fontWeight: '600', color: colors.text },
+  photoRowDesc:  { fontSize: font.xs, color: colors.textMuted, marginTop: 3 },
 
   sectionCard: {
     backgroundColor: colors.surface,
