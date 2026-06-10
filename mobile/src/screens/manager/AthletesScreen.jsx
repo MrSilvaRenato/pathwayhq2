@@ -210,7 +210,7 @@ function AddModal({ onClose, onSaved, onUpgrade }) {
   return (
     <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }} edges={['top', 'bottom']}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'bottom']}>
           <View style={s.modalHeader}>
             <Text style={s.modalTitle}>Add athlete</Text>
             <TouchableOpacity onPress={onClose} style={s.modalClose} activeOpacity={0.7}>

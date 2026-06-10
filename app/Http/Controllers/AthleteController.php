@@ -9,9 +9,8 @@ use App\Models\Club;
 use App\Models\Milestone;
 use App\Models\User;
 use App\Models\Notification;
-use App\Mail\AthleteInvite;
-use Illuminate\Support\Facades\Mail;
 use App\Services\PlanService;
+use App\Services\MailService;
 
 class AthleteController extends Controller
 {
@@ -178,19 +177,20 @@ class AthleteController extends Controller
                     'is_read' => false,
                     'at'      => now()->toDateTimeString(),
                 ]);
+
+                MailService::athleteInviteExisting($existingUser, $club->name);
             } else {
                 // New user — send email invite to create account & claim profile
                 $inviteToken  = Str::random(48);
                 $status       = 'invited';
                 $inviteStatus = 'pending';
 
-                Mail::to($inviteEmail)->send(
-                    new AthleteInvite(
-                        $data['first_name'],
-                        $data['last_name'],
-                        $club->name,
-                        $inviteToken
-                    )
+                MailService::athleteInviteNew(
+                    $inviteEmail,
+                    $data['first_name'],
+                    $data['last_name'],
+                    $club->name,
+                    $inviteToken
                 );
             }
         }

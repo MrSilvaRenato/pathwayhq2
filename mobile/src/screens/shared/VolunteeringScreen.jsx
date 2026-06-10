@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   View, Text, StyleSheet, FlatList, ActivityIndicator,
   TouchableOpacity, RefreshControl, Alert, Modal,
-  TextInput, ScrollView, Linking, Platform,
+  TextInput, ScrollView, Linking, Platform, KeyboardAvoidingView,
 } from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -188,6 +188,7 @@ function AddModal({ visible, onClose, onSave }) {
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <SafeAreaView style={s.modalSafe} edges={['top', 'bottom']}>
         {/* Header */}
         <View style={s.modalHeader}>
@@ -302,6 +303,7 @@ function AddModal({ visible, onClose, onSave }) {
           </View>
         </ScrollView>
       </SafeAreaView>
+      </KeyboardAvoidingView>
     </Modal>
   )
 }
@@ -769,7 +771,7 @@ const s = StyleSheet.create({
   },
 
   // Add modal
-  modalSafe:          { flex: 1, backgroundColor: '#fff' },
+  modalSafe:          { flex: 1, backgroundColor: colors.background },
   modalHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: spacing.md, paddingVertical: 14,

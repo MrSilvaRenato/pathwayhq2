@@ -645,6 +645,68 @@ HTML
         }
     }
 
+    /**
+     * Invite a brand-new user (no account yet) to claim their athlete profile.
+     */
+    public static function athleteInviteNew(string $email, string $firstName, string $lastName, string $clubName, string $token): void
+    {
+        try {
+            $name        = htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8');
+            $club        = htmlspecialchars($clubName, ENT_QUOTES, 'UTF-8');
+            $claimUrl    = self::appUrl('/claim/' . $token);
+            $escapedUrl  = htmlspecialchars($claimUrl, ENT_QUOTES, 'UTF-8');
+            $fullName    = trim($firstName . ' ' . $lastName);
+            $subject     = "You've been added to {$clubName} on PathwayHQ";
+
+            $html = self::layout(
+                "Claim your athlete profile at {$clubName}",
+                <<<HTML
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#111827;">You've been added to {$club}!</p>
+<p style="margin:0 0 16px;color:#4b5563;">Hi {$name},</p>
+<p style="margin:0 0 16px;color:#4b5563;"><strong>{$club}</strong> has created an athlete profile for you on PathwayHQ — the platform they use to manage athlete development, training calendars, milestones, and more.</p>
+<p style="margin:0 0 16px;color:#4b5563;">Click the button below to create your free account and claim your profile. Once claimed, you'll be able to see your development pathway, upcoming sessions, and any milestones your coaches log for you.</p>
+HTML
+                . self::button('Claim my athlete profile →', $claimUrl)
+                . <<<HTML
+<p style="margin:16px 0 0;font-size:13px;color:#9ca3af;">If the button doesn't work, copy and paste this link into your browser:<br/><a href="{$escapedUrl}" style="color:#10b981;">{$escapedUrl}</a></p>
+<p style="margin:8px 0 0;font-size:13px;color:#9ca3af;">If you weren't expecting this email, you can safely ignore it. No account will be created without your action.</p>
+HTML
+            );
+
+            self::send($email, $fullName, $subject, $html);
+        } catch (\Throwable $e) {
+            Log::error('[MailService] athleteInviteNew failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Notify an existing PathwayHQ user that a club wants to add them as an athlete.
+     */
+    public static function athleteInviteExisting(User $user, string $clubName): void
+    {
+        try {
+            $name    = htmlspecialchars($user->full_name ? explode(' ', $user->full_name)[0] : 'there', ENT_QUOTES, 'UTF-8');
+            $club    = htmlspecialchars($clubName, ENT_QUOTES, 'UTF-8');
+            $subject = "{$clubName} wants to add you as an athlete";
+
+            $html = self::layout(
+                "{$clubName} wants to add you to their roster",
+                <<<HTML
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#111827;">You've been invited to join a club!</p>
+<p style="margin:0 0 16px;color:#4b5563;">Hi {$name},</p>
+<p style="margin:0 0 16px;color:#4b5563;"><strong>{$club}</strong> has sent you an invitation to join their roster on PathwayHQ as an athlete.</p>
+<p style="margin:0 0 16px;color:#4b5563;">Log in to your dashboard to accept or decline — once accepted, you'll be able to see your development pathway, upcoming sessions, and milestones your coaches log for you.</p>
+<p style="margin:0;color:#4b5563;">If you weren't expecting this, you can safely decline the invitation from your dashboard.</p>
+HTML
+                . self::button('View my dashboard', self::appUrl('/dashboard'))
+            );
+
+            self::send($user->email, $user->full_name ?? $user->email, $subject, $html);
+        } catch (\Throwable $e) {
+            Log::error('[MailService] athleteInviteExisting failed', ['error' => $e->getMessage()]);
+        }
+    }
+
     public static function passwordReset(User $user, string $resetUrl): void
     {
         try {
