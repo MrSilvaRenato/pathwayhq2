@@ -36,6 +36,7 @@ class CoachController extends Controller
             'email'     => 'required|email',
             'full_name' => 'required|string|max:100',
         ]);
+        $data['email'] = strtolower(trim($data['email']));
 
         $myClubId = $request->user()->club_id;
         $existing = User::where('email', $data['email'])->first();

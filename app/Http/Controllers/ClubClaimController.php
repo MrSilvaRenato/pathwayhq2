@@ -23,7 +23,7 @@ class ClubClaimController extends Controller
         }
 
         $alreadyPending = ClubClaim::where('club_id', $club->id)
-            ->where('email', $request->input('email'))
+            ->where('email', strtolower(trim($request->input('email', ''))))
             ->where('status', 'pending')
             ->exists();
 
@@ -32,7 +32,7 @@ class ClubClaimController extends Controller
         }
 
         // Prevent users who already manage a different club from submitting
-        $existingManager = User::where('email', $request->input('email'))
+        $existingManager = User::where('email', strtolower(trim($request->input('email', ''))))
             ->whereNotNull('club_id')
             ->where('role', 'club_admin')
             ->first();
@@ -51,6 +51,7 @@ class ClubClaimController extends Controller
             'role_at_club' => 'nullable|string|max:100',
             'message'      => 'nullable|string|max:1000',
         ]);
+        $data['email'] = strtolower(trim($data['email']));
 
         $claim = ClubClaim::create(array_merge($data, [
             'id'      => (string) Str::uuid(),

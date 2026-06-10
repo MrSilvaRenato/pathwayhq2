@@ -30,6 +30,11 @@ class User extends Authenticatable implements JWTSubject
     public function club()    { return $this->belongsTo(Club::class); }
     public function athlete() { return $this->hasOne(Athlete::class); }
 
+    public function setEmailAttribute(string $value): void
+    {
+        $this->attributes['email'] = strtolower(trim($value));
+    }
+
     /**
      * Resolve the club_id for any role.
      * club_admin / coach → club_id on users table.

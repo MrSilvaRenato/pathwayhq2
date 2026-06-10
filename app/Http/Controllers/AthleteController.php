@@ -154,7 +154,7 @@ class AthleteController extends Controller
         $club    = $request->user()->club;
         $userId  = null;
         $inviteToken = null;
-        $inviteEmail = $data['invite_email'] ?? null;
+        $inviteEmail = $data['invite_email'] ? strtolower(trim($data['invite_email'])) : null;
         $status  = 'no_invite';
 
         $inviteStatus = 'accepted'; // default for no-email adds

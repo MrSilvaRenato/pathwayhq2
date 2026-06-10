@@ -107,7 +107,7 @@ class AdminController extends Controller
 
         $update = [];
         if (array_key_exists('full_name', $data)) $update['full_name'] = $data['full_name'];
-        if (array_key_exists('email',     $data)) $update['email']     = $data['email'];
+        if (array_key_exists('email',     $data)) $update['email']     = strtolower(trim($data['email']));
         if (array_key_exists('role',      $data)) $update['role']      = $data['role'];
         if (array_key_exists('club_id',   $data)) $update['club_id']   = $data['club_id'];
 

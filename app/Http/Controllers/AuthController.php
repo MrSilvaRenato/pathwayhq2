@@ -17,6 +17,8 @@ class AuthController extends Controller
 {
     public function register(Request $request)
     {
+        $request->merge(['email' => strtolower(trim($request->input('email', '')))]);
+
         $data = $request->validate([
             'email'      => 'required|email|unique:users',
             'password'   => 'required|min:6',
@@ -100,6 +102,8 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
+        $credentials['email'] = strtolower(trim($credentials['email']));
+
         $user = User::where('email', $credentials['email'])->first();
 
         if (!$user || !Hash::check($credentials['password'], $user->password_hash)) {
@@ -128,6 +132,7 @@ class AuthController extends Controller
     public function forgotPassword(Request $request)
     {
         $data = $request->validate(['email' => 'required|email']);
+        $data['email'] = strtolower(trim($data['email']));
 
         $user = User::where('email', $data['email'])->first();
 
@@ -157,6 +162,7 @@ class AuthController extends Controller
             'token'    => 'required|string',
             'password' => 'required|min:6',
         ]);
+        $data['email'] = strtolower(trim($data['email']));
 
         $record = DB::table('password_reset_tokens')
             ->where('email', $data['email'])
@@ -190,7 +196,7 @@ class AuthController extends Controller
      */
     public function lookup(Request $request)
     {
-        $email = $request->query('email');
+        $email = strtolower(trim($request->query('email', '')));
         if (!$email) return response()->json(['found' => false]);
 
         $user = User::where('email', $email)->first();

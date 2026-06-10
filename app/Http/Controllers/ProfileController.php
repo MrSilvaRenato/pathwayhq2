@@ -60,7 +60,7 @@ class ProfileController extends Controller
         $oldEmail = $user->email;
 
         $user->full_name = $data['full_name'];
-        $user->email     = $data['email'];
+        $user->email     = strtolower(trim($data['email']));
         $user->phone     = $data['phone'] ?? $user->phone;
 
         if (!empty($data['password'])) {

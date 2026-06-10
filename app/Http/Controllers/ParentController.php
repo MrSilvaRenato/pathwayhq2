@@ -28,6 +28,7 @@ class ParentController extends Controller
             'email'     => 'required|email',
             'full_name' => 'required|string|max:100',
         ]);
+        $data['email'] = strtolower(trim($data['email']));
 
         $parentUser  = User::where('email', $data['email'])->first();
         $tempPassword = null;
