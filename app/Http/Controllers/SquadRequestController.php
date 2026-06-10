@@ -13,6 +13,8 @@ class SquadRequestController extends Controller
 {
     public function index(Request $request)
     {
+        if (!in_array($request->user()->role, ['club_admin', 'site_admin'])) abort(403);
+
         $clubId = $request->user()->club_id;
         if (!$clubId) return response()->json([]);
 
@@ -30,6 +32,8 @@ class SquadRequestController extends Controller
 
     public function approve(Request $request, $id)
     {
+        if (!in_array($request->user()->role, ['club_admin', 'site_admin'])) abort(403);
+
         $clubId = $request->user()->club_id;
         $sr     = SquadRequest::where('id', $id)
             ->where('club_id', $clubId)
@@ -66,6 +70,8 @@ class SquadRequestController extends Controller
 
     public function reject(Request $request, $id)
     {
+        if (!in_array($request->user()->role, ['club_admin', 'site_admin'])) abort(403);
+
         $clubId = $request->user()->club_id;
         $sr     = SquadRequest::where('id', $id)
             ->where('club_id', $clubId)

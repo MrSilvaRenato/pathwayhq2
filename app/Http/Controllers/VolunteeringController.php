@@ -315,6 +315,8 @@ class VolunteeringController extends Controller
 
     public function removeVolunteer(Request $request, $id, $userId)
     {
+        if (!in_array($request->user()->role, ['club_admin', 'site_admin'])) abort(403);
+
         $clubId = $request->user()->club_id;
 
         $volunteering = Volunteering::where('id', $id)
