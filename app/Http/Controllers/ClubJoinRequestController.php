@@ -133,6 +133,18 @@ class ClubJoinRequestController extends Controller
             ->where('user_id', $user->id)
             ->first();
 
+        // A previously-approved request is stale when the athlete has since left the club.
+        // Return null so the UI shows "Request to join" again (mirrors the re-request logic in store()).
+        if ($req?->status === 'approved') {
+            $stillActive = Athlete::where('user_id', $user->id)
+                ->where('club_id', $club->id)
+                ->where('is_active', true)
+                ->exists();
+            if (!$stillActive) {
+                return response()->json(['status' => null]);
+            }
+        }
+
         return response()->json(['status' => $req?->status ?? null]);
     }
 
