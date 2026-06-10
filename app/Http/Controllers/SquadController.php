@@ -56,6 +56,8 @@ class SquadController extends Controller
 
     public function store(Request $request)
     {
+        if (!in_array($request->user()->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
         $club = $request->user()->club;
         if ($err = PlanService::checkSquadLimit($club)) return $err;
 
@@ -71,6 +73,8 @@ class SquadController extends Controller
 
     public function update(Request $request, $id)
     {
+        if (!in_array($request->user()->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
         $data = $request->validate(['name' => 'required|string', 'description' => 'nullable|string']);
         Squad::where('id', $id)->where('club_id', $request->user()->club_id)->update($data);
         return response()->json(['ok' => true]);
@@ -78,12 +82,16 @@ class SquadController extends Controller
 
     public function destroy(Request $request, $id)
     {
+        if (!in_array($request->user()->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
         Squad::where('id', $id)->where('club_id', $request->user()->club_id)->delete();
         return response()->json(['ok' => true]);
     }
 
     public function addAthlete(Request $request, $id)
     {
+        if (!in_array($request->user()->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
         $data  = $request->validate(['athlete_id' => 'required|string']);
         $squad = Squad::where('id', $id)->where('club_id', $request->user()->club_id)->firstOrFail();
 
@@ -121,6 +129,8 @@ class SquadController extends Controller
 
     public function removeAthlete(Request $request, $id, $athleteId)
     {
+        if (!in_array($request->user()->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
         $squad = Squad::where('id', $id)->where('club_id', $request->user()->club_id)->firstOrFail();
         $squad->athletes()->detach($athleteId);
         return response()->json(['ok' => true]);

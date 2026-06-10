@@ -52,6 +52,8 @@ class AnnouncementController extends Controller
 
     public function store(Request $request)
     {
+        if (!in_array($request->user()->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
         $club = Club::find($request->user()->resolveClubId());
         if ($err = PlanService::checkAnnouncementLimit($club)) return $err;
 
@@ -120,6 +122,8 @@ class AnnouncementController extends Controller
 
     public function update(Request $request, $id)
     {
+        if (!in_array($request->user()->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
         $data = $request->validate([
             'title'     => 'required|string|max:200',
             'body'      => 'required|string',
@@ -138,6 +142,8 @@ class AnnouncementController extends Controller
 
     public function destroy(Request $request, $id)
     {
+        if (!in_array($request->user()->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
         Announcement::where('id', $id)
             ->where('club_id', $request->user()->resolveClubId())
             ->delete();

@@ -90,6 +90,8 @@ class VolunteeringController extends Controller
 
     public function store(Request $request)
     {
+        if (!in_array($request->user()->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
         $club = Club::find($request->user()->club_id);
         if ($err = PlanService::checkFeature($club, 'volunteering')) return $err;
 
@@ -140,6 +142,8 @@ class VolunteeringController extends Controller
 
     public function update(Request $request, $id)
     {
+        if (!in_array($request->user()->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
         $data = $request->validate([
             'title'       => 'required|string',
             'description' => 'nullable|string',
@@ -174,6 +178,8 @@ class VolunteeringController extends Controller
 
     public function destroy(Request $request, $id)
     {
+        if (!in_array($request->user()->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
         $volunteering = Volunteering::where('id', $id)
             ->where('club_id', $request->user()->club_id)
             ->firstOrFail();
