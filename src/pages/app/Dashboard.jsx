@@ -637,7 +637,7 @@ function SquadRequestModal({ onClose }) {
   )
 }
 
-function AthleteDashboard({ user }) {
+function AthleteDashboard({ user, isParent = false }) {
   const [profile,       setProfile]      = useState(null)
   const [milestones,    setMilestones]   = useState([])
   const [events,        setEvents]       = useState([])
@@ -888,8 +888,12 @@ function AthleteDashboard({ user }) {
         ) : (
           <div className="text-center py-2">
             <Dumbbell className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-            <p className="text-sm font-semibold text-slate-500">No profile linked</p>
-            <p className="text-xs text-slate-400 mt-1">Ask your coach to add you</p>
+            <p className="text-sm font-semibold text-slate-500">
+              {isParent ? 'No athletes linked yet' : 'No profile linked'}
+            </p>
+            <p className="text-xs text-slate-400 mt-1">
+              {isParent ? 'Ask your club coach to link you to your child\'s profile' : 'Ask your coach to add you'}
+            </p>
           </div>
         )}
       </div>
@@ -1085,7 +1089,7 @@ export default function Dashboard() {
       </div>
 
       {(isAthlete || isParent)
-        ? <AthleteDashboard user={user} />
+        ? <AthleteDashboard user={user} isParent={isParent} />
         : <ClubDashboard user={user} />
       }
     </div>
