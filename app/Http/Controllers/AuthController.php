@@ -71,8 +71,8 @@ class AuthController extends Controller
                 ->get();
 
             foreach ($pending as $athlete) {
-                $athlete->user_id      = $user->id;
-                $athlete->invite_token = null;
+                $athlete->user_id = $user->id;
+                // Keep invite_token so the /athletes/claim endpoint can still verify and clear it
                 $athlete->save();
 
                 Notification::create([

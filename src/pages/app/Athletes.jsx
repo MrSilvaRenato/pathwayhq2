@@ -420,12 +420,12 @@ export default function Athletes() {
                 {/* Email first */}
                 <div>
                   <label className="text-xs font-semibold text-slate-500 mb-1 block">
-                    Athlete email
-                    <span className="font-normal text-slate-400 ml-1">(optional)</span>
+                    Athlete email <span className="text-red-400">*</span>
                   </label>
                   <div className="relative">
                     <input
                       type="email"
+                      required
                       value={form.invite_email}
                       onChange={e => handleEmailChange(e.target.value)}
                       className={`${inputCls} pr-9`}

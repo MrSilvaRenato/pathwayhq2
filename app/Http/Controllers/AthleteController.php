@@ -148,7 +148,7 @@ class AthleteController extends Controller
             'notes'        => 'nullable|string',
             'phone'        => 'nullable|string|max:20',
             'squad_ids'    => 'nullable|array',
-            'invite_email' => 'nullable|email',
+            'invite_email' => 'required|email',
         ]);
 
         $club    = $request->user()->club;
@@ -595,6 +595,22 @@ class AthleteController extends Controller
             return response()->json(['message' => 'Invalid or expired invite link.'], 404);
         }
 
+        // Email mismatch — logged-in user used a different email than the invite
+        if ($athlete->invite_email && strtolower($athlete->invite_email) !== strtolower($request->user()->email)) {
+            return response()->json([
+                'message' => 'This profile was registered with a different email address. Please sign in with ' . $athlete->invite_email . ' to claim it.',
+            ], 403);
+        }
+
+        // Already claimed by this same user (e.g. auto-linked during registration) — treat as success
+        if ($athlete->user_id && $athlete->user_id === $request->user()->id) {
+            $athlete->invite_token = null;
+            $athlete->is_active    = true;
+            $athlete->save();
+            return response()->json(['ok' => true, 'athlete_id' => $athlete->id]);
+        }
+
+        // Claimed by someone else
         if ($athlete->user_id) {
             return response()->json(['message' => 'This profile has already been claimed.'], 409);
         }

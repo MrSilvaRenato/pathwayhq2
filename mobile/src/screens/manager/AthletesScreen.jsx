@@ -181,6 +181,11 @@ function AddModal({ onClose, onSaved, onUpgrade }) {
       Alert.alert('Required', 'Please enter first and last name.')
       return
     }
+    const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.invite_email.trim())
+    if (!form.invite_email.trim() || !emailValid) {
+      Alert.alert('Required', 'Please enter a valid athlete email address.')
+      return
+    }
     setSaving(true)
     try {
       const payload = {
@@ -226,7 +231,7 @@ function AddModal({ onClose, onSaved, onUpgrade }) {
           >
             {/* Email */}
             <Text style={s.label}>
-              Athlete email <Text style={s.labelOptional}>(optional)</Text>
+              Athlete email <Text style={{ color: colors.error }}>*</Text>
             </Text>
             <View style={s.emailRow}>
               <TextInput
