@@ -9,6 +9,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import api from '../../lib/api'
 import { FTEM_PHASES, SPORTS } from '../../lib/constants'
+import OnboardingWizard from '../../components/OnboardingWizard'
 
 // ─── Attendance modal ─────────────────────────────────────────────────────────
 // Compact threshold: if a section has more than this many people, show avatar chips
@@ -202,8 +203,10 @@ function Empty({ msg }) {
 function ClubDashboard({ user }) {
   const [club,            setClub]            = useState(null)
   const [athletes,        setAthletes]        = useState([])
+  const [squads,          setSquads]          = useState([])
   const [milestones,      setMilestones]      = useState([])
   const [events,          setEvents]          = useState([])
+  const [eventsTotal,     setEventsTotal]     = useState(0)
   const [announcements,   setAnnouncements]   = useState([])
   const [volunteering,    setVolunteering]    = useState([])
   const [planInfo,        setPlanInfo]        = useState(null)
@@ -214,17 +217,21 @@ function ClubDashboard({ user }) {
     Promise.all([
       api.get('/club').catch(() => ({ data: null })),
       api.get('/athletes').catch(() => ({ data: [] })),
+      api.get('/squads').catch(() => ({ data: [] })),
       api.get('/milestones').catch(() => ({ data: [] })),
       api.get('/events').catch(() => ({ data: [] })),
       api.get('/announcements').catch(() => ({ data: [] })),
       api.get('/volunteering').catch(() => ({ data: [] })),
       api.get('/club/plan').catch(() => ({ data: null })),
-    ]).then(([cl, a, m, e, ann, v, pl]) => {
+    ]).then(([cl, a, sq, m, e, ann, v, pl]) => {
       setClub(cl.data ?? null)
       setAthletes(a.data ?? [])
+      setSquads(sq.data ?? [])
       setMilestones((m.data ?? []).slice(0, 4))
+      const allEvs = e.data ?? []
       const now = new Date()
-      setEvents((e.data ?? []).filter(ev => new Date(ev.start_time) >= now).slice(0, 5))
+      setEventsTotal(allEvs.length)
+      setEvents(allEvs.filter(ev => new Date(ev.start_time) >= now).slice(0, 5))
       setAnnouncements((ann.data ?? []).slice(0, 3))
       setVolunteering((v.data ?? []).filter(v => !v.date || new Date(v.date) >= now).slice(0, 3))
       setPlanInfo(pl.data ?? null)
@@ -276,6 +283,16 @@ function ClubDashboard({ user }) {
           </Link>
         </div>
       )}
+
+      {/* ── Onboarding wizard ───────────────────────────────────── */}
+      <OnboardingWizard
+        club={club}
+        athletes={athletes}
+        squads={squads}
+        eventsTotal={eventsTotal}
+        announcements={announcements}
+        volunteering={volunteering}
+      />
 
       {/* ── Plan status banner ──────────────────────────────────── */}
       {planInfo && planInfo.tier === 'free' && (
