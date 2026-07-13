@@ -11,7 +11,6 @@ use App\Models\User;
 use App\Models\Club;
 use App\Services\PlanService;
 use App\Models\Athlete;
-use App\Models\Club;
 use App\Services\MailService;
 
 class VolunteeringController extends Controller

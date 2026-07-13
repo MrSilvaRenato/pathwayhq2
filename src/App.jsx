@@ -94,7 +94,7 @@ export default function App() {
             <Route path="athletes"     element={<RoleRoute roles={['club_admin','coach','site_admin']}><Athletes /></RoleRoute>} />
             <Route path="athletes/:id" element={<RoleRoute roles={['club_admin','coach','site_admin']}><AthleteDetail /></RoleRoute>} />
             <Route path="squad"        element={<RoleRoute roles={['club_admin','coach','site_admin']}><Squads /></RoleRoute>} />
-            <Route path="calendar"     element={<RoleRoute roles={['club_admin','coach','site_admin']}><Calendar /></RoleRoute>} />
+            <Route path="calendar"     element={<Calendar />} />
             <Route path="analytics"    element={<RoleRoute roles={['club_admin','coach','site_admin']}><Analytics /></RoleRoute>} />
             <Route path="join-requests"  element={<RoleRoute roles={['club_admin','coach','site_admin']}><JoinRequests /></RoleRoute>} />
             <Route path="seasons"        element={<RoleRoute roles={['club_admin','coach','site_admin']}><Seasons /></RoleRoute>} />
