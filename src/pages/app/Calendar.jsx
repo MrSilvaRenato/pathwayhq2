@@ -917,6 +917,15 @@ export default function Calendar() {
         </div>
       )}
 
+      {/* Upgrade prompt */}
+      {upgrade && (
+        <UpgradePrompt
+          message={upgrade.message}
+          requiredPlan={upgrade.requiredPlan}
+          onClose={() => setUpgrade(null)}
+        />
+      )}
+
       {/* ── Edit event modal ── */}
       {editingEvent && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end md:items-center md:justify-center bg-black/40 backdrop-blur-sm">
@@ -1354,13 +1363,6 @@ function EventList({
         )
       })}
 
-      {upgrade && (
-        <UpgradePrompt
-          message={upgrade.message}
-          requiredPlan={upgrade.requiredPlan}
-          onClose={() => setUpgrade(null)}
-        />
-      )}
     </div>
   )
 }
