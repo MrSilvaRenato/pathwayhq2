@@ -231,7 +231,7 @@ class ClubJoinRequestController extends Controller
         return response()->json($requests);
     }
 
-    // Club admin: approve — creates Athlete record
+    // Club admin: approve — moves or creates Athlete record
     public function approve(Request $request, $id)
     {
         if (!in_array($request->user()->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
@@ -242,39 +242,22 @@ class ClubJoinRequestController extends Controller
             ->with('user', 'club')
             ->firstOrFail();
 
-        // Create athlete record from user's name
         $parts     = explode(' ', trim($jr->user->full_name ?? 'Unknown'), 2);
         $firstName = $parts[0];
         $lastName  = $parts[1] ?? '';
 
-        $baseSlug = Str::slug($firstName . '-' . $lastName);
-        $slug     = $baseSlug;
-        $i        = 1;
-        while (Athlete::where('slug', $slug)->exists()) {
-            $slug = $baseSlug . '-' . $i++;
-        }
+        // Find the canonical athlete record for this user (oldest accepted one — carries all history)
+        $canonical = Athlete::where('user_id', $jr->user_id)
+            ->where('invite_status', 'accepted')
+            ->orderBy('created_at')
+            ->first();
 
-        // Carry over any existing avatar from previous athlete records
-        $existingAvatar = Athlete::where('user_id', $jr->user_id)
-            ->whereNotNull('avatar_url')
-            ->value('avatar_url');
-
-        // Deactivate athlete at any previous club (including standalone records with no club)
-        $oldAthletes = Athlete::where('user_id', $jr->user_id)
-            ->where(function ($q) use ($jr) {
-                $q->where('club_id', '!=', $jr->club_id)->orWhereNull('club_id');
-            })
-            ->where('is_active', true)
-            ->get();
-
-        foreach ($oldAthletes as $old) {
-            $old->update(['is_active' => false]);
-
-            $athleteName = trim("{$old->first_name} {$old->last_name}");
-            $oldStaff = User::where('club_id', $old->club_id)
+        // Notify previous club staff before moving the record
+        if ($canonical && $canonical->club_id && $canonical->club_id !== $jr->club_id) {
+            $athleteName = trim("{$canonical->first_name} {$canonical->last_name}");
+            $oldStaff = User::where('club_id', $canonical->club_id)
                 ->whereIn('role', ['club_admin', 'coach'])
                 ->get();
-
             foreach ($oldStaff as $s) {
                 Notification::create([
                     'id'      => (string) Str::uuid(),
@@ -288,20 +271,42 @@ class ClubJoinRequestController extends Controller
             }
         }
 
-        Athlete::create([
-            'id'            => (string) Str::uuid(),
-            'club_id'       => $jr->club_id,
-            'user_id'       => $jr->user_id,
-            'first_name'    => $firstName,
-            'last_name'     => $lastName,
-            'sport'         => $jr->club->sport ?? 'soccer',
-            'ftem_phase'    => 'F1',
-            'invite_status' => 'accepted',
-            'is_active'     => true,
-            'slug'          => $slug,
-            'is_public'     => false,
-            'avatar_url'    => $existingAvatar,
-        ]);
+        // Delete any duplicate athlete records for this user (orphaned records from old flow)
+        Athlete::where('user_id', $jr->user_id)
+            ->when($canonical, fn($q) => $q->where('id', '!=', $canonical->id))
+            ->delete();
+
+        if ($canonical) {
+            // Reuse the existing record — same ID, same slug, same milestones, new club
+            $canonical->squads()->detach();
+            $canonical->update([
+                'club_id'   => $jr->club_id,
+                'is_active' => true,
+                'sport'     => $jr->club->sport ?? $canonical->sport ?? 'soccer',
+            ]);
+        } else {
+            // No prior record — create one
+            $baseSlug = Str::slug($firstName . '-' . $lastName);
+            $slug     = $baseSlug;
+            $i        = 1;
+            while (Athlete::where('slug', $slug)->exists()) {
+                $slug = $baseSlug . '-' . $i++;
+            }
+
+            Athlete::create([
+                'id'            => (string) Str::uuid(),
+                'club_id'       => $jr->club_id,
+                'user_id'       => $jr->user_id,
+                'first_name'    => $firstName,
+                'last_name'     => $lastName,
+                'sport'         => $jr->club->sport ?? 'soccer',
+                'ftem_phase'    => 'F1',
+                'invite_status' => 'accepted',
+                'is_active'     => true,
+                'slug'          => $slug,
+                'is_public'     => false,
+            ]);
+        }
 
         $jr->update(['status' => 'approved', 'responded_at' => now()]);
 
