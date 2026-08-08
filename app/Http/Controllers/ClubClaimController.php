@@ -125,8 +125,12 @@ class ClubClaimController extends Controller
             MailService::welcomeClubAdmin($claim->email, $claim->name, $claim->club->name, $tempPassword);
         }
 
-        // Mark club as claimed
-        $claim->club->update(['is_claimed' => true]);
+        // Mark club as claimed; start 14-day trial if not already set
+        $trialUpdate = ['is_claimed' => true];
+        if (!$claim->club->trial_ends_at) {
+            $trialUpdate['trial_ends_at'] = now()->addDays(14);
+        }
+        $claim->club->update($trialUpdate);
 
         // Mark claim approved
         $claim->update(['status' => 'approved']);

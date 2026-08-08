@@ -125,14 +125,21 @@ class ClubController extends Controller
         $club   = Club::find($clubId);
         if (!$club) return response()->json(null);
 
-        $tier = $club->subscription_tier ?? 'free';
+        $tier         = $club->subscription_tier ?? 'free';
+        $trialActive  = $tier === 'free' && $club->trial_ends_at && $club->trial_ends_at->isFuture();
+        $trialDaysLeft = $trialActive ? (int) now()->diffInDays($club->trial_ends_at, false) : 0;
+        $effectiveTier = \App\Services\PlanService::effectiveTier($club);
 
         return response()->json([
-            'tier'     => $tier,
-            'status'   => $club->subscription_status,
-            'ends_at'  => $club->subscription_ends_at,
-            'limits'   => config("plans.{$tier}.limits"),
-            'features' => config("plans.{$tier}.features"),
+            'tier'           => $tier,
+            'effective_tier' => $effectiveTier,
+            'trial_active'   => $trialActive,
+            'trial_ends_at'  => $club->trial_ends_at,
+            'trial_days_left' => $trialDaysLeft,
+            'status'         => $club->subscription_status,
+            'ends_at'        => $club->subscription_ends_at,
+            'limits'         => config("plans.{$effectiveTier}.limits"),
+            'features'       => config("plans.{$effectiveTier}.features"),
             'usage'    => [
                 'athletes'       => $club->athletes()->where('is_active', true)->count(),
                 'squads'         => \App\Models\Squad::where('club_id', $club->id)->count(),

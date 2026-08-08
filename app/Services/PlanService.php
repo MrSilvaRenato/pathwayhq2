@@ -16,14 +16,34 @@ class PlanService
         ], 403);
     }
 
+    /**
+     * Returns the effective plan tier for gating purposes.
+     * During an active trial, free clubs get pro-level access.
+     * After trial expiry (or no trial), we gate by the actual tier.
+     */
+    public static function effectiveTier(Club $club): string
+    {
+        if ($club->subscription_tier !== 'free') {
+            return $club->subscription_tier;
+        }
+
+        if ($club->trial_ends_at && $club->trial_ends_at->isFuture()) {
+            return 'pro';
+        }
+
+        return 'free';
+    }
+
     public static function hasFeature(Club $club, string $feature): bool
     {
-        return (bool) config("plans.{$club->subscription_tier}.features.{$feature}", false);
+        $tier = self::effectiveTier($club);
+        return (bool) config("plans.{$tier}.features.{$feature}", false);
     }
 
     public static function limit(Club $club, string $key): int
     {
-        return (int) config("plans.{$club->subscription_tier}.limits.{$key}", 0);
+        $tier = self::effectiveTier($club);
+        return (int) config("plans.{$tier}.limits.{$key}", 0);
     }
 
     // Returns null if allowed, or a 403 JsonResponse if blocked.

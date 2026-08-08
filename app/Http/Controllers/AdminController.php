@@ -208,8 +208,9 @@ class AdminController extends Controller
         }
 
         $club = Club::create(array_merge($data, [
-            'id'   => (string) Str::uuid(),
-            'slug' => $slug,
+            'id'            => (string) Str::uuid(),
+            'slug'          => $slug,
+            'trial_ends_at' => now()->addDays(14),
         ]));
 
         ActivityLog::record($request->user(), 'club.created', 'club', $club->id, $club->name);

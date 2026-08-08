@@ -295,55 +295,66 @@ function ClubDashboard({ user }) {
       />
 
       {/* ── Plan status banner ──────────────────────────────────── */}
-      {planInfo && planInfo.tier === 'free' && (
-        <div className="col-span-full rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 p-4 flex flex-col sm:flex-row sm:items-center gap-4 shadow-sm">
+
+      {/* Active trial */}
+      {planInfo && planInfo.tier === 'free' && planInfo.trial_active && (
+        <div className="col-span-full rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 p-4 flex flex-col sm:flex-row sm:items-center gap-4 shadow-md">
           <div className="flex items-start gap-3 flex-1 min-w-0">
-            <div className="h-10 w-10 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
-              <Zap className="h-5 w-5 text-amber-500" />
+            <div className="h-10 w-10 rounded-xl bg-white/20 border border-white/20 flex items-center justify-center shrink-0">
+              <Zap className="h-5 w-5 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-sm font-black text-amber-800">Free plan</span>
-                <span className="text-[10px] font-bold text-amber-600 bg-amber-100 border border-amber-200 rounded-full px-2 py-0.5">Limited</span>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm font-black text-white">Pro Trial Active</span>
+                <span className="text-[10px] font-bold text-violet-100 bg-white/20 rounded-full px-2 py-0.5">
+                  {planInfo.trial_days_left} day{planInfo.trial_days_left !== 1 ? 's' : ''} left
+                </span>
               </div>
-              <div className="flex flex-wrap gap-x-5 gap-y-2">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[11px] font-semibold text-amber-700">Athletes</span>
-                    <span className="text-[11px] font-bold text-amber-800 ml-2">{planInfo.usage?.athletes ?? 0} / {planInfo.limits?.athletes}</span>
-                  </div>
-                  <div className="w-28 h-1.5 rounded-full bg-amber-200">
-                    <div
-                      className="h-1.5 rounded-full bg-amber-500 transition-all"
-                      style={{ width: `${Math.min(100, ((planInfo.usage?.athletes ?? 0) / (planInfo.limits?.athletes || 1)) * 100)}%` }}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[11px] font-semibold text-amber-700">Squads</span>
-                    <span className="text-[11px] font-bold text-amber-800 ml-2">{planInfo.usage?.squads ?? 0} / {planInfo.limits?.squads}</span>
-                  </div>
-                  <div className="w-20 h-1.5 rounded-full bg-amber-200">
-                    <div
-                      className="h-1.5 rounded-full bg-amber-500 transition-all"
-                      style={{ width: `${Math.min(100, ((planInfo.usage?.squads ?? 0) / (planInfo.limits?.squads || 1)) * 100)}%` }}
-                    />
-                  </div>
-                </div>
-                <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-amber-600">
-                  <XCircle className="h-3.5 w-3.5" /> Calendar, seasons, broadcast locked
-                </div>
+              <p className="text-xs text-violet-200 leading-snug">
+                You have full Pro access. Upgrade before your trial ends to keep all features.
+              </p>
+              <div className="mt-2 w-full max-w-xs h-1.5 rounded-full bg-white/20">
+                <div
+                  className="h-1.5 rounded-full bg-white transition-all"
+                  style={{ width: `${Math.max(4, Math.min(100, (planInfo.trial_days_left / 14) * 100))}%` }}
+                />
               </div>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <Link to="/pricing" className="flex items-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 px-4 py-2.5 text-sm font-bold text-white transition-all shadow-sm shadow-amber-200">
+            <Link to="/pricing" className="flex items-center gap-1.5 rounded-xl bg-white hover:bg-violet-50 active:scale-95 px-4 py-2.5 text-sm font-bold text-violet-700 transition-all shadow-sm">
               <Zap className="h-3.5 w-3.5" /> Upgrade to Pro
             </Link>
           </div>
         </div>
       )}
+
+      {/* Trial expired — locked out */}
+      {planInfo && planInfo.tier === 'free' && !planInfo.trial_active && (
+        <div className="col-span-full rounded-2xl bg-gradient-to-r from-red-600 to-rose-600 p-4 flex flex-col sm:flex-row sm:items-center gap-4 shadow-md">
+          <div className="flex items-start gap-3 flex-1 min-w-0">
+            <div className="h-10 w-10 rounded-xl bg-white/20 border border-white/20 flex items-center justify-center shrink-0">
+              <XCircle className="h-5 w-5 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm font-black text-white">Your trial has ended</span>
+                <span className="text-[10px] font-bold text-red-100 bg-white/20 rounded-full px-2 py-0.5">Features locked</span>
+              </div>
+              <p className="text-xs text-red-100 leading-snug">
+                Calendar, sessions, volunteering and more are now locked. Upgrade to keep your data and restore access.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link to="/pricing" className="flex items-center gap-1.5 rounded-xl bg-white hover:bg-red-50 active:scale-95 px-4 py-2.5 text-sm font-bold text-red-600 transition-all shadow-sm">
+              <Zap className="h-3.5 w-3.5" /> Upgrade Now
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Paid plan */}
       {planInfo && planInfo.tier !== 'free' && (
         <div className="col-span-full rounded-xl bg-emerald-50 border border-emerald-100 px-4 py-3 flex items-center gap-3">
           <div className="h-8 w-8 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">

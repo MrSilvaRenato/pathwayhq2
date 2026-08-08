@@ -19,6 +19,7 @@ class Club extends Model
         'cover_image_url', 'logo_url', 'founded_year',
         'social_facebook', 'social_instagram', 'social_twitter',
         'show_milestones', 'show_athletes_count', 'show_events', 'show_announcements',
+        'trial_ends_at',
     ];
 
     protected $casts = [
@@ -30,6 +31,7 @@ class Club extends Model
         'show_events'         => 'boolean',
         'show_announcements'  => 'boolean',
         'subscription_ends_at' => 'datetime',
+        'trial_ends_at'        => 'datetime',
     ];
 
     public function onPlan(string $plan): bool
