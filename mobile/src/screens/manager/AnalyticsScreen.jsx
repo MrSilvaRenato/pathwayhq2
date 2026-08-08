@@ -120,13 +120,15 @@ export default function AnalyticsScreen() {
   }, [])
 
   const computed = useMemo(() => {
-    const total    = athletes.length
-    const active   = athletes.filter(a => a.is_active !== false && a.invite_status === 'accepted').length
+    // Only include athletes who have accepted their invite
+    const accepted = athletes.filter(a => a.invite_status === 'accepted')
+    const total    = accepted.length
+    const active   = accepted.filter(a => a.is_active !== false).length
     const inactive = total - active
 
     // FTEM
     const ftemDist = {}
-    athletes.forEach(a => { if (a.ftem_phase) ftemDist[a.ftem_phase] = (ftemDist[a.ftem_phase] ?? 0) + 1 })
+    accepted.forEach(a => { if (a.ftem_phase) ftemDist[a.ftem_phase] = (ftemDist[a.ftem_phase] ?? 0) + 1 })
     const ftemRows = Object.keys(FTEM_PHASES)
       .filter(k => ftemDist[k] > 0)
       .map(k => ({ phase: k, count: ftemDist[k], pct: total ? Math.round((ftemDist[k] / total) * 100) : 0 }))
@@ -134,7 +136,7 @@ export default function AnalyticsScreen() {
 
     // Age groups
     const ageDist = {}
-    athletes.forEach(a => {
+    accepted.forEach(a => {
       const g = ageGroup(calcAge(a.dob))
       ageDist[g] = (ageDist[g] ?? 0) + 1
     })
@@ -143,7 +145,7 @@ export default function AnalyticsScreen() {
 
     // Gender
     const genderDist = {}
-    athletes.forEach(a => {
+    accepted.forEach(a => {
       const k = (a.gender ?? 'unknown').toLowerCase()
       genderDist[k] = (genderDist[k] ?? 0) + 1
     })
@@ -153,7 +155,7 @@ export default function AnalyticsScreen() {
 
     // Sports
     const sportDist = {}
-    athletes.forEach(a => { if (a.sport) sportDist[a.sport] = (sportDist[a.sport] ?? 0) + 1 })
+    accepted.forEach(a => { if (a.sport) sportDist[a.sport] = (sportDist[a.sport] ?? 0) + 1 })
     const sportRows = Object.entries(sportDist)
       .sort((a, b) => b[1] - a[1])
       .map(([sport, count]) => ({
@@ -170,7 +172,7 @@ export default function AnalyticsScreen() {
     // Squads
     const squadRows = squads
       .map(sq => {
-        const count = athletes.filter(a =>
+        const count = accepted.filter(a =>
           Array.isArray(a.squad_ids) ? a.squad_ids.includes(sq.id) : a.squad_id === sq.id
         ).length
         return { name: sq.name, count, pct: total ? Math.round((count / total) * 100) : 0 }
