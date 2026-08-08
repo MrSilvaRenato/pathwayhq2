@@ -268,8 +268,8 @@ function AddAthletePicker({ squad, currentAthletes, onAdded, onCancel }) {
       await api.post(`/squads/${squad.id}/athletes`, { athlete_id: athlete.id })
       onAdded(athlete)
       toast.success(`${athlete.first_name} added to ${squad.name}`)
-    } catch {
-      toast.error('Failed to add athlete')
+    } catch (err) {
+      toast.error(err?.response?.data?.message ?? 'Failed to add athlete')
       setAdding(null)
     }
   }

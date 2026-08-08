@@ -290,8 +290,9 @@ function RosterSheet({ squad, isAdmin, onClose, onAthleteCountChanged }) {
       cacheRef.current[squad.id] = updated
       setAthletes(updated)
       onAthleteCountChanged(squad.id, updated.length)
-    } catch {
-      Alert.alert('Error', 'Failed to add athlete.')
+    } catch (err) {
+      const msg = err?.response?.data?.message ?? 'Failed to add athlete.'
+      Alert.alert('Cannot add athlete', msg)
     } finally { setAdding(null) }
   }
 

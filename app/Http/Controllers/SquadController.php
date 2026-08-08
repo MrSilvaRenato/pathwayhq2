@@ -101,6 +101,12 @@ class SquadController extends Controller
             ->with('user:id,full_name,email')
             ->firstOrFail();
 
+        if ($athlete->invite_status !== 'accepted') {
+            return response()->json([
+                'message' => 'This athlete has not yet accepted their club invite. They can only be added to squads once they have joined.',
+            ], 422);
+        }
+
         // Skip notification if already in squad
         $alreadyIn = $squad->athletes()->where('athletes.id', $athlete->id)->exists();
 
