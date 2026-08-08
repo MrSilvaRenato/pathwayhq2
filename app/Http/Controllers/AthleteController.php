@@ -299,11 +299,13 @@ class AthleteController extends Controller
             return response()->json(['error' => 'Not found'], 404);
         }
 
-        // Soft-deactivate instead of hard-delete so history and stats are preserved.
         $athlete->squads()->detach();
-        $athlete->update(['is_active' => false]);
 
         if ($athlete->user_id) {
+            // Athlete has an account — disassociate from club so they can join another.
+            // Nulling club_id removes them from this club's roster while preserving history.
+            $athlete->update(['is_active' => false, 'club_id' => null]);
+
             $club = Club::find($request->user()->club_id);
             Notification::create([
                 'id'      => (string) Str::uuid(),
@@ -314,6 +316,9 @@ class AthleteController extends Controller
                 'is_read' => false,
                 'at'      => now()->toDateTimeString(),
             ]);
+        } else {
+            // No linked account (pending invite never accepted) — hard delete.
+            $athlete->delete();
         }
 
         return response()->json(['ok' => true]);
@@ -336,11 +341,12 @@ class AthleteController extends Controller
 
         $clubName    = $athlete->club?->name ?? 'the club';
         $athleteName = trim("{$athlete->first_name} {$athlete->last_name}");
+        $oldClubId   = $athlete->club_id;
 
         $athlete->squads()->detach();
-        $athlete->update(['is_active' => false]);
+        $athlete->update(['is_active' => false, 'club_id' => null]);
 
-        $staff = User::where('club_id', $athlete->club_id)
+        $staff = User::where('club_id', $oldClubId)
             ->whereIn('role', ['club_admin', 'coach'])
             ->get();
 
