@@ -143,7 +143,7 @@ export default function Analytics() {
       api.get('/events').catch(() => ({ data: [] })),
       api.get('/squads').catch(() => ({ data: [] })),
     ]).then(([plan, a, m, e, s]) => {
-      if (plan?.data?.tier === 'free') {
+      if ((plan?.data?.effective_tier ?? plan?.data?.tier) === 'free') {
         setUpgrade({ message: 'Analytics dashboard is available on the Pro plan and above.', requiredPlan: 'pro' })
       }
       setAthletes(a.data ?? [])

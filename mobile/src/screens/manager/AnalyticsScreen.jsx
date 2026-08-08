@@ -109,7 +109,7 @@ export default function AnalyticsScreen() {
       api.get('/events'),
       api.get('/squads'),
     ]).then(([plan, a, m, e, sq]) => {
-      if (plan.status === 'fulfilled' && plan.value.data?.tier === 'free') {
+      if (plan.status === 'fulfilled' && (plan.value.data?.effective_tier ?? plan.value.data?.tier) === 'free') {
         setUpgrade({ message: 'Analytics is available on the Pro plan and above. Upgrade to see detailed club insights.', requiredPlan: 'pro' })
       }
       if (a.status  === 'fulfilled') setAthletes(Array.isArray(a.value.data)  ? a.value.data  : [])
