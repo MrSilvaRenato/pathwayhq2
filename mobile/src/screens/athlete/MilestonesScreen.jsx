@@ -81,6 +81,12 @@ function MilestoneCard({ m, isManager, onDelete, onTogglePublic }) {
             <Text style={s.cardDesc} numberOfLines={2}>{m.description}</Text>
           )}
           <Text style={s.cardDate}>{fmtDate(m.achieved_at)}</Text>
+          {!!m.club_name && (
+            <View style={s.cardClubRow}>
+              <Ionicons name="business-outline" size={11} color={colors.textMuted} />
+              <Text style={s.cardClubName}>{m.club_name}</Text>
+            </View>
+          )}
         </View>
 
         <View style={s.cardRight}>
@@ -771,6 +777,8 @@ const s = StyleSheet.create({
   cardAthlete: { fontSize: font.xs, color: colors.textSecondary, fontWeight: '600', marginTop: 2 },
   cardDesc:    { fontSize: font.xs, color: colors.textMuted, marginTop: 4, lineHeight: 17 },
   cardDate:    { fontSize: 11, color: colors.textMuted, marginTop: 4 },
+  cardClubRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  cardClubName: { fontSize: 10, color: colors.textMuted },
   cardRight:   { alignItems: 'flex-end', gap: 6, flexShrink: 0 },
   cardActions: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
 

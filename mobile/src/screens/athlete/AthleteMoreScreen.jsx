@@ -1,10 +1,15 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Linking } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useNavigation } from '@react-navigation/native'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import Constants from 'expo-constants'
 import { useAuth } from '../../contexts/AuthContext'
+import api from '../../lib/api'
 import { colors, font, spacing, radius } from '../../lib/theme'
+
+const _apiUrl = Constants.expoConfig?.extra?.apiUrl ?? 'https://ausfairgo.com.au/api'
+const WEB_BASE = _apiUrl.replace(/\/api\/?$/, '')
 
 const SECTIONS = [
   {
@@ -29,6 +34,11 @@ export default function AthleteMoreScreen() {
   const navigation = useNavigation()
   const { logout } = useAuth()
   const [signingOut, setSigningOut] = useState(false)
+  const [athleteSlug, setAthleteSlug] = useState(null)
+
+  useEffect(() => {
+    api.get('/athletes/me').then(r => setAthleteSlug(r.data?.slug ?? null)).catch(() => {})
+  }, [])
 
   function handleSignOut() {
     Alert.alert('Sign out', 'Are you sure you want to sign out?', [
@@ -46,6 +56,23 @@ export default function AthleteMoreScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {!!athleteSlug && (
+          <TouchableOpacity
+            style={styles.profileCard}
+            onPress={() => Linking.openURL(`${WEB_BASE}/athlete/${athleteSlug}`)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.profileCardIcon}>
+              <Ionicons name="person-circle-outline" size={22} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.profileCardTitle}>View my public profile</Text>
+              <Text style={styles.profileCardSlug}>/athlete/{athleteSlug}</Text>
+            </View>
+            <Ionicons name="open-outline" size={16} color={colors.textMuted} />
+          </TouchableOpacity>
+        )}
+
         {SECTIONS.map(section => (
           <View key={section.title} style={styles.section}>
             <Text style={styles.sectionTitle}>{section.title}</Text>
@@ -113,4 +140,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff', marginTop: spacing.sm,
   },
   signOutText: { fontSize: font.base, fontWeight: '700', color: colors.error },
+
+  profileCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: colors.primaryLight, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.primary,
+    paddingVertical: 14, paddingHorizontal: spacing.md, marginBottom: spacing.md,
+  },
+  profileCardIcon: {
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center',
+  },
+  profileCardTitle: { fontSize: font.sm, fontWeight: '700', color: colors.primary },
+  profileCardSlug:  { fontSize: font.xs, color: colors.textSecondary, marginTop: 2 },
 })

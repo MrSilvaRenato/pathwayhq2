@@ -14,6 +14,9 @@ import Avatar from '../../components/Avatar'
 import Badge from '../../components/Badge'
 import Constants from 'expo-constants'
 
+const _apiUrl = Constants.expoConfig?.extra?.apiUrl ?? 'https://ausfairgo.com.au/api'
+const WEB_BASE = _apiUrl.replace(/\/api\/?$/, '')
+
 function SectionCard({ title, children }) {
   return (
     <View style={styles.sectionCard}>
@@ -440,6 +443,24 @@ export default function SettingsScreen() {
             )}
           </TouchableOpacity>
         </SectionCard>
+
+        {/* ── Public profile (athletes with a slug) ─────────────────────── */}
+        {isAthlete && athleteProfile?.slug && (
+          <SectionCard title="Public profile">
+            <Text style={styles.hint}>Your profile is always accessible — share this link with anyone.</Text>
+            <View style={styles.profileUrlRow}>
+              <Text style={styles.profileUrlText} numberOfLines={1}>/athlete/{athleteProfile.slug}</Text>
+              <TouchableOpacity
+                onPress={() => Linking.openURL(`${WEB_BASE}/athlete/${athleteProfile.slug}`)}
+                style={styles.viewProfileLink}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="open-outline" size={14} color={colors.primary} />
+                <Text style={styles.viewProfileLinkText}>View</Text>
+              </TouchableOpacity>
+            </View>
+          </SectionCard>
+        )}
 
         {/* ── Club details section (club_admin only) ─────────────────────── */}
         {club && isAdmin && isManager && (
@@ -1064,4 +1085,19 @@ const styles = StyleSheet.create({
   successText: { color: colors.primaryDark, fontSize: font.sm, fontWeight: '500' },
 
   version: { textAlign: 'center', fontSize: font.xs, color: colors.textMuted, marginTop: spacing.sm },
+
+  profileUrlRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: colors.background, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
+    paddingHorizontal: 12, paddingVertical: 10, marginTop: 6,
+  },
+  profileUrlText: {
+    flex: 1, fontSize: font.sm, color: colors.textSecondary, fontWeight: '500',
+  },
+  viewProfileLink: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: colors.primaryLight, borderRadius: radius.sm,
+    paddingHorizontal: 10, paddingVertical: 6,
+  },
+  viewProfileLinkText: { fontSize: font.xs, fontWeight: '700', color: colors.primary },
 })
