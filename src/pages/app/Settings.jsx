@@ -289,7 +289,7 @@ export default function Settings() {
               </div>
             </div>
 
-            {athleteProfile?.is_public && athleteProfile?.slug && (
+            {athleteProfile?.slug && (
               <div className="flex items-center gap-2">
                 <span className="flex-1 truncate rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500 font-mono">
                   {window.location.origin}/athlete/{athleteProfile.slug}

@@ -917,11 +917,17 @@ function AthleteDashboard({ user, isParent = false }) {
           <div className="text-center py-2">
             <Dumbbell className="h-8 w-8 text-slate-300 mx-auto mb-2" />
             <p className="text-sm font-semibold text-slate-500">
-              {isParent ? 'No athletes linked yet' : 'No profile linked'}
+              {isParent ? 'No athletes linked yet' : 'Not currently in a club'}
             </p>
             <p className="text-xs text-slate-400 mt-1">
-              {isParent ? 'Ask your club coach to link you to your child\'s profile' : 'Ask your coach to add you'}
+              {isParent ? 'Ask your club coach to link you to your child\'s profile' : 'Search for a club to join.'}
             </p>
+            {!isParent && profile?.slug && (
+              <Link to={`/athlete/${profile.slug}`} target="_blank" rel="noopener noreferrer"
+                className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-1.5 text-xs font-bold transition-colors border border-emerald-100">
+                <UserCircle className="h-3.5 w-3.5" /> View my profile
+              </Link>
+            )}
           </div>
         )}
       </div>

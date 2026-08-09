@@ -370,10 +370,11 @@ class AthleteController extends Controller
     // Returns the accepted athlete profile linked to the current user
     public function me(Request $request)
     {
+        // Prefer the active club-linked record; fall back to unaffiliated (left club)
         $athlete = Athlete::where('user_id', $request->user()->id)
             ->where('invite_status', 'accepted')
-            ->where('is_active', true)
             ->with(['squads:id,name', 'club:id,name,logo_url,slug,sport,city,state'])
+            ->orderByDesc('is_active')
             ->orderByDesc('created_at')
             ->first();
 
