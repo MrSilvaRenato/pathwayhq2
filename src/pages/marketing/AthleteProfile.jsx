@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Zap, ArrowLeft, ArrowRight, Trophy, MapPin, Star, TrendingUp, Globe } from 'lucide-react'
 import api from '../../lib/api'
+import { useAuth } from '../../contexts/AuthContext'
 import { SPORTS, FTEM_PHASES } from '../../lib/constants'
 
 function trophyTier(phase) {
@@ -19,6 +20,7 @@ const FTEM_ORDER = ['F1', 'F2', 'T1', 'T2', 'E1', 'E2', 'M']
 
 export default function AthleteProfile() {
   const { slug } = useParams()
+  const { user } = useAuth()
   const [data, setData] = useState(null)
   const [notFound, setNotFound] = useState(false)
 
@@ -71,12 +73,18 @@ export default function AthleteProfile() {
                 <ArrowLeft className="h-3.5 w-3.5" /> {club.name}
               </Link>
             )}
-            <Link to="/login"
-              className="text-sm font-medium text-slate-400 hover:text-white transition-colors">Sign in</Link>
-            <Link to="/signup"
-              className="rounded-lg bg-emerald-500 hover:bg-emerald-400 px-4 py-2 text-sm font-semibold transition-all shadow-lg shadow-emerald-500/25 active:scale-95">
-              Get started
-            </Link>
+            {user ? (
+              <Link to="/dashboard" className="rounded-lg bg-emerald-500 hover:bg-emerald-400 px-4 py-2 text-sm font-semibold transition-all shadow-lg shadow-emerald-500/25 active:scale-95">
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link to="/?modal=login" className="hidden sm:block text-sm font-medium text-slate-400 hover:text-white transition-colors">Sign in</Link>
+                <Link to="/?modal=signup" className="rounded-lg bg-emerald-500 hover:bg-emerald-400 px-4 py-2 text-sm font-semibold transition-all shadow-lg shadow-emerald-500/25 active:scale-95">
+                  Get started
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </nav>
@@ -97,13 +105,15 @@ export default function AthleteProfile() {
 
             {/* Avatar */}
             <div className="relative shrink-0">
-              <div className={`flex h-32 w-32 lg:h-40 lg:w-40 items-center justify-center rounded-3xl text-5xl lg:text-6xl font-black text-white shadow-2xl ${tier.glow} ${
+              <div className={`relative h-32 w-32 lg:h-40 lg:w-40 rounded-3xl overflow-hidden flex items-center justify-center text-5xl lg:text-6xl font-black text-white shadow-2xl ${tier.glow} ${
                 athlete.ftem_phase === 'M' ? 'bg-gradient-to-br from-amber-400 to-yellow-600' :
                 athlete.ftem_phase?.startsWith('E') ? 'bg-gradient-to-br from-slate-400 to-slate-600' :
                 athlete.ftem_phase?.startsWith('T') ? 'bg-gradient-to-br from-orange-400 to-amber-600' :
                 'bg-gradient-to-br from-emerald-400 to-emerald-700'
               }`}>
-                {initials}
+                {athlete.avatar_url
+                  ? <img src={athlete.avatar_url} alt={`${athlete.first_name} ${athlete.last_name}`} className="h-full w-full object-cover" />
+                  : initials}
               </div>
               {/* Tier icon badge */}
               <div className="absolute -bottom-2 -right-2 text-3xl">{tier.icon}</div>
@@ -120,6 +130,11 @@ export default function AthleteProfile() {
                 {sportMeta && (
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-medium">
                     {sportMeta.emoji} {sportMeta.label}
+                  </span>
+                )}
+                {athlete.position && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1.5 text-sm font-medium text-indigo-300">
+                    {athlete.position}
                   </span>
                 )}
                 {athlete.gender && (
@@ -188,22 +203,41 @@ export default function AthleteProfile() {
               <p className="text-slate-400 text-sm">No achievements shared publicly yet.</p>
             </div>
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {milestones.map(m => {
+            <div className="space-y-3">
+              {milestones.map((m, i) => {
                 const t = trophyTier(m.ftem_phase)
                 return (
-                  <div key={m.id} className={`rounded-2xl border ${t.border} ${t.bg} p-5 shadow-lg ${t.glow} hover:-translate-y-0.5 transition-all`}>
-                    <div className="flex items-start justify-between mb-3">
-                      <span className="text-3xl">{t.icon}</span>
-                      <span className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${t.badge}`}>
-                        {m.ftem_phase}
-                      </span>
+                  <div key={m.id} className={`flex gap-4 group`}>
+                    {/* Timeline */}
+                    <div className="flex flex-col items-center shrink-0">
+                      <div className={`w-4 h-4 rounded-full ring-2 ring-offset-2 ring-offset-slate-950 shrink-0 mt-4 z-10 ${
+                        m.ftem_phase === 'M' ? 'bg-amber-400 ring-amber-300' :
+                        m.ftem_phase?.startsWith('E') ? 'bg-slate-300 ring-slate-400' :
+                        m.ftem_phase?.startsWith('T') ? 'bg-orange-400 ring-orange-300' : 'bg-emerald-400 ring-emerald-300'
+                      }`} />
+                      {i < milestones.length - 1 && <div className="w-px flex-1 mt-1 border-l-2 border-dashed border-white/10" />}
                     </div>
-                    <p className="font-bold text-white text-sm leading-snug mb-3">{m.title}</p>
-                    {m.description && (
-                      <p className="text-xs text-slate-400 leading-relaxed mb-3">{m.description}</p>
-                    )}
-                    <p className="text-xs text-slate-500">{fmtDate(m.achieved_at)}</p>
+
+                    {/* Card */}
+                    <div className={`flex-1 mb-3 rounded-2xl border ${t.border} ${t.bg} p-5 shadow-xl ${t.glow} hover:-translate-y-0.5 transition-all`}>
+                      <div className="flex items-start justify-between mb-3">
+                        <span className="text-4xl drop-shadow-lg">{t.icon}</span>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${t.badge}`}>{m.ftem_phase}</span>
+                          <span className="text-[11px] text-slate-500">{fmtDate(m.achieved_at)}</span>
+                        </div>
+                      </div>
+                      <p className="font-black text-white text-base leading-snug mb-2">{m.title}</p>
+                      {m.description && (
+                        <p className="text-xs text-slate-400 leading-relaxed mb-3">{m.description}</p>
+                      )}
+                      {m.club_name && (
+                        <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-white/5">
+                          <Star className="h-3 w-3 text-slate-500 shrink-0" />
+                          <span className="text-[11px] text-slate-500 font-medium">{m.club_name}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )
               })}

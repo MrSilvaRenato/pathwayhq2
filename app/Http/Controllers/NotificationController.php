@@ -35,6 +35,12 @@ class NotificationController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    public function clearAll(Request $request)
+    {
+        Notification::where('user_id', $request->user()->id)->delete();
+        return response()->json(['ok' => true]);
+    }
+
     public function unreadCount(Request $request)
     {
         $count = Notification::where('user_id', $request->user()->id)

@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "PathwayHQ",
+    "slug": "pathwayhq2",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "pathwayhq",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0d1b2a"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pathwayhq.app"
+    },
+    "android": {
+      "package": "com.pathwayhq.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0d1b2a"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store"
+    ],
+    "extra": {
+      "apiUrl": "https://ausfairgo.com.au/api",
+      "eas": {
+        "projectId": "095289a7-5cb7-4990-9e17-a2f2bbda624b"
+      }
+    },
+    "owner": "rlcs1990"
+  }
+}

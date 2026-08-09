@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Zap, Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react'
+import { Zap, Eye, EyeOff, AlertCircle, CheckCircle, Users, Shield } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { SPORTS, STATES } from '../../lib/constants'
 
@@ -11,6 +11,8 @@ export default function Signup() {
   const navigate       = useNavigate()
   const [searchParams] = useSearchParams()
   const claimToken     = searchParams.get('claim')
+
+  const [role, setRole]     = useState('club_admin')
   const [form, setForm]     = useState({ full_name: '', email: '', password: '', club_name: '', sport: 'soccer', city: '', state: 'QLD' })
   const [error, setError]   = useState('')
   const [loading, setLoading] = useState(false)
@@ -30,10 +32,11 @@ export default function Signup() {
   async function handleSubmit(e) {
     e.preventDefault()
     if (form.password.length < 6) { setError('Password must be at least 6 characters'); return }
+    if (role === 'club_admin' && !form.club_name.trim()) { setError('Club name is required.'); return }
     setLoading(true)
     setError('')
     try {
-      await register(form)
+      await register({ ...form, role })
       navigate(claimToken ? `/claim/${claimToken}` : '/dashboard')
     } catch (err) {
       setError(err.response?.data?.message ?? err.response?.data?.error ?? 'Registration failed. Please try again.')
@@ -60,11 +63,41 @@ export default function Signup() {
             </div>
             <span className="text-xl font-extrabold tracking-tight">PathwayHQ</span>
           </Link>
-          <h1 className="text-2xl font-black">Register your club</h1>
+          <h1 className="text-2xl font-black">
+            {role === 'club_admin' ? 'Register your club' : 'Create your account'}
+          </h1>
           <p className="text-slate-400 text-sm mt-1">Free forever · No credit card needed</p>
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-sm p-8 shadow-2xl">
+          {/* Role toggle */}
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <button
+              type="button"
+              onClick={() => setRole('club_admin')}
+              className={`flex flex-col items-center gap-2 rounded-xl border-2 py-4 px-3 text-sm font-semibold transition-all ${
+                role === 'club_admin'
+                  ? 'border-emerald-500 bg-emerald-500/15 text-emerald-400'
+                  : 'border-white/10 bg-white/5 text-slate-400 hover:border-white/20'
+              }`}
+            >
+              <Shield className="h-5 w-5" />
+              Club / Team Manager
+            </button>
+            <button
+              type="button"
+              onClick={() => setRole('athlete')}
+              className={`flex flex-col items-center gap-2 rounded-xl border-2 py-4 px-3 text-sm font-semibold transition-all ${
+                role === 'athlete'
+                  ? 'border-emerald-500 bg-emerald-500/15 text-emerald-400'
+                  : 'border-white/10 bg-white/5 text-slate-400 hover:border-white/20'
+              }`}
+            >
+              <Users className="h-5 w-5" />
+              Athlete / Parent
+            </button>
+          </div>
+
           {/* Error banner */}
           {error && (
             <div className="mb-5 flex items-start gap-3 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 animate-fade-in">
@@ -107,7 +140,6 @@ export default function Signup() {
                       {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
-                  {/* Password strength */}
                   {pwStrength && (
                     <div className="mt-2">
                       <div className="h-1 w-full rounded-full bg-white/10 overflow-hidden">
@@ -120,38 +152,40 @@ export default function Signup() {
               </div>
             </div>
 
-            {/* Club details */}
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                <span className="h-px flex-1 bg-white/10" />
-                Club details
-                <span className="h-px flex-1 bg-white/10" />
-              </p>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">Club name</label>
-                  <input required value={form.club_name} onChange={set('club_name')} className={inputCls} placeholder="North Brisbane FC" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">Primary sport</label>
-                  <select value={form.sport} onChange={set('sport')} className={inputCls + ' bg-slate-900 cursor-pointer'}>
-                    {ALL_SPORTS.map(s => <option key={s.value} value={s.value}>{s.emoji} {s.label}</option>)}
-                  </select>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
+            {/* Club details — only for club_admin */}
+            {role === 'club_admin' && (
+              <div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <span className="h-px flex-1 bg-white/10" />
+                  Club details
+                  <span className="h-px flex-1 bg-white/10" />
+                </p>
+                <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">City</label>
-                    <input value={form.city} onChange={set('city')} className={inputCls} placeholder="Brisbane" />
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Club / team name</label>
+                    <input required={role === 'club_admin'} value={form.club_name} onChange={set('club_name')} className={inputCls} placeholder="Brisbane FC" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">State</label>
-                    <select value={form.state} onChange={set('state')} className={inputCls + ' bg-slate-900 cursor-pointer'}>
-                      {STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Primary sport</label>
+                    <select value={form.sport} onChange={set('sport')} className={inputCls + ' bg-slate-900 cursor-pointer'}>
+                      {ALL_SPORTS.map(s => <option key={s.value} value={s.value}>{s.emoji} {s.label}</option>)}
                     </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-2">City</label>
+                      <input value={form.city} onChange={set('city')} className={inputCls} placeholder="Brisbane" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-2">State</label>
+                      <select value={form.state} onChange={set('state')} className={inputCls + ' bg-slate-900 cursor-pointer'}>
+                        {STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
             <button
               type="submit"
@@ -159,7 +193,10 @@ export default function Signup() {
               className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed py-3.5 text-sm font-bold transition-all shadow-lg shadow-emerald-500/25">
               {loading
                 ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />Creating account…</span>
-                : <span className="flex items-center justify-center gap-2"><CheckCircle className="h-4 w-4" />Create club & account</span>}
+                : <span className="flex items-center justify-center gap-2">
+                    <CheckCircle className="h-4 w-4" />
+                    {role === 'club_admin' ? 'Create club & account' : 'Create account'}
+                  </span>}
             </button>
 
             <p className="text-center text-xs text-slate-500">

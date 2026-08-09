@@ -8,6 +8,12 @@ use App\Models\Athlete;
 use App\Models\Milestone;
 use App\Models\Event;
 use App\Models\Announcement;
+use App\Models\ClubTrophy;
+use App\Models\Notification;
+use App\Models\User;
+use Illuminate\Support\Str;
+use App\Services\MailService;
+use App\Services\PlanService;
 
 class ClubController extends Controller
 {
@@ -16,7 +22,7 @@ class ClubController extends Controller
     {
         return response()->json(
             Club::where('is_public', true)
-                ->select('id','name','sport','city','state','slug','description','logo_url','is_public')
+                ->select('id','name','sport','city','state','slug','description','logo_url','is_public','is_claimed','founded_year')
                 ->orderBy('name')
                 ->get()
         );
@@ -25,17 +31,9 @@ class ClubController extends Controller
     // Public: single club profile — respects per-section privacy toggles
     public function publicShow($slug)
     {
-        $club = Club::where('slug', $slug)->where('is_public', true)->firstOrFail();
-
+        $club    = Club::where('slug', $slug)->where('is_public', true)->firstOrFail();
         $columns = \Schema::getColumnListing('clubs');
 
-<<<<<<< Updated upstream
-        $milestones = Milestone::where('milestones.club_id', $club->id)
-                        ->where('milestones.is_shared_with_parent', true)
-                        ->leftJoin('athletes', 'milestones.athlete_id', '=', 'athletes.id')
-                        ->select('milestones.id','milestones.title','milestones.ftem_phase','milestones.achieved_at','athletes.first_name as athlete_name')
-                        ->orderBy('milestones.achieved_at', 'desc')->limit(12)->get();
-=======
         // Athletes — count + FTEM distribution
         $athletes = [];
         $ftemDist = [];
@@ -48,16 +46,16 @@ class ClubController extends Controller
                 $ftemDist[$a->ftem_phase] = ($ftemDist[$a->ftem_phase] ?? 0) + 1;
             }
         }
->>>>>>> Stashed changes
 
         // Milestones
         $milestones = [];
         $showMilestones = !in_array('show_milestones', $columns) || $club->show_milestones !== false;
         if ($showMilestones) {
-            $milestones = Milestone::where('club_id', $club->id)
-                ->where('is_shared_with_parent', true)
-                ->select('id','title','ftem_phase','achieved_at')
-                ->orderBy('achieved_at', 'desc')->limit(6)->get();
+            $milestones = Milestone::where('milestones.club_id', $club->id)
+                ->where('milestones.is_shared_with_parent', true)
+                ->leftJoin('athletes', 'milestones.athlete_id', '=', 'athletes.id')
+                ->select('milestones.id','milestones.title','milestones.ftem_phase','milestones.achieved_at','athletes.first_name as athlete_name')
+                ->orderBy('milestones.achieved_at', 'desc')->limit(12)->get();
         }
 
         // Upcoming events
@@ -66,8 +64,14 @@ class ClubController extends Controller
         if ($showEvents) {
             $events = Event::where('club_id', $club->id)
                 ->where('start_time', '>=', now())
+                ->with('squad:id,name')
                 ->select('id','title','event_type','start_time','end_time','location','squad_id')
-                ->orderBy('start_time')->limit(5)->get();
+                ->orderBy('start_time')->limit(5)->get()
+                ->map(function ($ev) {
+                    $ev->squad_name = $ev->squad?->name;
+                    unset($ev->squad);
+                    return $ev;
+                });
         }
 
         // Announcements
@@ -75,7 +79,7 @@ class ClubController extends Controller
         $showAnnouncements = in_array('show_announcements', $columns) && $club->show_announcements;
         if ($showAnnouncements) {
             $annQuery = Announcement::where('club_id', $club->id);
-            $annCols = \Schema::getColumnListing('announcements');
+            $annCols  = \Schema::getColumnListing('announcements');
             if (in_array('posted_at', $annCols)) $annQuery->orderByDesc('posted_at');
             else $annQuery->orderByDesc('created_at');
             $announcements = $annQuery->select(
@@ -83,7 +87,29 @@ class ClubController extends Controller
             )->limit(4)->get();
         }
 
-        return response()->json(compact('club','athletes','ftemDist','milestones','events','announcements'));
+        // Club Trophy Cabinet
+        $clubTrophies = ClubTrophy::where('club_id', $club->id)
+            ->where('is_public', true)
+            ->orderByDesc('achieved_at')
+            ->orderByDesc('created_at')
+            ->get();
+
+        // Club manager first name (only when claimed)
+        $managerFirstName = null;
+        if ($club->is_claimed) {
+            $mgr = User::where('club_id', $club->id)
+                ->where('role', 'club_admin')
+                ->select('full_name')
+                ->first();
+            if ($mgr) {
+                $managerFirstName = explode(' ', trim($mgr->full_name))[0];
+            }
+        }
+
+        return response()->json(array_merge(
+            compact('club','athletes','ftemDist','milestones','events','announcements','clubTrophies'),
+            ['managerFirstName' => $managerFirstName]
+        ));
     }
 
     // Auth: get my club
@@ -91,6 +117,38 @@ class ClubController extends Controller
     {
         if (!$request->user()->club_id) return response()->json(null);
         return response()->json(Club::find($request->user()->club_id));
+    }
+
+    public function plan(Request $request)
+    {
+        $clubId = $request->user()->club_id ?? $request->user()->resolveClubId();
+        $club   = Club::find($clubId);
+        if (!$club) return response()->json(null);
+
+        $tier         = $club->subscription_tier ?? 'free';
+        $trialActive  = $tier === 'free' && $club->trial_ends_at && $club->trial_ends_at->isFuture();
+        $trialDaysLeft = $trialActive ? (int) now()->diffInDays($club->trial_ends_at, false) : 0;
+        $effectiveTier = \App\Services\PlanService::effectiveTier($club);
+
+        return response()->json([
+            'tier'           => $tier,
+            'effective_tier' => $effectiveTier,
+            'trial_active'   => $trialActive,
+            'trial_ends_at'  => $club->trial_ends_at,
+            'trial_days_left' => $trialDaysLeft,
+            'status'         => $club->subscription_status,
+            'ends_at'        => $club->subscription_ends_at,
+            'limits'         => config("plans.{$effectiveTier}.limits"),
+            'features'       => config("plans.{$effectiveTier}.features"),
+            'usage'    => [
+                'athletes'       => $club->athletes()->where('is_active', true)->count(),
+                'squads'         => \App\Models\Squad::where('club_id', $club->id)->count(),
+                'announcements_this_month' => \App\Models\Announcement::where('club_id', $club->id)
+                    ->whereYear('created_at', now()->year)
+                    ->whereMonth('created_at', now()->month)
+                    ->count(),
+            ],
+        ]);
     }
 
     // Auth: update my club
@@ -131,6 +189,79 @@ class ClubController extends Controller
         Club::where('id', $clubId)->update($safe);
 
         return response()->json(['ok' => true]);
+    }
+
+    // Club manager: list athletes eligible to receive broadcast (have a user account)
+    public function broadcastAthletes(Request $request)
+    {
+        $user = $request->user();
+        if (!in_array($user->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
+        $clubId = $user->club_id;
+        if (!$clubId) return response()->json([]);
+
+        $athletes = Athlete::where('club_id', $clubId)
+            ->where('is_active', true)
+            ->where('invite_status', 'accepted')
+            ->whereNotNull('user_id')
+            ->orderBy('last_name')->orderBy('first_name')
+            ->get(['id', 'first_name', 'last_name', 'ftem_phase', 'avatar_url', 'user_id']);
+
+        return response()->json($athletes);
+    }
+
+    // Club manager: send broadcast to selected athletes
+    public function broadcast(Request $request)
+    {
+        $user = $request->user();
+        if (!in_array($user->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
+        $clubId = $user->club_id;
+        if (!$clubId) return response()->json(['message' => 'No club assigned.'], 403);
+
+        $club = Club::find($clubId);
+        if ($err = PlanService::checkFeature($club, 'broadcast')) return $err;
+
+        $data = $request->validate([
+            'title'       => 'required|string|max:255',
+            'body'        => 'required|string|max:5000',
+            'link'        => 'nullable|string|max:255',
+            'athlete_ids' => 'required|array|min:1',
+            'athlete_ids.*' => 'string',
+        ]);
+
+        // Resolve target user_ids — only athletes in this club
+        $allAthletes = Athlete::where('club_id', $clubId)
+            ->where('is_active', true)
+            ->where('invite_status', 'accepted')
+            ->whereNotNull('user_id');
+
+        if ($data['athlete_ids'] !== ['all']) {
+            $allAthletes->whereIn('id', $data['athlete_ids']);
+        }
+
+        $userIds = $allAthletes->pluck('user_id')->unique()->filter()->values();
+        $count   = $userIds->count();
+
+        foreach ($userIds as $userId) {
+            Notification::create([
+                'id'      => (string) Str::uuid(),
+                'user_id' => $userId,
+                'title'   => $data['title'],
+                'body'    => $data['body'],
+                'link'    => $data['link'] ?? null,
+                'type'    => 'broadcast',
+                'is_read' => false,
+                'at'      => now()->toDateTimeString(),
+            ]);
+        }
+
+        $users = \App\Models\User::whereIn('id', $userIds)->get();
+        foreach ($users as $u) {
+            MailService::broadcastToAthlete($u, $user->full_name, $data['title'], $data['body'], $data['link'] ?? null);
+        }
+
+        return response()->json(['ok' => true, 'count' => $count]);
     }
 
     // Site admin: all clubs

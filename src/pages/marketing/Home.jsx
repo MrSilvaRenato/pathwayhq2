@@ -1,10 +1,12 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { useAuth } from '../../contexts/AuthContext'
 import {
   Zap, ArrowRight, Users, Trophy, Calendar, BarChart3, Megaphone, HandHeart,
   Shield, CheckCircle, Menu, X, Star, Award, Medal, TrendingUp, MapPin,
 } from 'lucide-react'
 import OlympicsCountdown from '../../components/OlympicsCountdown'
+import AuthModal from '../../components/AuthModal'
 
 const FEATURES = [
   { icon: Users,      title: 'Athlete Profiles',    desc: 'Full profiles, FTEM phases, parent links, and squad assignments in one place.',       color: 'bg-blue-500/10 border-blue-500/20 text-blue-400'     },
@@ -18,16 +20,49 @@ const FEATURES = [
 ]
 
 const PRICING = [
-  { tier: 'Free',    price: '$0',   period: '/mo', athletes: 'Up to 15 athletes',  features: ['Basic athlete profiles', 'Training calendar', 'Announcements', 'Public club profile'],                             cta: 'Start free',   highlight: false },
-  { tier: 'Starter', price: '$29',  period: '/mo', athletes: 'Up to 50 athletes',  features: ['Everything in Free', 'Squads & rosters', 'Milestone tracking', 'Trophy cabinet'],                                   cta: 'Get started',  highlight: false },
-  { tier: 'Pro',     price: '$79',  period: '/mo', athletes: 'Up to 200 athletes', features: ['Everything in Starter', 'Analytics dashboard', 'Volunteering module', 'Parent portal', 'Brisbane 2032 pathway'],     cta: 'Most popular', highlight: true  },
-  { tier: 'Elite',   price: '$149', period: '/mo', athletes: 'Unlimited athletes', features: ['Everything in Pro', 'Priority support', 'Custom branding', 'API access', 'Dedicated onboarding'],                    cta: "Let's go",     highlight: false },
+  {
+    tier: 'Free', price: '$0', period: '/mo', athletes: 'Up to 8 athletes',
+    features: [
+      'Up to 8 active athletes',
+      '1 squad',
+      '3 announcements/month',
+      'Public club profile',
+      'Athlete join requests',
+    ],
+    cta: 'Start free', highlight: false,
+  },
+  {
+    tier: 'Pro', price: '$29', period: '/mo', athletes: 'Up to 100 athletes',
+    badge: 'Most popular',
+    features: [
+      'Everything in Free',
+      'Up to 100 athletes · 5 squads',
+      'Unlimited announcements',
+      'Calendar & sessions',
+      'Season registrations & payments',
+      'Club broadcast messages',
+      'Volunteering management',
+      'Analytics dashboard',
+    ],
+    cta: 'Start Pro', highlight: true,
+  },
+  {
+    tier: 'Elite', price: '$79', period: '/mo', athletes: 'Unlimited athletes',
+    features: [
+      'Everything in Pro',
+      'Unlimited athletes & squads',
+      'Trophy cabinet',
+      'Remove PathwayHQ branding',
+      'Priority support',
+    ],
+    cta: 'Start Elite', highlight: false,
+  },
 ]
 
 const NAV_LINKS = [
   { label: 'Features',      href: '#features'  },
   { label: 'How it works',  href: '#how'       },
-  { label: 'Pricing',       href: '#pricing'   },
+  { label: 'Pricing',       to: '/pricing'     },
   { label: 'Clubs',         to: '/clubs'       },
   { label: 'Brisbane 2032', to: '/brisbane-2032' },
 ]
@@ -48,7 +83,19 @@ const STEPS = [
 ]
 
 export default function Home() {
+  const { user } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [modal, setModal] = useState(null) // 'login' | 'signup'
+  const [searchParams] = useSearchParams()
+
+  const claimToken = searchParams.get('claim') || null
+
+  useEffect(() => {
+    const m = searchParams.get('modal')
+    if (m === 'login' || m === 'signup') setModal(m)
+  }, [])
+
+  function openModal(type) { setMobileOpen(false); setModal(type) }
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -57,10 +104,10 @@ export default function Home() {
       <nav className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/95 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
           <Link to="/" className="flex items-center gap-2.5" onClick={() => setMobileOpen(false)}>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-lg shadow-emerald-500/30">
-              <Zap className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-lg font-extrabold tracking-tight">PathwayHQ</span>
+            <img src="/icon.png" alt="" className="h-9 w-9 rounded-xl" />
+            <span className="text-lg font-extrabold tracking-tight">
+              <span className="text-white">Pathway</span><span className="text-emerald-400">HQ</span>
+            </span>
           </Link>
 
           <div className="hidden md:flex items-center gap-7">
@@ -71,10 +118,18 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Link to="/login"  className="hidden sm:block text-sm font-medium text-slate-400 hover:text-white transition-colors">Sign in</Link>
-            <Link to="/signup" className="rounded-lg bg-emerald-500 hover:bg-emerald-400 px-4 py-2 text-sm font-semibold transition-all shadow-lg shadow-emerald-500/25 active:scale-95">
-              Get started free
-            </Link>
+            {user ? (
+              <Link to="/dashboard" className="rounded-lg bg-emerald-500 hover:bg-emerald-400 px-4 py-2 text-sm font-semibold transition-all shadow-lg shadow-emerald-500/25 active:scale-95">
+                Go to Dashboard
+              </Link>
+            ) : (
+              <>
+                <button onClick={() => openModal('login')} className="hidden sm:block text-sm font-medium text-slate-400 hover:text-white transition-colors">Sign in</button>
+                <button onClick={() => openModal('signup')} className="rounded-lg bg-emerald-500 hover:bg-emerald-400 px-4 py-2 text-sm font-semibold transition-all shadow-lg shadow-emerald-500/25 active:scale-95">
+                  Get started free
+                </button>
+              </>
+            )}
             <button onClick={() => setMobileOpen(o => !o)}
               className="md:hidden rounded-lg border border-white/10 bg-white/5 p-2 text-slate-400 hover:text-white transition-colors">
               {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
@@ -89,27 +144,22 @@ export default function Home() {
               : <a    key={l.label} href={l.href} onClick={() => setMobileOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors">{l.label}</a>
             )}
             <div className="pt-2 border-t border-white/10">
-              <Link to="/login" onClick={() => setMobileOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors">Sign in</Link>
+              {user ? (
+                <Link to="/dashboard" onClick={() => setMobileOpen(false)} className="block w-full text-left rounded-lg px-3 py-2.5 text-sm font-medium text-emerald-400 hover:bg-white/5 transition-colors">Go to Dashboard</Link>
+              ) : (
+                <button onClick={() => openModal('login')} className="block w-full text-left rounded-lg px-3 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors">Sign in</button>
+              )}
             </div>
           </div>
         )}
       </nav>
 
       {/* Hero */}
-<<<<<<< Updated upstream
       <section className="relative overflow-hidden border-b border-white/5 min-h-[640px] lg:min-h-[760px]">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/85 to-slate-950/20" />
           <div className="absolute bottom-0 inset-x-0 h-40 bg-gradient-to-t from-slate-950 to-transparent" />
           <div className="absolute top-0 left-0 h-[500px] w-[700px] rounded-full bg-emerald-600/10 blur-[120px]" />
-=======
-      <section className="relative overflow-hidden border-b border-white/5">
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute inset-0 opacity-[0.03]"
-            style={{ backgroundImage: 'repeating-linear-gradient(45deg,white 0px,white 1px,transparent 1px,transparent 60px)' }} />
-          <div className="absolute top-0 left-0 h-[500px] w-[700px] rounded-full bg-emerald-600/15 blur-[120px]" />
-          <div className="absolute top-0 right-0 h-[300px] w-[400px] rounded-full bg-blue-600/10 blur-[80px]" />
->>>>>>> Stashed changes
         </div>
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 py-16 lg:py-32">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -129,10 +179,10 @@ export default function Home() {
                 every milestone — from grassroots training to the Olympic pathway.
               </p>
               <div className="flex flex-wrap gap-3">
-                <Link to="/signup"
+                <button onClick={() => openModal('signup')}
                   className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 px-6 py-3.5 font-bold transition-all shadow-xl shadow-emerald-500/25">
                   Start for free <ArrowRight className="h-4 w-4" />
-                </Link>
+                </button>
                 <Link to="/clubs"
                   className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 active:scale-95 px-6 py-3.5 font-bold transition-all">
                   Browse clubs
@@ -147,35 +197,20 @@ export default function Home() {
 
             {/* Brisbane 2032 countdown */}
             <div className="flex justify-center lg:justify-end">
-<<<<<<< Updated upstream
               <div className="relative overflow-hidden rounded-3xl border border-white/10 p-8 backdrop-blur-sm text-center w-full max-w-sm shadow-2xl">
                 <img src="/hero-athlete.png" alt="" className="absolute inset-0 h-full w-full object-cover object-center opacity-80" />
                 <div className="absolute inset-0 bg-slate-950/50" />
                 <div className="relative z-10">
                 <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 text-xs font-bold text-amber-400 mb-6">
-=======
-              <div className="relative rounded-3xl border border-white/10 overflow-hidden p-8 text-center w-full max-w-sm">
-                {/* Athlete background */}
-                <img src="/hero-athlete.png" alt="" className="absolute inset-0 h-full w-full object-cover object-center opacity-[0.80]" />
-                {/* Dark overlay so text stays readable */}
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/30 to-slate-950/10" />
-                {/* Content */}
-                <div className="relative z-10">
-                <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/20 border border-amber-500/30 px-3 py-1.5 text-xs font-bold text-amber-400 mb-6">
->>>>>>> Stashed changes
                   🏅 Brisbane 2032 Olympics
                 </div>
                 <OlympicsCountdown large />
-                <p className="mt-6 text-sm text-slate-300 leading-relaxed">Your athletes have time — start their pathway today.</p>
+                <p className="mt-6 text-sm text-slate-400 leading-relaxed">Your athletes have time — start their pathway today.</p>
                 <Link to="/brisbane-2032"
                   className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-400 hover:text-emerald-300 transition-colors">
                   Explore the pathway <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
-<<<<<<< Updated upstream
                 </div>
-=======
-                </div>{/* end z-10 */}
->>>>>>> Stashed changes
               </div>
             </div>
           </div>
@@ -266,7 +301,7 @@ export default function Home() {
                   <Trophy className="h-5 w-5 text-amber-400" />
                 </div>
                 <div>
-                  <p className="font-black text-white text-sm">North Brisbane F.C</p>
+                  <p className="font-black text-white text-sm">Club Brisbane F.C</p>
                   <p className="text-xs text-slate-500">⚽ Football · Brisbane, QLD</p>
                 </div>
                 <div className="ml-auto flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-xs font-bold text-emerald-400">
@@ -329,9 +364,9 @@ export default function Home() {
               <p className="text-slate-500 text-sm leading-relaxed mb-6">
                 With Brisbane 2032 on the horizon, tracking the FTEM journey isn't just good practice — it's how Australian sport identifies its next generation of champions.
               </p>
-              <Link to="/signup" className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 px-5 py-3 font-bold text-sm transition-all shadow-lg shadow-emerald-500/25">
+              <button onClick={() => openModal('signup')} className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 px-5 py-3 font-bold text-sm transition-all shadow-lg shadow-emerald-500/25">
                 Start tracking free <ArrowRight className="h-4 w-4" />
-              </Link>
+              </button>
             </div>
             <div className="grid grid-cols-2 gap-3">
               {[
@@ -355,42 +390,83 @@ export default function Home() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="py-20 sm:py-24 border-b border-white/5">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+      <section id="pricing" className="py-20 sm:py-28 relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 h-px w-full max-w-4xl bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent" />
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-px w-full max-w-4xl bg-gradient-to-r from-transparent via-white/5 to-transparent" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[600px] w-[900px] rounded-full bg-emerald-600/5 blur-[100px]" />
+        </div>
+        <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
+
+          {/* Header */}
           <div className="text-center mb-14">
-            <h2 className="text-3xl sm:text-4xl font-black tracking-tight mb-4">Simple, honest pricing</h2>
-            <p className="text-slate-400">Start free. Scale as your club grows. No surprises.</p>
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-1.5 text-xs font-semibold text-emerald-400 mb-5">
+              <Zap className="h-3 w-3" /> Simple, honest pricing
+            </div>
+            <h2 className="text-4xl sm:text-5xl font-black tracking-tight mb-4">
+              Plans for every club
+            </h2>
+            <p className="text-slate-400 text-lg max-w-xl mx-auto">
+              Start free — no credit card needed. Upgrade when your club grows.
+              <span className="block text-emerald-400 font-semibold mt-1">Athletes always join free.</span>
+            </p>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+          {/* Cards */}
+          <div className="grid md:grid-cols-3 gap-6 items-start">
             {PRICING.map(p => (
-              <div key={p.tier} className={`rounded-2xl p-6 border flex flex-col ${p.highlight
-                ? 'border-emerald-500/50 bg-emerald-500/10 ring-1 ring-emerald-500/20 shadow-xl shadow-emerald-500/10'
-                : 'border-white/5 bg-white/[0.03]'}`}>
-                {p.highlight && (
-                  <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-bold text-emerald-400 w-fit">
-                    ⭐ Most popular
+              <div key={p.tier} className={`relative rounded-2xl border flex flex-col transition-transform ${
+                p.highlight
+                  ? 'border-emerald-500/50 bg-gradient-to-b from-emerald-500/10 to-emerald-500/5 shadow-2xl shadow-emerald-500/15 md:-translate-y-3'
+                  : 'border-white/8 bg-white/[0.03] hover:border-white/15'}`}>
+                {p.badge && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-emerald-500 px-4 py-1 text-xs font-black text-white shadow-lg shadow-emerald-500/30 whitespace-nowrap">
+                    ⭐ {p.badge}
                   </div>
                 )}
-                <div className="text-sm font-semibold text-slate-400 mb-1">{p.tier}</div>
-                <div className="text-4xl font-black text-white mb-1">
-                  {p.price}<span className="text-base font-normal text-slate-500">{p.period}</span>
+                <div className="p-7 pb-5">
+                  <p className={`text-xs font-bold uppercase tracking-widest mb-3 ${p.highlight ? 'text-emerald-400' : 'text-slate-500'}`}>{p.tier}</p>
+                  <div className="flex items-end gap-1.5 mb-1">
+                    <span className="text-5xl font-black text-white">{p.price}</span>
+                    <span className="text-slate-400 text-sm mb-2">{p.period} AUD</span>
+                  </div>
+                  <p className="text-slate-500 text-sm mb-6">{p.athletes}</p>
+
+                  <button
+                    onClick={() => {
+                      if (p.tier !== 'Free') sessionStorage.setItem('pendingPlan', p.tier.toLowerCase())
+                      openModal('signup')
+                    }}
+                    className={`w-full rounded-xl py-3.5 text-sm font-bold transition-all active:scale-95 ${
+                      p.highlight
+                        ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-lg shadow-emerald-500/30'
+                        : 'border border-white/10 bg-white/5 hover:bg-white/10 text-white'}`}>
+                    {p.cta} →
+                  </button>
                 </div>
-                <div className="text-xs text-slate-500 mb-5">{p.athletes}</div>
-                <ul className="space-y-2.5 mb-6 flex-1">
+
+                <div className={`mx-6 border-t ${p.highlight ? 'border-emerald-500/20' : 'border-white/5'}`} />
+
+                <ul className="p-7 pt-5 space-y-3 flex-1">
                   {p.features.map(f => (
-                    <li key={f} className="flex items-start gap-2 text-xs text-slate-400">
-                      <CheckCircle className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" /> {f}
+                    <li key={f} className="flex items-start gap-2.5 text-sm">
+                      <CheckCircle className={`h-4 w-4 shrink-0 mt-0.5 ${p.highlight ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                      <span className={p.highlight ? 'text-slate-200' : 'text-slate-400'}>{f}</span>
                     </li>
                   ))}
                 </ul>
-                <Link to="/signup"
-                  className={`block rounded-xl py-2.5 text-center text-sm font-bold transition-all active:scale-95 ${p.highlight
-                    ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-lg shadow-emerald-500/25'
-                    : 'border border-white/10 bg-white/5 hover:bg-white/10 text-white'}`}>
-                  {p.cta}
-                </Link>
               </div>
             ))}
+          </div>
+
+          {/* Footer note */}
+          <div className="mt-10 text-center">
+            <p className="text-slate-500 text-sm">
+              All plans include a public club profile, athlete management, and milestone tracking.
+            </p>
+            <Link to="/pricing" className="inline-flex items-center gap-1.5 text-emerald-400 hover:text-emerald-300 font-semibold text-sm mt-2 transition-colors">
+              See full feature comparison <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
           </div>
         </div>
       </section>
@@ -411,10 +487,10 @@ export default function Home() {
             Your trophy cabinet is waiting.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/signup"
+            <button onClick={() => openModal('signup')}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 px-8 py-4 text-lg font-bold transition-all shadow-xl shadow-emerald-500/25">
               Get started free <ArrowRight className="h-5 w-5" />
-            </Link>
+            </button>
             <Link to="/clubs"
               className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 active:scale-95 px-8 py-4 text-lg font-bold transition-all">
               Browse clubs
@@ -428,23 +504,26 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Auth Modal */}
+      {modal && <AuthModal mode={modal} onClose={() => setModal(null)} claimToken={claimToken} />}
+
       {/* Footer */}
       <footer className="border-t border-white/5 px-4 sm:px-6 py-12">
         <div className="mx-auto max-w-7xl">
           <div className="flex flex-col md:flex-row items-center justify-between gap-8 mb-8">
             <Link to="/" className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-lg shadow-emerald-500/30">
-                <Zap className="h-5 w-5 text-white" />
-              </div>
-              <span className="text-base font-extrabold tracking-tight">PathwayHQ</span>
+              <img src="/icon.png" alt="" className="h-9 w-9 rounded-xl" />
+              <span className="text-base font-extrabold tracking-tight">
+                <span className="text-white">Pathway</span><span className="text-emerald-400">HQ</span>
+              </span>
             </Link>
             <div className="flex flex-wrap justify-center gap-6 text-sm text-slate-500">
               <a href="#features"     className="hover:text-slate-300 transition-colors">Features</a>
-              <a href="#pricing"      className="hover:text-slate-300 transition-colors">Pricing</a>
+              <Link to="/pricing"     className="hover:text-slate-300 transition-colors">Pricing</Link>
               <Link to="/clubs"         className="hover:text-slate-300 transition-colors">Clubs</Link>
               <Link to="/brisbane-2032" className="hover:text-slate-300 transition-colors">Brisbane 2032</Link>
-              <Link to="/login"         className="hover:text-slate-300 transition-colors">Sign in</Link>
-              <Link to="/signup"        className="hover:text-slate-300 transition-colors">Get started</Link>
+              <button onClick={() => openModal('login')}  className="hover:text-slate-300 transition-colors">Sign in</button>
+              <button onClick={() => openModal('signup')} className="hover:text-slate-300 transition-colors">Get started</button>
             </div>
           </div>
           <div className="border-t border-white/5 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">

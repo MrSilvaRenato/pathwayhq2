@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Search, X, Plus, Users, CheckCircle2, Loader2, UserCheck, Mail, Phone, Pencil, Trash2 } from 'lucide-react'
+import { Search, X, Plus, Users, CheckCircle2, Loader2, UserCheck, Mail, Phone, Pencil, Trash2, ExternalLink } from 'lucide-react'
 import api from '../../lib/api'
 import { FTEM_PHASES, SPORTS } from '../../lib/constants'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 
-const EMPTY_FORM = { first_name:'', last_name:'', dob:'', sport:'soccer', gender:'male', ftem_phase:'F1', notes:'', invite_email:'', phone:'' }
+const EMPTY_FORM = { first_name:'', last_name:'', dob:'', sport:'soccer', gender:'male', ftem_phase:'F1', position:'', notes:'', invite_email:'', phone:'' }
 
 function initials(a) {
   return `${a.first_name?.[0] ?? ''}${a.last_name?.[0] ?? ''}`.toUpperCase()
@@ -210,8 +210,10 @@ export default function Athletes() {
 
                   {/* Card header */}
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white text-sm font-black">
-                      {initials(a)}
+                    <div className="h-11 w-11 shrink-0 rounded-full overflow-hidden flex items-center justify-center bg-emerald-500 text-white text-sm font-black">
+                      {a.avatar_url
+                        ? <img src={a.avatar_url} alt={a.first_name} className="h-full w-full object-cover" />
+                        : initials(a)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -235,6 +237,11 @@ export default function Athletes() {
                         {sport.emoji} {sport.label}
                       </span>
                     )}
+                    {a.position && (
+                      <span className="inline-flex items-center rounded-lg bg-indigo-50 px-2 py-1 text-xs text-indigo-700 font-medium">
+                        {a.position}
+                      </span>
+                    )}
                     {a.squad_names && (
                       <span className="inline-flex items-center rounded-lg bg-slate-100 px-2 py-1 text-xs text-slate-600">
                         {a.squad_names}
@@ -250,9 +257,9 @@ export default function Athletes() {
                     </span>
                   </div>
 
-                  {/* Card footer — admin only */}
-                  {isAdmin && (
-                    <div className="flex items-center gap-3 pt-3 border-t border-slate-100">
+                  {/* Card footer */}
+                  <div className="flex items-center gap-3 pt-3 border-t border-slate-100">
+                    {isAdmin && (
                       <div className="flex-1 min-w-0 space-y-1">
                         {a.contact_phone && (
                           <a href={`tel:${a.contact_phone}`}
@@ -269,20 +276,22 @@ export default function Athletes() {
                           </a>
                         )}
                       </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          onClick={e => { e.stopPropagation(); navigate(`/athletes/${a.id}`) }}
-                          className="flex items-center justify-center h-9 w-9 rounded-xl bg-slate-100 hover:bg-emerald-100 hover:text-emerald-600 text-slate-500 transition-colors">
-                          <Pencil className="h-4 w-4" />
-                        </button>
+                    )}
+                    <div className={`flex items-center gap-2 shrink-0 ${isAdmin ? '' : 'ml-auto'}`}>
+                      <button
+                        onClick={e => { e.stopPropagation(); navigate(`/athletes/${a.id}`) }}
+                        className="flex items-center gap-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-2 text-xs font-bold transition-colors">
+                        <ExternalLink className="h-3.5 w-3.5" /> View profile
+                      </button>
+                      {isAdmin && (
                         <button
                           onClick={e => handleDelete(e, a.id)}
                           className="flex items-center justify-center h-9 w-9 rounded-xl bg-slate-100 hover:bg-red-100 hover:text-red-500 text-slate-500 transition-colors">
                           <Trash2 className="h-4 w-4" />
                         </button>
-                      </div>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
               )
             })}
@@ -296,9 +305,10 @@ export default function Athletes() {
                   <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Name</th>
                   <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Phase</th>
                   <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Sport</th>
+                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Position</th>
                   {isAdmin && <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Contact</th>}
                   <th className="text-right px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Status</th>
-                  {isAdmin && <th className="text-right px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide"></th>}
+                  <th className="text-right px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -307,9 +317,16 @@ export default function Athletes() {
                   return (
                     <tr key={a.id} className="hover:bg-slate-50 transition-colors group">
                       <td className="px-5 py-3.5">
-                        <Link to={`/athletes/${a.id}`} className="font-semibold text-slate-800 hover:text-emerald-600 transition-colors">
-                          {a.first_name} {a.last_name}
-                        </Link>
+                        <div className="flex items-center gap-2.5">
+                          <div className="h-8 w-8 shrink-0 rounded-full overflow-hidden flex items-center justify-center bg-emerald-500 text-white text-xs font-black">
+                            {a.avatar_url
+                              ? <img src={a.avatar_url} alt={a.first_name} className="h-full w-full object-cover" />
+                              : initials(a)}
+                          </div>
+                          <Link to={`/athletes/${a.id}`} className="font-semibold text-slate-800 hover:text-emerald-600 transition-colors">
+                            {a.first_name} {a.last_name}
+                          </Link>
+                        </div>
                         {a.invite_status === 'pending' && (
                           <span className="ml-2 inline-flex rounded-full px-2 py-0.5 text-xs font-bold bg-amber-100 text-amber-700">
                             Pending invite
@@ -323,6 +340,11 @@ export default function Athletes() {
                         </span>
                       </td>
                       <td className="px-5 py-3.5 text-slate-500">{sport?.emoji} {sport?.label}</td>
+                      <td className="px-5 py-3.5">
+                        {a.position
+                          ? <span className="inline-flex rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700">{a.position}</span>
+                          : <span className="text-slate-300 text-xs">—</span>}
+                      </td>
                       {isAdmin && (
                         <td className="px-5 py-3.5">
                           <div className="space-y-0.5">
@@ -353,14 +375,20 @@ export default function Athletes() {
                           </span>
                         )}
                       </td>
-                      {isAdmin && (
-                        <td className="px-5 py-3.5 text-right">
-                          <button onClick={e => handleDelete(e, a.id)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity rounded-lg border border-red-200 text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5">
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </td>
-                      )}
+                      <td className="px-5 py-3.5 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Link to={`/athletes/${a.id}`}
+                            className="flex items-center gap-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-1.5 text-xs font-bold transition-colors">
+                            <ExternalLink className="h-3.5 w-3.5" /> View profile
+                          </Link>
+                          {isAdmin && (
+                            <button onClick={e => handleDelete(e, a.id)}
+                              className="rounded-lg border border-red-200 text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 transition-colors">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   )
                 })}
@@ -403,12 +431,12 @@ export default function Athletes() {
                 {/* Email first */}
                 <div>
                   <label className="text-xs font-semibold text-slate-500 mb-1 block">
-                    Athlete email
-                    <span className="font-normal text-slate-400 ml-1">(optional)</span>
+                    Athlete email <span className="text-red-400">*</span>
                   </label>
                   <div className="relative">
                     <input
                       type="email"
+                      required
                       value={form.invite_email}
                       onChange={e => handleEmailChange(e.target.value)}
                       className={`${inputCls} pr-9`}
@@ -501,6 +529,18 @@ export default function Athletes() {
                       {Object.keys(FTEM_PHASES).map(k => <option key={k} value={k}>{k}</option>)}
                     </select>
                   </div>
+                </div>
+
+                {/* Position */}
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 mb-1 block">Primary position <span className="font-normal text-slate-400">(optional)</span></label>
+                  <input
+                    value={form.position}
+                    onChange={e => setForm(p => ({ ...p, position: e.target.value }))}
+                    className={inputCls}
+                    placeholder="e.g. Striker, Goalkeeper, Centre-back…"
+                    maxLength={100}
+                  />
                 </div>
 
                 {/* Actions */}

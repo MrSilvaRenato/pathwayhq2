@@ -3,6 +3,7 @@ import { Plus, X, ChevronLeft, ChevronRight, MapPin, Clock, Users, RefreshCw, Tr
 import api from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
+import UpgradePrompt from '../../components/UpgradePrompt'
 
 const TYPE_META = {
   training: { label: 'Training',  pill: 'bg-blue-500',    dot: 'bg-blue-500',    accent: 'border-blue-500',    bg: 'bg-blue-50',    text: 'text-blue-700',    badge: 'bg-blue-100 text-blue-700' },
@@ -11,6 +12,14 @@ const TYPE_META = {
   other:    { label: 'Other',     pill: 'bg-slate-400',   dot: 'bg-slate-400',   accent: 'border-slate-400',   bg: 'bg-slate-50',   text: 'text-slate-600',   badge: 'bg-slate-100 text-slate-600' },
 }
 const tm = (type) => TYPE_META[type] || TYPE_META.other
+
+const TYPE_CHIP = {
+  training: { border: 'border-blue-400',    bg: 'bg-blue-50',    text: 'text-blue-700',    dot: 'bg-blue-400' },
+  match:    { border: 'border-emerald-400', bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-400' },
+  camp:     { border: 'border-purple-400',  bg: 'bg-purple-50',  text: 'text-purple-700',  dot: 'bg-purple-400' },
+  other:    { border: 'border-slate-300',   bg: 'bg-slate-50',   text: 'text-slate-600',   dot: 'bg-slate-300' },
+}
+const chip = (type) => TYPE_CHIP[type] || TYPE_CHIP.other
 
 // keep legacy aliases so pill/dot refs still work
 const TYPE_COLORS     = Object.fromEntries(Object.entries(TYPE_META).map(([k,v]) => [k, v.pill]))
@@ -105,6 +114,7 @@ export default function Calendar() {
   const [editSaving, setEditSaving]       = useState(false)
   // 'choose' → show scope picker | 'one' → edit this only | 'series' → edit whole series
   const [editScope, setEditScope]         = useState('choose')
+  const [upgrade, setUpgrade]             = useState(null)
 
   async function loadEvents() {
     try {
@@ -285,8 +295,10 @@ export default function Calendar() {
       setQuickForm({ ...BLANK_FORM, start_time: start, end_time: end })
       setShowMoreOpts(false)
       toast.success(count > 1 ? `Added ${count} sessions` : 'Event added')
-    } catch {
-      toast.error('Failed to add event')
+    } catch (err) {
+      const d = err?.response?.data
+      if (d?.upgrade_required) setUpgrade({ message: d.error ?? 'Upgrade to add calendar events.', requiredPlan: d.required_plan ?? 'pro' })
+      else toast.error('Failed to add event')
     } finally {
       setQuickSaving(false)
     }
@@ -322,8 +334,10 @@ export default function Calendar() {
       setShowModal(false)
       setForm({ ...BLANK_FORM })
       toast.success(count > 1 ? `Added ${count} sessions` : 'Event added')
-    } catch {
-      toast.error('Failed to add event')
+    } catch (err) {
+      const d = err?.response?.data
+      if (d?.upgrade_required) { setShowModal(false); setUpgrade({ message: d.error ?? 'Upgrade to add calendar events.', requiredPlan: d.required_plan ?? 'pro' }) }
+      else toast.error('Failed to add event')
     } finally {
       setSaving(false)
     }
@@ -373,50 +387,68 @@ export default function Calendar() {
 
           {/* Monthly grid */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-center gap-4 mb-4">
-              <button
-                onClick={prevMonth}
-                className="h-11 w-11 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors"
-                aria-label="Previous month"
-              >
-                <ChevronLeft className="h-5 w-5 text-slate-600" />
-              </button>
-              <div className="flex items-center gap-3">
-                <h2 className="text-lg font-bold text-slate-900">
-                  {MONTHS[month]} {year}
+
+            {/* Month navigation header */}
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h2 className="text-2xl font-black text-slate-900 leading-none">
+                  {MONTHS[month]}
                 </h2>
+                <p className="text-sm font-semibold text-slate-400 mt-0.5">{year}</p>
+              </div>
+              <div className="flex items-center gap-2">
                 <button
                   onClick={goToday}
-                  className="text-xs font-semibold text-emerald-600 hover:text-emerald-500 border border-emerald-200 hover:border-emerald-300 rounded-lg px-3 py-1.5 transition-colors min-h-[36px]"
+                  className="rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white px-4 py-2 text-sm font-bold transition-colors shadow-sm shadow-emerald-200"
                 >
                   Today
                 </button>
+                <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden">
+                  <button
+                    onClick={prevMonth}
+                    className="h-9 w-9 flex items-center justify-center bg-white hover:bg-slate-50 transition-colors"
+                    aria-label="Previous month"
+                  >
+                    <ChevronLeft className="h-4 w-4 text-slate-500" />
+                  </button>
+                  <div className="w-px h-5 bg-slate-200" />
+                  <button
+                    onClick={nextMonth}
+                    className="h-9 w-9 flex items-center justify-center bg-white hover:bg-slate-50 transition-colors"
+                    aria-label="Next month"
+                  >
+                    <ChevronRight className="h-4 w-4 text-slate-500" />
+                  </button>
+                </div>
               </div>
-              <button
-                onClick={nextMonth}
-                className="h-11 w-11 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors"
-                aria-label="Next month"
-              >
-                <ChevronRight className="h-5 w-5 text-slate-600" />
-              </button>
             </div>
 
+            {/* Day-of-week header row */}
             <div className="grid grid-cols-7 mb-1">
-              {DAYS_FULL.map((d, i) => (
-                <div key={d} className="text-center py-1">
-                  <span className="hidden sm:inline text-xs font-semibold text-slate-400">{d}</span>
-                  <span className="sm:hidden text-xs font-semibold text-slate-400">{DAYS_SHORT[i]}</span>
+              {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d, i) => (
+                <div
+                  key={d}
+                  className={`text-center pb-2 text-[11px] font-bold uppercase tracking-widest ${
+                    i === 0 || i === 6 ? 'text-slate-400' : 'text-slate-500'
+                  }`}
+                >
+                  <span className="hidden sm:inline">{d}</span>
+                  <span className="sm:hidden">{d[0]}</span>
                 </div>
               ))}
             </div>
 
-            <div className="grid grid-cols-7 border-l border-t border-slate-200 rounded-xl overflow-hidden">
+            {/* Calendar grid */}
+            <div className="grid grid-cols-7 gap-px bg-slate-200 rounded-2xl overflow-hidden shadow-sm">
               {cells.map((day, idx) => {
+                const colIdx   = idx % 7
+                const isWeekend = colIdx === 0 || colIdx === 6
+
                 if (day === null) {
                   return (
                     <div
                       key={`empty-${idx}`}
-                      className="border-r border-b border-slate-200 bg-slate-50/50 h-14 md:min-h-[80px]"
+                      className="bg-slate-50/30 min-h-[80px] md:min-h-[90px]"
                     />
                   )
                 }
@@ -432,40 +464,63 @@ export default function Calendar() {
                     key={day}
                     onClick={() => selectDay(day)}
                     className={[
-                      'border-r border-b border-slate-200 h-14 md:min-h-[80px] p-1 md:p-1.5 flex flex-col transition-colors cursor-pointer select-none',
-                      isSelected ? 'bg-emerald-50 ring-inset ring-2 ring-emerald-400' : 'bg-white active:bg-slate-100 hover:bg-slate-50/60',
+                      'min-h-[80px] md:min-h-[90px] p-1.5 md:p-2 flex flex-col transition-all cursor-pointer select-none group',
+                      isSelected && isToday
+                        ? 'bg-emerald-50'
+                        : isSelected
+                          ? 'bg-emerald-50 ring-1 ring-inset ring-emerald-300'
+                          : isWeekend
+                            ? 'bg-slate-50/60 hover:bg-slate-100/60'
+                            : 'bg-white hover:bg-slate-50',
                     ].join(' ')}
                   >
-                    <span className={[
-                      'text-xs font-bold self-start w-6 h-6 flex items-center justify-center rounded-full mb-1 shrink-0',
-                      isToday ? 'bg-emerald-500 text-white ring-2 ring-emerald-300' : 'text-slate-600',
-                      isSelected && !isToday ? 'text-emerald-700 font-black' : '',
-                    ].join(' ')}>
-                      {day}
-                    </span>
-
-                    <div className="flex flex-wrap gap-0.5 md:hidden">
-                      {dayEvs.slice(0, 3).map(ev => (
-                        <span
-                          key={ev.id}
-                          className={`h-1.5 w-1.5 rounded-full ${TYPE_DOT_COLORS[ev.event_type] || 'bg-slate-400'}`}
-                        />
-                      ))}
+                    {/* Date number */}
+                    <div className="flex items-start justify-between mb-1">
+                      <span className={[
+                        'h-7 w-7 flex items-center justify-center rounded-full text-xs md:text-sm font-bold leading-none transition-all shrink-0',
+                        isToday
+                          ? 'bg-emerald-500 text-white font-black shadow-sm shadow-emerald-200'
+                          : isSelected
+                            ? 'bg-emerald-200 text-emerald-800 font-black'
+                            : isWeekend
+                              ? 'text-slate-400'
+                              : 'text-slate-700 group-hover:bg-slate-100',
+                      ].join(' ')}>
+                        {day}
+                      </span>
+                      {/* Mobile dots */}
+                      {dayEvs.length > 0 && (
+                        <div className="flex gap-0.5 md:hidden pt-1 pr-0.5 flex-wrap justify-end max-w-[40px]">
+                          {dayEvs.slice(0, 3).map(ev => (
+                            <span
+                              key={ev.id}
+                              className={`h-1.5 w-1.5 rounded-full shrink-0 ${TYPE_DOT_COLORS[ev.event_type] || 'bg-slate-400'}`}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
 
-                    <div className="hidden md:flex flex-col gap-0.5">
-                      {dayEvs.slice(0, 3).map(ev => (
-                        <div
-                          key={ev.id}
-                          className={`${TYPE_COLORS[ev.event_type] || 'bg-slate-400'} rounded px-1 py-0.5 text-white text-[10px] font-semibold truncate leading-tight flex items-center gap-0.5`}
-                          title={ev.title}
-                        >
-                          {ev.series_id && <RefreshCw className="h-2 w-2 shrink-0 opacity-80" />}
-                          {ev.title}
-                        </div>
-                      ))}
+                    {/* Desktop event chips — left-border accent style */}
+                    <div className="hidden md:flex flex-col gap-0.5 flex-1 min-h-0">
+                      {dayEvs.slice(0, 3).map(ev => {
+                        const c = chip(ev.event_type)
+                        const t = new Date(ev.start_time).toLocaleTimeString('en-AU', {
+                          hour: '2-digit', minute: '2-digit', hour12: false,
+                        })
+                        return (
+                          <div
+                            key={ev.id}
+                            className={`border-l-2 ${c.border} ${c.bg} ${c.text} rounded-r-md pl-1.5 pr-1.5 py-0.5 text-[10px] font-semibold truncate leading-tight flex items-center gap-1 min-w-0`}
+                            title={`${t} ${ev.title}`}
+                          >
+                            <span className="opacity-60 shrink-0 tabular-nums font-medium">{t}</span>
+                            <span className="truncate">{ev.title}</span>
+                          </div>
+                        )
+                      })}
                       {dayEvs.length > 3 && (
-                        <span className="text-[10px] text-slate-400 font-medium pl-0.5">
+                        <span className="text-[10px] text-slate-400 font-semibold pl-0.5 leading-none">
                           +{dayEvs.length - 3} more
                         </span>
                       )}
@@ -473,6 +528,16 @@ export default function Calendar() {
                   </div>
                 )
               })}
+            </div>
+
+            {/* Legend */}
+            <div className="flex items-center gap-4 mt-3 px-1">
+              {Object.entries(TYPE_CHIP).map(([type, c]) => (
+                <div key={type} className="flex items-center gap-1.5">
+                  <span className={`h-2.5 w-2.5 rounded-sm border-l-2 ${c.border} ${c.bg}`} />
+                  <span className="text-[10px] font-semibold text-slate-400 capitalize">{type}</span>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -850,6 +915,15 @@ export default function Calendar() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Upgrade prompt */}
+      {upgrade && (
+        <UpgradePrompt
+          message={upgrade.message}
+          requiredPlan={upgrade.requiredPlan}
+          onClose={() => setUpgrade(null)}
+        />
       )}
 
       {/* ── Edit event modal ── */}
@@ -1288,6 +1362,7 @@ function EventList({
           </div>
         )
       })}
+
     </div>
   )
 }

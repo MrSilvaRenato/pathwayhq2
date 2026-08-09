@@ -5,11 +5,12 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use App\Models\Athlete;
+use App\Models\Club;
 use App\Models\Milestone;
 use App\Models\User;
 use App\Models\Notification;
-use App\Mail\AthleteInvite;
-use Illuminate\Support\Facades\Mail;
+use App\Services\PlanService;
+use App\Services\MailService;
 
 class AthleteController extends Controller
 {
@@ -20,6 +21,18 @@ class AthleteController extends Controller
 
         $query = Athlete::where('club_id', $clubId)
             ->where('invite_status', '!=', 'rejected')
+            // Exclude athletes who have transferred to another club
+            ->whereNot(function ($q) use ($clubId) {
+                $q->whereNotNull('user_id')
+                  ->where('is_active', false)
+                  ->whereExists(function ($sub) use ($clubId) {
+                      $sub->selectRaw('1')
+                          ->from('athletes as a2')
+                          ->whereColumn('a2.user_id', 'athletes.user_id')
+                          ->where('a2.club_id', '!=', $clubId)
+                          ->where('a2.is_active', true);
+                  });
+            })
             ->with(['squads:id,name', 'user:id,phone,email'])
             ->orderBy('last_name')->orderBy('first_name');
 
@@ -54,6 +67,25 @@ class AthleteController extends Controller
             return $a;
         };
 
+        // Back-fill avatar_url from any athlete record for the same user.
+        // Needed for athletes who uploaded an avatar before being approved
+        // into this club (their club record was created without avatar_url).
+        $backfillAvatars = function ($collection) {
+            $userIds = $collection->whereNull('avatar_url')->whereNotNull('user_id')->pluck('user_id')->unique();
+            if ($userIds->isEmpty()) return $collection;
+
+            $avatarMap = Athlete::whereIn('user_id', $userIds)
+                ->whereNotNull('avatar_url')
+                ->pluck('avatar_url', 'user_id');
+
+            return $collection->map(function ($a) use ($avatarMap) {
+                if (!$a->avatar_url && $a->user_id && isset($avatarMap[$a->user_id])) {
+                    $a->avatar_url = $avatarMap[$a->user_id];
+                }
+                return $a;
+            });
+        };
+
         // Pagination — opt-in. If per_page param present (and paginate != 'false'), paginate.
         $perPage = $request->query('per_page');
         $paginate = $request->query('paginate', 'true');
@@ -63,7 +95,7 @@ class AthleteController extends Controller
             $page    = max(1, (int) $request->query('page', 1));
 
             $total   = $query->count();
-            $athletes = $query->forPage($page, $perPage)->get()->map($mapAthlete);
+            $athletes = $backfillAvatars($query->forPage($page, $perPage)->get()->map($mapAthlete));
 
             return response()->json([
                 'data'        => $athletes,
@@ -75,7 +107,7 @@ class AthleteController extends Controller
         }
 
         // Backward-compatible flat array (React web app path)
-        $athletes = $query->get()->map($mapAthlete);
+        $athletes = $backfillAvatars($query->get()->map($mapAthlete));
         return response()->json($athletes);
     }
 
@@ -92,11 +124,20 @@ class AthleteController extends Controller
         $athlete->contact_email = $athlete->user?->email ?? $athlete->invite_email;
         unset($athlete->user);
 
+        if (!$athlete->avatar_url && $athlete->user_id) {
+            $athlete->avatar_url = Athlete::where('user_id', $athlete->user_id)
+                ->whereNotNull('avatar_url')
+                ->value('avatar_url');
+        }
+
         return response()->json($athlete);
     }
 
     public function store(Request $request)
     {
+        $club = $request->user()->club;
+        if ($err = PlanService::checkAthleteLimit($club)) return $err;
+
         $data = $request->validate([
             'first_name'   => 'required|string',
             'last_name'    => 'required|string',
@@ -104,16 +145,17 @@ class AthleteController extends Controller
             'sport'        => 'nullable|string',
             'gender'       => 'nullable|string',
             'ftem_phase'   => 'nullable|string',
+            'position'     => 'nullable|string|max:100',
             'notes'        => 'nullable|string',
             'phone'        => 'nullable|string|max:20',
             'squad_ids'    => 'nullable|array',
-            'invite_email' => 'nullable|email',
+            'invite_email' => 'required|email',
         ]);
 
         $club    = $request->user()->club;
         $userId  = null;
         $inviteToken = null;
-        $inviteEmail = $data['invite_email'] ?? null;
+        $inviteEmail = $data['invite_email'] ? strtolower(trim($data['invite_email'])) : null;
         $status  = 'no_invite';
 
         $inviteStatus = 'accepted'; // default for no-email adds
@@ -136,19 +178,20 @@ class AthleteController extends Controller
                     'is_read' => false,
                     'at'      => now()->toDateTimeString(),
                 ]);
+
+                MailService::athleteInviteExisting($existingUser, $club->name);
             } else {
                 // New user — send email invite to create account & claim profile
                 $inviteToken  = Str::random(48);
                 $status       = 'invited';
                 $inviteStatus = 'pending';
 
-                Mail::to($inviteEmail)->send(
-                    new AthleteInvite(
-                        $data['first_name'],
-                        $data['last_name'],
-                        $club->name,
-                        $inviteToken
-                    )
+                MailService::athleteInviteNew(
+                    $inviteEmail,
+                    $data['first_name'],
+                    $data['last_name'],
+                    $club->name,
+                    $inviteToken
                 );
             }
         }
@@ -171,6 +214,7 @@ class AthleteController extends Controller
             'sport'         => $data['sport']  ?? 'soccer',
             'gender'        => $data['gender'] ?? 'male',
             'ftem_phase'    => $data['ftem_phase'] ?? 'F1',
+            'position'      => $data['position'] ?? null,
             'notes'         => $data['notes']  ?? null,
             'phone'         => $data['phone']  ?? null,
             'invite_email'  => $inviteEmail,
@@ -212,6 +256,7 @@ class AthleteController extends Controller
             'sport'        => 'nullable|string',
             'gender'       => 'nullable|string',
             'ftem_phase'   => 'nullable|string',
+            'position'     => 'nullable|string|max:100',
             'is_active'    => 'boolean',
             'is_public'    => 'boolean',
             'slug'         => "nullable|string|unique:athletes,slug,{$athlete->id}",
@@ -219,6 +264,20 @@ class AthleteController extends Controller
             'phone'        => 'nullable|string|max:20',
             'squad_ids'    => 'nullable|array',
         ]);
+
+        // Block all edits once the athlete's user has an active record at another club
+        if ($athlete->user_id) {
+            $transferredAway = Athlete::where('user_id', $athlete->user_id)
+                ->where('club_id', '!=', $athlete->club_id)
+                ->where('is_active', true)
+                ->exists();
+
+            if ($transferredAway) {
+                return response()->json([
+                    'message' => 'This athlete has transferred to another club. Their profile here is read-only.',
+                ], 422);
+            }
+        }
 
         $athlete->update($data);
 
@@ -235,12 +294,77 @@ class AthleteController extends Controller
             return response()->json(['error' => 'Forbidden'], 403);
         }
 
-        $affected = Athlete::where('id', $id)
+        $athlete = Athlete::where('id', $id)
             ->where('club_id', $request->user()->club_id)
-            ->delete();
+            ->first();
 
-        if (!$affected) {
+        if (!$athlete) {
             return response()->json(['error' => 'Not found'], 404);
+        }
+
+        $athlete->squads()->detach();
+        \App\Models\SquadRequest::where('athlete_id', $athlete->id)->where('status', 'pending')->delete();
+
+        if ($athlete->user_id) {
+            // Athlete has an account — disassociate from club so they can join another.
+            // Nulling club_id removes them from this club's roster while preserving history.
+            $athlete->update(['is_active' => false, 'club_id' => null]);
+
+            $club = Club::find($request->user()->club_id);
+            Notification::create([
+                'id'      => (string) Str::uuid(),
+                'user_id' => $athlete->user_id,
+                'title'   => 'You have been removed from ' . ($club?->name ?? 'the club'),
+                'body'    => 'Your history and achievements are preserved. You can now search for and join another club.',
+                'link'    => '/clubs',
+                'is_read' => false,
+                'at'      => now()->toDateTimeString(),
+            ]);
+        } else {
+            // No linked account (pending invite never accepted) — hard delete.
+            $athlete->delete();
+        }
+
+        return response()->json(['ok' => true]);
+    }
+
+    // Athlete voluntarily leaves their current club
+    public function leaveClub(Request $request)
+    {
+        $user = $request->user();
+
+        $athlete = Athlete::where('user_id', $user->id)
+            ->where('invite_status', 'accepted')
+            ->where('is_active', true)
+            ->with('club:id,name')
+            ->first();
+
+        if (!$athlete) {
+            return response()->json(['message' => 'You are not currently a member of any club.'], 404);
+        }
+
+        $clubName    = $athlete->club?->name ?? 'the club';
+        $athleteName = trim("{$athlete->first_name} {$athlete->last_name}");
+        $oldClubId   = $athlete->club_id;
+
+        $athlete->squads()->detach();
+        \App\Models\SquadRequest::where('athlete_id', $athlete->id)->where('status', 'pending')->delete();
+        $athlete->update(['is_active' => false, 'club_id' => null]);
+
+        $staff = User::where('club_id', $oldClubId)
+            ->whereIn('role', ['club_admin', 'coach'])
+            ->get();
+
+        foreach ($staff as $s) {
+            Notification::create([
+                'id'      => (string) Str::uuid(),
+                'user_id' => $s->id,
+                'title'   => "🚪 {$athleteName} has left {$clubName}",
+                'body'    => 'They left voluntarily. Their profile has been deactivated from your roster.',
+                'link'    => '/athletes',
+                'is_read' => false,
+                'at'      => now()->toDateTimeString(),
+            ]);
         }
 
         return response()->json(['ok' => true]);
@@ -249,16 +373,36 @@ class AthleteController extends Controller
     // Returns the accepted athlete profile linked to the current user
     public function me(Request $request)
     {
+        // Prefer the active club-linked record; fall back to unaffiliated (left club)
         $athlete = Athlete::where('user_id', $request->user()->id)
             ->where('invite_status', 'accepted')
-            ->with('squads:id,name')
+            ->with(['squads:id,name', 'club:id,name,logo_url,slug,sport,city,state'])
+            ->orderByDesc('is_active')
+            ->orderByDesc('created_at')
             ->first();
 
         if (!$athlete) return response()->json(null);
 
         $athlete->squad_names = $athlete->squads->pluck('name')->join(', ');
         $athlete->is_claimed  = true;
-        unset($athlete->squads);
+
+        // Club details
+        $athlete->club_name  = $athlete->club?->name;
+        $athlete->club_logo  = $athlete->club?->logo_url;
+        $athlete->club_slug  = $athlete->club?->slug;
+        $athlete->club_sport = $athlete->club?->sport;
+        $athlete->club_city  = $athlete->club?->city;
+        $athlete->club_state = $athlete->club?->state;
+
+        // Manager contact
+        $manager = User::where('club_id', $athlete->club_id)
+            ->where('role', 'club_admin')
+            ->select('full_name', 'email')
+            ->first();
+        $athlete->manager_name  = $manager?->full_name;
+        $athlete->manager_email = $manager?->email;
+
+        unset($athlete->squads, $athlete->club);
 
         return response()->json($athlete);
     }
@@ -284,7 +428,7 @@ class AthleteController extends Controller
         return response()->json($pending);
     }
 
-    // Athlete accepts a club invite
+    // Athlete accepts a club invite — deactivates any previous club membership
     public function acceptInvite(Request $request, $id)
     {
         $athlete = Athlete::where('id', $id)
@@ -292,7 +436,36 @@ class AthleteController extends Controller
             ->where('invite_status', 'pending')
             ->firstOrFail();
 
-        $athlete->update(['invite_status' => 'accepted']);
+        // Deactivate existing accepted memberships at other clubs
+        $previous = Athlete::where('user_id', $request->user()->id)
+            ->where('invite_status', 'accepted')
+            ->where('is_active', true)
+            ->where('id', '!=', $id)
+            ->get();
+
+        foreach ($previous as $prev) {
+            $prev->squads()->detach();
+            $prev->update(['is_active' => false]);
+
+            // Notify old club
+            $clubAdmins = User::where('club_id', $prev->club_id)
+                ->whereIn('role', ['club_admin', 'coach'])
+                ->get();
+            $athleteName = "{$prev->first_name} {$prev->last_name}";
+            foreach ($clubAdmins as $admin) {
+                Notification::create([
+                    'id'      => (string) Str::uuid(),
+                    'user_id' => $admin->id,
+                    'title'   => "🚪 {$athleteName} has left your club",
+                    'body'    => 'They joined another club. Their profile has been deactivated from your roster.',
+                    'link'    => '/athletes',
+                    'is_read' => false,
+                    'at'      => now()->toDateTimeString(),
+                ]);
+            }
+        }
+
+        $athlete->update(['invite_status' => 'accepted', 'is_active' => true]);
 
         return response()->json(['ok' => true]);
     }
@@ -303,9 +476,29 @@ class AthleteController extends Controller
         $athlete = Athlete::where('id', $id)
             ->where('user_id', $request->user()->id)
             ->where('invite_status', 'pending')
+            ->with('club:id,name')
             ->firstOrFail();
 
+        $athleteName = "{$athlete->first_name} {$athlete->last_name}";
+        $clubId      = $athlete->club_id;
+
         $athlete->delete();
+
+        // Notify all club admins and coaches
+        $admins = User::where('club_id', $clubId)
+            ->whereIn('role', ['club_admin', 'coach'])
+            ->get();
+        foreach ($admins as $admin) {
+            Notification::create([
+                'id'      => (string) Str::uuid(),
+                'user_id' => $admin->id,
+                'title'   => "❌ {$athleteName} declined the club invite",
+                'body'    => 'The athlete rejected the invitation to join your roster.',
+                'link'    => '/athletes',
+                'is_read' => false,
+                'at'      => now()->toDateTimeString(),
+            ]);
+        }
 
         return response()->json(['ok' => true]);
     }
@@ -320,10 +513,16 @@ class AthleteController extends Controller
 
         $milestones = Milestone::where('athlete_id', $athlete->id)
             ->where('is_shared_with_parent', true)
-            ->select('id', 'title', 'description', 'ftem_phase', 'achieved_at')
+            ->with('club:id,name')
+            ->select('id', 'club_id', 'title', 'description', 'ftem_phase', 'achieved_at')
             ->orderBy('achieved_at', 'desc')
             ->limit(20)
-            ->get();
+            ->get()
+            ->map(function ($m) {
+                $m->club_name = $m->club?->name;
+                unset($m->club, $m->club_id);
+                return $m;
+            });
 
         $dobYear = $athlete->dob ? (int) substr($athlete->dob, 0, 4) : null;
 
@@ -335,8 +534,10 @@ class AthleteController extends Controller
                 'sport'      => $athlete->sport,
                 'gender'     => $athlete->gender,
                 'ftem_phase' => $athlete->ftem_phase,
+                'position'   => $athlete->position,
                 'dob_year'   => $dobYear,
                 'slug'       => $athlete->slug,
+                'avatar_url' => $athlete->avatar_url,
             ],
             'club'       => $athlete->club,
             'milestones' => $milestones,
@@ -346,20 +547,59 @@ class AthleteController extends Controller
     // Athlete updates their own public profile settings
     public function updateMe(Request $request)
     {
-        $athlete = Athlete::where('user_id', $request->user()->id)
-            ->where('invite_status', 'accepted')
-            ->first();
+        $user = $request->user();
 
-        if (!$athlete) return response()->json(['error' => 'No athlete profile found'], 404);
+        // Prefer the active club athlete record; fall back to any active record
+        $athletes = Athlete::where('user_id', $user->id)
+            ->where('invite_status', 'accepted')
+            ->where('is_active', true)
+            ->get();
+
+        // Primary record used for slug uniqueness check and response
+        $primary = $athletes->firstWhere('club_id', '!=', null) ?? $athletes->first();
+
+        // If no accepted athlete record exists, create a standalone one so
+        // users who registered directly (not via club invite) can still set
+        // their avatar and public profile.
+        if (!$primary) {
+            $nameParts = explode(' ', trim($user->full_name ?? ''), 2);
+            $firstName = $nameParts[0] ?? '';
+            $lastName  = $nameParts[1] ?? '';
+
+            $baseSlug = Str::slug($user->full_name ?? $user->email);
+            $slug = $baseSlug;
+            $i = 1;
+            while (Athlete::where('slug', $slug)->exists()) {
+                $slug = $baseSlug . '-' . $i++;
+            }
+
+            $primary = Athlete::create([
+                'id'           => (string) Str::uuid(),
+                'user_id'      => $user->id,
+                'first_name'   => $firstName,
+                'last_name'    => $lastName,
+                'invite_email' => $user->email,
+                'invite_status'=> 'accepted',
+                'is_active'    => true,
+                'slug'         => $slug,
+                'ftem_phase'   => 'F1',
+            ]);
+            $athletes = collect([$primary]);
+        }
 
         $data = $request->validate([
-            'is_public' => 'boolean',
-            'slug'      => "nullable|string|max:80|unique:athletes,slug,{$athlete->id}",
+            'is_public'  => 'boolean',
+            'slug'       => "nullable|string|max:80|unique:athletes,slug,{$primary->id}",
+            'avatar_url' => 'nullable|string|max:500',
+            'position'   => 'nullable|string|max:100',
         ]);
 
-        $athlete->update($data);
+        // Update all active athlete records so avatar/visibility stays in sync
+        foreach ($athletes as $a) {
+            $a->update($data);
+        }
 
-        return response()->json(['ok' => true, 'slug' => $athlete->fresh()->slug]);
+        return response()->json(['ok' => true, 'slug' => $primary->fresh()->slug]);
     }
 
     // Called when an athlete clicks the invite link and creates an account
@@ -375,13 +615,56 @@ class AthleteController extends Controller
             return response()->json(['message' => 'Invalid or expired invite link.'], 404);
         }
 
+        // Email mismatch — logged-in user used a different email than the invite
+        if ($athlete->invite_email && strtolower($athlete->invite_email) !== strtolower($request->user()->email)) {
+            return response()->json([
+                'message' => 'This profile was registered with a different email address. Please sign in with ' . $athlete->invite_email . ' to claim it.',
+            ], 403);
+        }
+
+        // Already claimed by this same user (e.g. auto-linked during registration) — treat as success
+        if ($athlete->user_id && $athlete->user_id === $request->user()->id) {
+            $athlete->invite_token = null;
+            $athlete->is_active    = true;
+            $athlete->save();
+            return response()->json(['ok' => true, 'athlete_id' => $athlete->id]);
+        }
+
+        // Claimed by someone else
         if ($athlete->user_id) {
             return response()->json(['message' => 'This profile has already been claimed.'], 409);
         }
 
-        // Link the currently authenticated user to this athlete profile
+        // Deactivate existing accepted memberships at other clubs
+        $previous = Athlete::where('user_id', $request->user()->id)
+            ->where('invite_status', 'accepted')
+            ->where('is_active', true)
+            ->get();
+
+        foreach ($previous as $prev) {
+            $prev->squads()->detach();
+            $prev->update(['is_active' => false]);
+
+            $clubAdmins = User::where('club_id', $prev->club_id)
+                ->whereIn('role', ['club_admin', 'coach'])
+                ->get();
+            $athleteName = "{$prev->first_name} {$prev->last_name}";
+            foreach ($clubAdmins as $admin) {
+                Notification::create([
+                    'id'      => (string) Str::uuid(),
+                    'user_id' => $admin->id,
+                    'title'   => "🚪 {$athleteName} has left your club",
+                    'body'    => 'They joined another club. Their profile has been deactivated from your roster.',
+                    'link'    => '/athletes',
+                    'is_read' => false,
+                    'at'      => now()->toDateTimeString(),
+                ]);
+            }
+        }
+
         $athlete->user_id      = $request->user()->id;
-        $athlete->invite_token = null; // consume the token
+        $athlete->invite_token = null;
+        $athlete->is_active    = true;
         $athlete->save();
 
         return response()->json(['ok' => true, 'athlete_id' => $athlete->id]);

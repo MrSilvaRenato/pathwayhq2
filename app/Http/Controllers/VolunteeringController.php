@@ -8,7 +8,10 @@ use App\Models\Volunteering;
 use App\Models\VolunteeringSignup;
 use App\Models\Notification;
 use App\Models\User;
+use App\Models\Club;
+use App\Services\PlanService;
 use App\Models\Athlete;
+use App\Services\MailService;
 
 class VolunteeringController extends Controller
 {
@@ -86,6 +89,11 @@ class VolunteeringController extends Controller
 
     public function store(Request $request)
     {
+        if (!in_array($request->user()->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
+        $club = Club::find($request->user()->club_id);
+        if ($err = PlanService::checkFeature($club, 'volunteering')) return $err;
+
         $data = $request->validate([
             'title'       => 'required|string',
             'description' => 'nullable|string',
@@ -94,7 +102,7 @@ class VolunteeringController extends Controller
             'spots'       => 'nullable|integer',
         ]);
 
-        $clubId = $request->user()->club_id;
+        $clubId = $club->id;
 
         $volunteering = Volunteering::create(array_merge($data, [
             'id'      => (string) Str::uuid(),
@@ -118,6 +126,14 @@ class VolunteeringController extends Controller
             );
         }
 
+        $club = Club::find($clubId);
+        $clubName = $club?->name ?? 'Your club';
+        $allMembers = \App\Models\User::whereIn('id', $this->allClubMembers($clubId))->get();
+        foreach ($allMembers as $member) {
+            if ($member->id === $request->user()->id) continue;
+            MailService::volunteeringCreatedToMember($member, $clubName, $data['title'], $data['date'] ?? null, $data['location'] ?? null);
+        }
+
         return response()->json($volunteering, 201);
     }
 
@@ -125,6 +141,8 @@ class VolunteeringController extends Controller
 
     public function update(Request $request, $id)
     {
+        if (!in_array($request->user()->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
         $data = $request->validate([
             'title'       => 'required|string',
             'description' => 'nullable|string',
@@ -159,6 +177,8 @@ class VolunteeringController extends Controller
 
     public function destroy(Request $request, $id)
     {
+        if (!in_array($request->user()->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
         $volunteering = Volunteering::where('id', $id)
             ->where('club_id', $request->user()->club_id)
             ->firstOrFail();
@@ -241,6 +261,10 @@ class VolunteeringController extends Controller
             );
         }
 
+        foreach ($this->clubStaff($clubId) as $staff) {
+            MailService::volunteeringSignupToManager($staff, $user, $volunteering->title, $volunteering->date);
+        }
+
         // 3. If now full, send a "full" notification to admins
         if ($spotsAfter === 0) {
             foreach ($this->clubStaff($clubId) as $staff) {
@@ -296,6 +320,8 @@ class VolunteeringController extends Controller
 
     public function removeVolunteer(Request $request, $id, $userId)
     {
+        if (!in_array($request->user()->role, ['club_admin', 'site_admin'])) abort(403);
+
         $clubId = $request->user()->club_id;
 
         $volunteering = Volunteering::where('id', $id)

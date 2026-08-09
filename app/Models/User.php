@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Tymon\JWTAuth\Contracts\JWTSubject;
+use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
 
 class User extends Authenticatable implements JWTSubject
 {
@@ -30,17 +30,26 @@ class User extends Authenticatable implements JWTSubject
     public function club()    { return $this->belongsTo(Club::class); }
     public function athlete() { return $this->hasOne(Athlete::class); }
 
+    public function setEmailAttribute(string $value): void
+    {
+        $this->attributes['email'] = strtolower(trim($value));
+    }
+
     /**
      * Resolve the club_id for any role.
-     * Coaches/admins have club_id directly on users.
-     * Athletes are linked via the athletes table.
+     * club_admin / coach → club_id on users table.
+     * athlete → club_id on the active accepted athletes record.
+     * parent / site_admin → no club context (null).
      */
     public function resolveClubId(): ?string
     {
+        if (in_array($this->role, ['parent', 'site_admin'])) return null;
         if ($this->club_id) return $this->club_id;
 
-        // athlete or parent — look up via athlete profile
-        $athlete = Athlete::where('user_id', $this->id)->first();
+        $athlete = Athlete::where('user_id', $this->id)
+            ->where('invite_status', 'accepted')
+            ->where('is_active', true)
+            ->first();
         return $athlete?->club_id;
     }
 }

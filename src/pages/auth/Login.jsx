@@ -19,7 +19,13 @@ export default function Login() {
     setError('')
     try {
       await login(form.email, form.password)
-      navigate(claimToken ? `/claim/${claimToken}` : '/dashboard')
+      const pending = sessionStorage.getItem('pendingJoin')
+      if (pending) {
+        sessionStorage.removeItem('pendingJoin')
+        navigate(`/club/${pending}?join=1`)
+      } else {
+        navigate(claimToken ? `/claim/${claimToken}` : '/dashboard')
+      }
     } catch (err) {
       setError(err.response?.data?.error ?? 'Invalid email or password. Please try again.')
     } finally {

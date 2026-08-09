@@ -6,6 +6,7 @@ import {
 import api from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
+import UpgradePrompt from '../../components/UpgradePrompt'
 
 const EMPTY_FORM = { title: '', description: '', date: '', spots: 1, location: '' }
 
@@ -364,6 +365,7 @@ export default function Volunteering() {
   const [toggling, setToggling]   = useState({})
   const [expanded, setExpanded]   = useState({})
   const [tab, setTab]             = useState('upcoming') // 'upcoming' | 'past'
+  const [upgrade, setUpgrade]     = useState(null)
 
   const load = useCallback(async () => {
     try {
@@ -385,7 +387,13 @@ export default function Volunteering() {
       setShowModal(false)
       toast.success(`"${form.title}" added — all club members have been notified`)
     } catch (err) {
-      toast.error(err.response?.data?.message ?? 'Failed to save opportunity')
+      const d = err?.response?.data
+      if (d?.upgrade_required) {
+        setShowModal(false)
+        setUpgrade({ message: d.error ?? 'Upgrade to add volunteering opportunities.', requiredPlan: d.required_plan ?? 'pro' })
+      } else {
+        toast.error(d?.message ?? d?.error ?? 'Failed to save opportunity')
+      }
       throw err
     }
   }
@@ -552,6 +560,15 @@ export default function Volunteering() {
         <AddModal
           onClose={() => setShowModal(false)}
           onSave={handleAdd}
+        />
+      )}
+
+      {/* Upgrade prompt */}
+      {upgrade && (
+        <UpgradePrompt
+          message={upgrade.message}
+          requiredPlan={upgrade.requiredPlan}
+          onClose={() => setUpgrade(null)}
         />
       )}
     </div>

@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom'
 import {
   Users, Trophy, Calendar, ArrowRight, Zap, Dumbbell,
   MapPin, Megaphone, CheckCircle2, XCircle, HandHeart,
-  TrendingUp, Clock, X, HelpCircle, Loader2,
+  TrendingUp, Clock, X, HelpCircle, Loader2, Building2, Mail, UserCircle, Trash2, CreditCard,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../contexts/ToastContext'
 import api from '../../lib/api'
 import { FTEM_PHASES, SPORTS } from '../../lib/constants'
+import OnboardingWizard from '../../components/OnboardingWizard'
 
 // ─── Attendance modal ─────────────────────────────────────────────────────────
 // Compact threshold: if a section has more than this many people, show avatar chips
@@ -35,8 +37,10 @@ function AttendanceModal({ event, onClose }) {
       <div className="space-y-1.5">
         {people.map((p, i) => (
           <div key={i} className="flex items-center gap-2.5 min-h-[40px]">
-            <div className={`h-9 w-9 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${bg} ${iconColor}`}>
-              {initials(p.name)}
+            <div className={`h-9 w-9 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${bg} ${iconColor} overflow-hidden`}>
+              {p.avatar_url
+                ? <img src={p.avatar_url} alt={p.name} className="h-full w-full object-cover" />
+                : initials(p.name)}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-slate-800 truncate leading-tight">{p.name}</p>
@@ -54,8 +58,10 @@ function AttendanceModal({ event, onClose }) {
       <div className="grid grid-cols-2 gap-1.5">
         {people.map((p, i) => (
           <div key={i} className={`flex items-center gap-2 rounded-xl px-2.5 py-2 ${bg} min-w-0`}>
-            <div className={`h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 bg-white/60 ${iconColor}`}>
-              {initials(p.name)}
+            <div className={`h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 bg-white/60 ${iconColor} overflow-hidden`}>
+              {p.avatar_url
+                ? <img src={p.avatar_url} alt={p.name} className="h-full w-full object-cover" />
+                : initials(p.name)}
             </div>
             <span className={`text-xs font-semibold truncate ${iconColor.replace('text-', 'text-').replace('-600','-800').replace('-500','-700').replace('-500','-700')}`}>
               {p.name.split(' ')[0]}
@@ -195,28 +201,40 @@ function Empty({ msg }) {
 
 // ─── CLUB ADMIN / COACH DASHBOARD ────────────────────────────────────────────
 function ClubDashboard({ user }) {
+  const [club,            setClub]            = useState(null)
   const [athletes,        setAthletes]        = useState([])
+  const [squads,          setSquads]          = useState([])
   const [milestones,      setMilestones]      = useState([])
   const [events,          setEvents]          = useState([])
+  const [eventsTotal,     setEventsTotal]     = useState(0)
   const [announcements,   setAnnouncements]   = useState([])
   const [volunteering,    setVolunteering]    = useState([])
+  const [planInfo,        setPlanInfo]        = useState(null)
   const [loading,         setLoading]         = useState(true)
   const [attendanceModal, setAttendanceModal] = useState(null)
 
   useEffect(() => {
     Promise.all([
+      api.get('/club').catch(() => ({ data: null })),
       api.get('/athletes').catch(() => ({ data: [] })),
+      api.get('/squads').catch(() => ({ data: [] })),
       api.get('/milestones').catch(() => ({ data: [] })),
       api.get('/events').catch(() => ({ data: [] })),
       api.get('/announcements').catch(() => ({ data: [] })),
       api.get('/volunteering').catch(() => ({ data: [] })),
-    ]).then(([a, m, e, ann, v]) => {
+      api.get('/club/plan').catch(() => ({ data: null })),
+    ]).then(([cl, a, sq, m, e, ann, v, pl]) => {
+      setClub(cl.data ?? null)
       setAthletes(a.data ?? [])
+      setSquads(sq.data ?? [])
       setMilestones((m.data ?? []).slice(0, 4))
+      const allEvs = e.data ?? []
       const now = new Date()
-      setEvents((e.data ?? []).filter(ev => new Date(ev.start_time) >= now).slice(0, 5))
+      setEventsTotal(allEvs.length)
+      setEvents(allEvs.filter(ev => new Date(ev.start_time) >= now).slice(0, 5))
       setAnnouncements((ann.data ?? []).slice(0, 3))
       setVolunteering((v.data ?? []).filter(v => !v.date || new Date(v.date) >= now).slice(0, 3))
+      setPlanInfo(pl.data ?? null)
     }).finally(() => setLoading(false))
   }, [])
 
@@ -237,6 +255,124 @@ function ClubDashboard({ user }) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+
+      {/* ── Club identity banner ─────────────────────────────────── */}
+      {club && (
+        <div className="col-span-full rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 p-4 md:p-5 flex items-center gap-4 shadow-sm">
+          {club.logo_url ? (
+            <img src={club.logo_url} alt={club.name} className="h-14 w-14 rounded-xl object-cover shrink-0 border-2 border-white/30 shadow" />
+          ) : (
+            <div className="h-14 w-14 rounded-xl bg-white/20 flex items-center justify-center shrink-0 border-2 border-white/20">
+              <Building2 className="h-7 w-7 text-white/80" />
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-bold text-emerald-200 uppercase tracking-widest mb-0.5">Your club</p>
+            <h2 className="text-xl font-black text-white truncate leading-tight">{club.name}</h2>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
+              {club.sport && <span className="text-xs text-emerald-100">{club.sport}</span>}
+              {club.city && (
+                <span className="text-xs text-emerald-200 flex items-center gap-1">
+                  <MapPin className="h-3 w-3" /> {club.city}{club.state ? `, ${club.state}` : ''}
+                </span>
+              )}
+            </div>
+          </div>
+          <Link to="/settings" className="shrink-0 hidden sm:flex items-center gap-1.5 rounded-xl bg-white/15 hover:bg-white/25 px-3 py-2 text-xs font-semibold text-white transition-colors">
+            Club settings <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+      )}
+
+      {/* ── Onboarding wizard ───────────────────────────────────── */}
+      <OnboardingWizard
+        club={club}
+        athletes={athletes}
+        squads={squads}
+        eventsTotal={eventsTotal}
+        announcements={announcements}
+        volunteering={volunteering}
+      />
+
+      {/* ── Plan status banner ──────────────────────────────────── */}
+
+      {/* Active trial */}
+      {planInfo && planInfo.tier === 'free' && planInfo.trial_active && (
+        <div className="col-span-full rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 p-4 flex flex-col sm:flex-row sm:items-center gap-4 shadow-md">
+          <div className="flex items-start gap-3 flex-1 min-w-0">
+            <div className="h-10 w-10 rounded-xl bg-white/20 border border-white/20 flex items-center justify-center shrink-0">
+              <Zap className="h-5 w-5 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm font-black text-white">Pro Trial Active</span>
+                <span className="text-[10px] font-bold text-violet-100 bg-white/20 rounded-full px-2 py-0.5">
+                  {planInfo.trial_days_left} day{planInfo.trial_days_left !== 1 ? 's' : ''} left
+                </span>
+              </div>
+              <p className="text-xs text-violet-200 leading-snug">
+                You have full Pro access. Upgrade before your trial ends to keep all features.
+              </p>
+              <div className="mt-2 w-full max-w-xs h-1.5 rounded-full bg-white/20">
+                <div
+                  className="h-1.5 rounded-full bg-white transition-all"
+                  style={{ width: `${Math.max(4, Math.min(100, (planInfo.trial_days_left / 14) * 100))}%` }}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link to="/pricing" className="flex items-center gap-1.5 rounded-xl bg-white hover:bg-violet-50 active:scale-95 px-4 py-2.5 text-sm font-bold text-violet-700 transition-all shadow-sm">
+              <Zap className="h-3.5 w-3.5" /> Upgrade to Pro
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Trial expired — locked out */}
+      {planInfo && planInfo.tier === 'free' && !planInfo.trial_active && (
+        <div className="col-span-full rounded-2xl bg-gradient-to-r from-red-600 to-rose-600 p-4 flex flex-col sm:flex-row sm:items-center gap-4 shadow-md">
+          <div className="flex items-start gap-3 flex-1 min-w-0">
+            <div className="h-10 w-10 rounded-xl bg-white/20 border border-white/20 flex items-center justify-center shrink-0">
+              <XCircle className="h-5 w-5 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm font-black text-white">Your trial has ended</span>
+                <span className="text-[10px] font-bold text-red-100 bg-white/20 rounded-full px-2 py-0.5">Features locked</span>
+              </div>
+              <p className="text-xs text-red-100 leading-snug">
+                Calendar, sessions, volunteering and more are now locked. Upgrade to keep your data and restore access.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link to="/pricing" className="flex items-center gap-1.5 rounded-xl bg-white hover:bg-red-50 active:scale-95 px-4 py-2.5 text-sm font-bold text-red-600 transition-all shadow-sm">
+              <Zap className="h-3.5 w-3.5" /> Upgrade Now
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Paid plan */}
+      {planInfo && planInfo.tier !== 'free' && (
+        <div className="col-span-full rounded-xl bg-emerald-50 border border-emerald-100 px-4 py-3 flex items-center gap-3">
+          <div className="h-8 w-8 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+            <Zap className="h-4 w-4 text-emerald-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <span className="text-sm font-black text-emerald-800 capitalize">{planInfo.tier} plan</span>
+            <span className="ml-2 text-xs text-emerald-600">
+              {planInfo.tier === 'elite'
+                ? 'All features unlocked · unlimited athletes'
+                : `${planInfo.usage?.athletes ?? 0} of ${planInfo.limits?.athletes} athletes · ${planInfo.usage?.squads ?? 0} of ${planInfo.limits?.squads} squads`}
+            </span>
+          </div>
+          <Link to="/settings" className="shrink-0 flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition-colors">
+            <CreditCard className="h-3.5 w-3.5" /> Manage billing <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+      )}
 
       {/* ── Row 1: stat pills — horizontal scroll on mobile ─────── */}
       <div className="col-span-full overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 md:contents">
@@ -459,15 +595,89 @@ function ClubDashboard({ user }) {
 }
 
 // ─── ATHLETE DASHBOARD ────────────────────────────────────────────────────────
-function AthleteDashboard({ user }) {
+function SquadRequestModal({ onClose }) {
+  const toast = useToast()
+  const [squads,   setSquads]   = useState([])
+  const [selected, setSelected] = useState('')
+  const [reason,   setReason]   = useState('')
+  const [saving,   setSaving]   = useState(false)
+
+  useEffect(() => {
+    api.get('/squads').then(r => setSquads(r.data)).catch(() => {})
+  }, [])
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (!selected) return
+    setSaving(true)
+    try {
+      await api.post(`/squads/${selected}/request`, { reason })
+      toast.success('Request sent to your coach!')
+      onClose()
+    } catch (err) {
+      const msg = err?.response?.data?.message
+      toast.error(msg || 'Failed to send request')
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col justify-end md:items-center md:justify-center bg-black/40 backdrop-blur-sm">
+      <div className="w-full md:max-w-sm md:rounded-2xl bg-white md:shadow-2xl rounded-t-3xl shadow-2xl">
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-slate-100">
+          <h2 className="text-base font-black text-slate-900">Request squad change</h2>
+          <button onClick={onClose} className="h-10 w-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="px-5 py-4 space-y-3">
+          <div>
+            <label className="text-xs font-semibold text-slate-500 mb-1 block">Which squad do you want to join?</label>
+            <select
+              required
+              value={selected}
+              onChange={e => setSelected(e.target.value)}
+              className="w-full h-11 rounded-lg border border-slate-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+            >
+              <option value="">Select squad…</option>
+              {squads.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-slate-500 mb-1 block">Reason (optional)</label>
+            <textarea
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              rows={2}
+              placeholder="e.g. I moved age groups…"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+          <div className="flex gap-3 pb-2">
+            <button type="button" onClick={onClose} className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 min-h-[44px]">Cancel</button>
+            <button type="submit" disabled={saving || !selected} className="flex-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 py-3 text-sm font-bold text-white disabled:opacity-50 min-h-[44px]">
+              {saving ? 'Sending…' : 'Send request'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function AthleteDashboard({ user, isParent = false }) {
   const [profile,       setProfile]      = useState(null)
   const [milestones,    setMilestones]   = useState([])
   const [events,        setEvents]       = useState([])
   const [announcements, setAnnouncements]= useState([])
   const [invites,       setInvites]      = useState([])
+  const [joinRequests,  setJoinRequests] = useState([])
   const [volunteering,  setVolunteering] = useState([])
   const [loading,       setLoading]      = useState(true)
   const [inviteAction,  setInviteAction] = useState({})
+  const [revoking,      setRevoking]     = useState(null)
+  const [showSquadRequest, setShowSquadRequest] = useState(false)
+  const toast = useToast()
 
   useEffect(() => {
     Promise.all([
@@ -477,7 +687,8 @@ function AthleteDashboard({ user }) {
       api.get('/announcements').catch(() => ({ data: [] })),
       api.get('/athletes/invites').catch(() => ({ data: [] })),
       api.get('/volunteering').catch(() => ({ data: [] })),
-    ]).then(([p, m, e, a, inv, v]) => {
+      api.get('/my/join-requests').catch(() => ({ data: [] })),
+    ]).then(([p, m, e, a, inv, v, jr]) => {
       setProfile(p?.data ?? null)
       setMilestones((m.data ?? []).slice(0, 4))
       const now = new Date()
@@ -485,8 +696,22 @@ function AthleteDashboard({ user }) {
       setAnnouncements((a.data ?? []).slice(0, 4))
       setInvites(inv.data ?? [])
       setVolunteering((v.data ?? []).filter(v => !v.date || new Date(v.date) >= now).slice(0, 3))
+      setJoinRequests((jr.data ?? []).filter(r => r.status === 'pending' || r.status === 'rejected'))
     }).finally(() => setLoading(false))
   }, [])
+
+  async function revokeRequest(slug) {
+    setRevoking(slug)
+    try {
+      await api.delete(`/clubs/public/${slug}/join-request`)
+      setJoinRequests(p => p.filter(r => r.slug !== slug))
+      toast.success('Request withdrawn — you can now apply again')
+    } catch {
+      toast.error('Failed to revoke request')
+    } finally {
+      setRevoking(null)
+    }
+  }
 
   async function handleAccept(id) {
     setInviteAction(p => ({ ...p, [id]: 'accepting' }))
@@ -526,7 +751,71 @@ function AthleteDashboard({ user }) {
   const nextEvent = events[0] ?? null
 
   return (
+    <>
+    {showSquadRequest && <SquadRequestModal onClose={() => setShowSquadRequest(false)} />}
     <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+
+      {/* ── Club banner ──────────────────────────────────────────────────── */}
+      {profile?.club_name && (
+        <div className="col-span-full rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 p-4 md:p-5 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            {/* Logo + club info */}
+            <div className="flex items-center gap-4 flex-1 min-w-0">
+              {profile.club_logo ? (
+                <img src={profile.club_logo} alt={profile.club_name}
+                  className="h-14 w-14 rounded-xl object-cover shrink-0 border-2 border-white/30 shadow" />
+              ) : (
+                <div className="h-14 w-14 rounded-xl bg-white/20 flex items-center justify-center shrink-0 border-2 border-white/20">
+                  <Building2 className="h-7 w-7 text-white/80" />
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-emerald-200 uppercase tracking-widest mb-0.5">Your club</p>
+                <h2 className="text-xl font-black text-white truncate leading-tight">{profile.club_name}</h2>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
+                  {profile.club_sport && <span className="text-xs text-emerald-100 capitalize">{profile.club_sport}</span>}
+                  {profile.club_city && (
+                    <span className="text-xs text-emerald-200 flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      {profile.club_city}{profile.club_state ? `, ${profile.club_state}` : ''}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="hidden sm:block w-px self-stretch bg-white/20" />
+
+            {/* Manager info */}
+            {profile.manager_name && (
+              <div className="flex items-center gap-3 sm:shrink-0">
+                <div className="h-10 w-10 rounded-full bg-white/20 border border-white/30 flex items-center justify-center shrink-0">
+                  <UserCircle className="h-5 w-5 text-white/80" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold text-emerald-200 uppercase tracking-widest">Club manager</p>
+                  <p className="text-sm font-bold text-white truncate">{profile.manager_name}</p>
+                  {profile.manager_email && (
+                    <a href={`mailto:${profile.manager_email}`}
+                      className="flex items-center gap-1 text-xs text-emerald-200 hover:text-white transition-colors mt-0.5">
+                      <Mail className="h-3 w-3" />{profile.manager_email}
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* View club link */}
+            {profile.club_slug && (
+              <Link to={`/club/${profile.club_slug}`} target="_blank" rel="noopener noreferrer"
+                className="shrink-0 sm:ml-2 flex items-center gap-1.5 rounded-xl bg-white/15 hover:bg-white/25 px-3 py-2 text-xs font-semibold text-white transition-colors self-start sm:self-center">
+                View club <ArrowRight className="h-3 w-3" />
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Pending invites (full-width alert — very prominent on mobile) ── */}
       {invites.map(inv => (
@@ -553,12 +842,51 @@ function AthleteDashboard({ user }) {
         </div>
       ))}
 
+      {/* ── Pending / rejected join requests ────────────────── */}
+      {joinRequests.map(jr => (
+        <div key={jr.id} className={`col-span-full rounded-2xl border-2 p-4 shadow-sm ${jr.status === 'pending' ? 'border-blue-200 bg-blue-50 shadow-blue-50' : 'border-slate-200 bg-slate-50'}`}>
+          <div className="flex items-start gap-3">
+            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg mt-0.5 ${jr.status === 'pending' ? 'bg-blue-100 border border-blue-200' : 'bg-slate-100 border border-slate-200'}`}>
+              {jr.status === 'pending' ? '⏳' : '❌'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-slate-900 text-sm leading-snug">
+                {jr.status === 'pending'
+                  ? `Your request to join ${jr.club_name} is pending`
+                  : `Your request to join ${jr.club_name} was not approved`}
+              </p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {jr.club_sport ? `${jr.club_sport}` : ''}{jr.club_city ? ` · ${jr.club_city}` : ''}
+                {' · '}Submitted {new Date(jr.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </p>
+              <p className="text-xs text-slate-500 mt-1.5">
+                {jr.status === 'pending'
+                  ? 'Withdraw your request to apply elsewhere or re-send a new request to this club.'
+                  : 'Withdraw this request to apply again.'}
+              </p>
+              <button
+                onClick={() => revokeRequest(jr.slug)}
+                disabled={revoking === jr.slug}
+                className="mt-3 flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-red-50 hover:border-red-200 hover:text-red-600 active:scale-95 px-4 py-2.5 text-sm font-semibold text-slate-600 transition-all disabled:opacity-50 min-h-[44px]"
+              >
+                {revoking === jr.slug
+                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                  : <Trash2 className="h-4 w-4" />}
+                {revoking === jr.slug ? 'Withdrawing…' : 'Withdraw request'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ))}
+
       {/* ── Profile card ─────────────────────────────────────── */}
       <div className="col-span-full md:col-span-4 rounded-2xl border border-slate-100 bg-white p-4 md:p-5">
         {profile ? (
           <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 border border-emerald-100 text-2xl">
-              {sport?.emoji ?? '🏅'}
+            <div className="h-14 w-14 shrink-0 rounded-2xl overflow-hidden border border-emerald-100 flex items-center justify-center bg-emerald-50 text-2xl">
+              {profile.avatar_url
+                ? <img src={profile.avatar_url} alt={profile.first_name} className="h-full w-full object-cover" />
+                : (sport?.emoji ?? '🏅')}
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-black text-slate-900 text-base truncate">{profile.first_name} {profile.last_name}</p>
@@ -569,13 +897,37 @@ function AthleteDashboard({ user }) {
                   <span className="text-xs text-slate-400">{phase.label}</span>
                 </div>
               )}
+              {profile.squad_names && (
+                <button
+                  onClick={() => setShowSquadRequest(true)}
+                  className="mt-2 text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition-colors"
+                >
+                  Request squad change →
+                </button>
+              )}
+              {profile.slug && (
+                <Link to={`/athlete/${profile.slug}`} target="_blank" rel="noopener noreferrer"
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-1.5 text-xs font-bold transition-colors border border-emerald-100">
+                  <UserCircle className="h-3.5 w-3.5" /> View my profile
+                </Link>
+              )}
             </div>
           </div>
         ) : (
           <div className="text-center py-2">
             <Dumbbell className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-            <p className="text-sm font-semibold text-slate-500">No profile linked</p>
-            <p className="text-xs text-slate-400 mt-1">Ask your coach to add you</p>
+            <p className="text-sm font-semibold text-slate-500">
+              {isParent ? 'No athletes linked yet' : 'Not currently in a club'}
+            </p>
+            <p className="text-xs text-slate-400 mt-1">
+              {isParent ? 'Ask your club coach to link you to your child\'s profile' : 'Search for a club to join.'}
+            </p>
+            {!isParent && profile?.slug && (
+              <Link to={`/athlete/${profile.slug}`} target="_blank" rel="noopener noreferrer"
+                className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-1.5 text-xs font-bold transition-colors border border-emerald-100">
+                <UserCircle className="h-3.5 w-3.5" /> View my profile
+              </Link>
+            )}
           </div>
         )}
       </div>
@@ -724,6 +1076,7 @@ function AthleteDashboard({ user }) {
       </div>
 
     </div>
+    </>
   )
 }
 
@@ -757,7 +1110,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-black text-slate-900">
-            {greeting}, {user?.full_name?.split(' ')[0]} 👋
+            {greeting}, {user?.full_name} 👋
           </h1>
           <p className="text-slate-400 text-xs mt-0.5">
             {new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
@@ -770,7 +1123,7 @@ export default function Dashboard() {
       </div>
 
       {(isAthlete || isParent)
-        ? <AthleteDashboard user={user} />
+        ? <AthleteDashboard user={user} isParent={isParent} />
         : <ClubDashboard user={user} />
       }
     </div>

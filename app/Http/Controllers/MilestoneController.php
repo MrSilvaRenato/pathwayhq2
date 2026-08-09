@@ -7,6 +7,8 @@ use Illuminate\Support\Str;
 use App\Models\Milestone;
 use App\Models\Athlete;
 use App\Models\Notification;
+use App\Models\Club;
+use App\Services\PlanService;
 
 class MilestoneController extends Controller
 {
@@ -14,29 +16,47 @@ class MilestoneController extends Controller
     {
         $user   = $request->user();
         $clubId = $user->resolveClubId();
+
+        // Athletes see their own milestones across all clubs, even when unaffiliated
+        if ($user->role === 'athlete') {
+            $athlete = \App\Models\Athlete::where('user_id', $user->id)
+                ->where('invite_status', 'accepted')
+                ->orderBy('is_active', 'desc')
+                ->first();
+
+            if (!$athlete) return response()->json([]);
+
+            $query = Milestone::where('athlete_id', $athlete->id)
+                ->with(['club:id,name,sport'])
+                ->orderBy('achieved_at', 'desc');
+
+            return response()->json(
+                $query->get()->map(function ($m) {
+                    $m->club_name = $m->club?->name;
+                    unset($m->club);
+                    return $m;
+                })
+            );
+        }
+
         if (!$clubId) return response()->json([]);
 
         $query = Milestone::where('club_id', $clubId)
-            ->with('athlete:id,first_name,last_name,ftem_phase,is_active,user_id')
+            ->with([
+                'athlete:id,first_name,last_name,ftem_phase,is_active,user_id,avatar_url',
+                'club:id,name,sport',
+            ])
             ->orderBy('achieved_at', 'desc');
-
-        // Athletes only see their own milestones
-        if ($user->role === 'athlete') {
-            $athlete = \App\Models\Athlete::where('user_id', $user->id)->first();
-            if ($athlete) {
-                $query->where('athlete_id', $athlete->id);
-            } else {
-                return response()->json([]);
-            }
-        }
 
         return response()->json(
             $query->get()->map(function ($m) {
-                $m->first_name  = $m->athlete?->first_name;
-                $m->last_name   = $m->athlete?->last_name;
+                $m->first_name   = $m->athlete?->first_name;
+                $m->last_name    = $m->athlete?->last_name;
+                $m->avatar_url   = $m->athlete?->avatar_url;
                 $m->athlete_ftem = $m->athlete?->ftem_phase;
-                $m->is_claimed  = !is_null($m->athlete?->user_id);
-                unset($m->athlete);
+                $m->is_claimed   = !is_null($m->athlete?->user_id);
+                $m->club_name    = $m->club?->name;
+                unset($m->athlete, $m->club);
                 return $m;
             })
         );
@@ -44,9 +64,13 @@ class MilestoneController extends Controller
 
     public function store(Request $request)
     {
+        $club = Club::find($request->user()->resolveClubId());
+        if ($err = PlanService::checkFeature($club, 'milestones')) return $err;
+
         $data = $request->validate([
             'athlete_id'           => 'nullable|string',
             'title'                => 'required|string',
+            'category'             => 'nullable|string|max:100',
             'description'          => 'nullable|string',
             'ftem_phase'           => 'nullable|string',
             'achieved_at'          => 'nullable|date',
@@ -79,16 +103,24 @@ class MilestoneController extends Controller
 
     public function update(Request $request, $id)
     {
+        $clubId    = $request->user()->resolveClubId();
+        $milestone = Milestone::where('id', $id)->where('club_id', $clubId)->firstOrFail();
+
+        if ($milestone->is_edited) {
+            return response()->json(['message' => 'This milestone has already been edited and is now permanent.'], 403);
+        }
+
         $data = $request->validate([
             'athlete_id'           => 'nullable|string',
             'title'                => 'required|string',
+            'category'             => 'nullable|string|max:100',
             'description'          => 'nullable|string',
             'ftem_phase'           => 'nullable|string',
             'achieved_at'          => 'nullable|date',
             'is_shared_with_parent'=> 'boolean',
         ]);
 
-        Milestone::where('id', $id)->where('club_id', $request->user()->resolveClubId())->update($data);
+        $milestone->update(array_merge($data, ['is_edited' => true]));
         return response()->json(['ok' => true]);
     }
 
@@ -97,8 +129,14 @@ class MilestoneController extends Controller
         return response()->json(
             Milestone::where('club_id', $request->user()->resolveClubId())
                 ->where('athlete_id', $id)
+                ->with(['club:id,name'])
                 ->orderBy('achieved_at', 'desc')
                 ->get()
+                ->map(function ($m) {
+                    $m->club_name = $m->club?->name;
+                    unset($m->club);
+                    return $m;
+                })
         );
     }
 

@@ -3,6 +3,7 @@ import { Users, Trophy, Calendar, TrendingUp, UserMinus } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import api from '../../lib/api'
 import { FTEM_PHASES, SPORTS } from '../../lib/constants'
+import UpgradePrompt from '../../components/UpgradePrompt'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function calcAge(dob) {
@@ -132,14 +133,19 @@ export default function Analytics() {
   const [squads,     setSquads]     = useState([])
   const [loading,    setLoading]    = useState(true)
   const [lastUpdated]               = useState(lastUpdatedLabel())
+  const [upgrade,    setUpgrade]    = useState(null)
 
   useEffect(() => {
     Promise.all([
+      api.get('/club/plan').catch(() => null),
       api.get('/athletes').catch(() => ({ data: [] })),
       api.get('/milestones').catch(() => ({ data: [] })),
       api.get('/events').catch(() => ({ data: [] })),
       api.get('/squads').catch(() => ({ data: [] })),
-    ]).then(([a, m, e, s]) => {
+    ]).then(([plan, a, m, e, s]) => {
+      if ((plan?.data?.effective_tier ?? plan?.data?.tier) === 'free') {
+        setUpgrade({ message: 'Analytics dashboard is available on the Pro plan and above.', requiredPlan: 'pro' })
+      }
       setAthletes(a.data ?? [])
       setMilestones(m.data ?? [])
       setEvents(e.data ?? [])
@@ -148,11 +154,13 @@ export default function Analytics() {
   }, [])
 
   const computed = useMemo(() => {
-    const total    = athletes.length
-    const active   = athletes.filter(a => a.is_active).length
+    // Only count athletes who have accepted their invite (exclude pending/left)
+    const accepted = athletes.filter(a => a.invite_status === 'accepted')
+    const total    = accepted.length
+    const active   = accepted.filter(a => a.is_active).length
     const inactive = total - active
 
-    const ftemDist = athletes.reduce((acc, a) => {
+    const ftemDist = accepted.reduce((acc, a) => {
       if (a.ftem_phase) acc[a.ftem_phase] = (acc[a.ftem_phase] || 0) + 1
       return acc
     }, {})
@@ -161,7 +169,7 @@ export default function Analytics() {
       .map(k => ({ phase: k, count: ftemDist[k], pct: total ? Math.round((ftemDist[k] / total) * 100) : 0 }))
     const maxFtemCount = Math.max(...ftemRows.map(r => r.count), 1)
 
-    const ageDist = athletes.reduce((acc, a) => {
+    const ageDist = accepted.reduce((acc, a) => {
       const g = ageGroup(calcAge(a.dob))
       acc[g] = (acc[g] || 0) + 1
       return acc
@@ -171,7 +179,7 @@ export default function Analytics() {
       .map(g => ({ group: g, count: ageDist[g] }))
     const maxAge = Math.max(...ageRows.map(r => r.count), 1)
 
-    const genderDist = athletes.reduce((acc, a) => {
+    const genderDist = accepted.reduce((acc, a) => {
       const k = (a.gender || 'unknown').toLowerCase()
       acc[k] = (acc[k] || 0) + 1
       return acc
@@ -180,7 +188,7 @@ export default function Analytics() {
       .sort((a, b) => b[1] - a[1])
       .map(([g, count]) => ({ g, count, pct: total ? Math.round((count / total) * 100) : 0 }))
 
-    const sportDist = athletes.reduce((acc, a) => {
+    const sportDist = accepted.reduce((acc, a) => {
       if (a.sport) acc[a.sport] = (acc[a.sport] || 0) + 1
       return acc
     }, {})
@@ -198,7 +206,7 @@ export default function Analytics() {
 
     const squadRows = [...squads]
       .map(sq => {
-        const count = athletes.filter(a =>
+        const count = accepted.filter(a =>
           Array.isArray(a.squad_ids) ? a.squad_ids.includes(sq.id) : a.squad_id === sq.id
         ).length
         return { name: sq.name, count, pct: total ? Math.round((count / total) * 100) : 0 }
@@ -238,6 +246,7 @@ export default function Analytics() {
   } = computed
 
   return (
+    <>
     <div className="p-4 md:p-5 max-w-7xl mx-auto space-y-4 pb-8">
 
       {/* ── Page header ── */}
@@ -475,5 +484,13 @@ export default function Analytics() {
       </Card>
 
     </div>
+
+    {upgrade && (
+      <UpgradePrompt
+        message={upgrade.message}
+        requiredPlan={upgrade.requiredPlan}
+      />
+    )}
+    </>
   )
 }

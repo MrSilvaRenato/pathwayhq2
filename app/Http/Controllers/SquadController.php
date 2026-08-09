@@ -5,13 +5,21 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use App\Models\Squad;
+use App\Models\Athlete;
+use App\Models\User;
+use App\Models\Notification;
+use App\Services\PlanService;
+use App\Models\SquadRequest;
+use App\Models\Club;
+use App\Services\MailService;
 
 class SquadController extends Controller
 {
     public function index(Request $request)
     {
+        $clubId = $request->user()->club_id ?? $request->user()->resolveClubId();
         return response()->json(
-            Squad::where('club_id', $request->user()->club_id)
+            Squad::where('club_id', $clubId)
                 ->withCount('athletes')
                 ->orderBy('name')->get()
         );
@@ -20,7 +28,7 @@ class SquadController extends Controller
     public function athletes(Request $request, $id)
     {
         $squad = Squad::where('id', $id)
-            ->where('club_id', $request->user()->club_id)
+            ->where('club_id', $request->user()->club_id ?? $request->user()->resolveClubId())
             ->firstOrFail();
 
         $athletes = $squad->athletes()
@@ -36,6 +44,7 @@ class SquadController extends Controller
                     'is_active'     => $a->is_active,
                     'sport'         => $a->sport,
                     'dob'           => $a->dob,
+                    'avatar_url'    => $a->avatar_url,
                     'contact_phone' => $a->user?->phone ?? $a->phone,
                     'contact_email' => $a->user?->email ?? $a->invite_email,
                     'invite_status' => $a->invite_status,
@@ -47,6 +56,11 @@ class SquadController extends Controller
 
     public function store(Request $request)
     {
+        if (!in_array($request->user()->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
+        $club = $request->user()->club;
+        if ($err = PlanService::checkSquadLimit($club)) return $err;
+
         $data = $request->validate(['name' => 'required|string', 'description' => 'nullable|string']);
         $squad = Squad::create([
             'id'          => (string) Str::uuid(),
@@ -59,6 +73,8 @@ class SquadController extends Controller
 
     public function update(Request $request, $id)
     {
+        if (!in_array($request->user()->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
         $data = $request->validate(['name' => 'required|string', 'description' => 'nullable|string']);
         Squad::where('id', $id)->where('club_id', $request->user()->club_id)->update($data);
         return response()->json(['ok' => true]);
@@ -66,14 +82,114 @@ class SquadController extends Controller
 
     public function destroy(Request $request, $id)
     {
+        if (!in_array($request->user()->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
         Squad::where('id', $id)->where('club_id', $request->user()->club_id)->delete();
+        return response()->json(['ok' => true]);
+    }
+
+    public function addAthlete(Request $request, $id)
+    {
+        if (!in_array($request->user()->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
+        $data  = $request->validate(['athlete_id' => 'required|string']);
+        $squad = Squad::where('id', $id)->where('club_id', $request->user()->club_id)->firstOrFail();
+
+        // Verify athlete belongs to the same club
+        $athlete = Athlete::where('id', $data['athlete_id'])
+            ->where('club_id', $request->user()->club_id)
+            ->with('user:id,full_name,email')
+            ->firstOrFail();
+
+        if ($athlete->invite_status !== 'accepted') {
+            return response()->json([
+                'message' => 'This athlete has not yet accepted their club invite. They can only be added to squads once they have joined.',
+            ], 422);
+        }
+
+        // Skip notification if already in squad
+        $alreadyIn = $squad->athletes()->where('athletes.id', $athlete->id)->exists();
+
+        $squad->athletes()->syncWithoutDetaching([$data['athlete_id']]);
+
+        if (!$alreadyIn && $athlete->user_id) {
+            $clubName = Club::find($request->user()->club_id)?->name ?? '';
+
+            Notification::create([
+                'id'      => (string) Str::uuid(),
+                'user_id' => $athlete->user_id,
+                'title'   => "🏅 You've been added to {$squad->name}",
+                'body'    => "You are now part of the {$squad->name} squad at {$clubName}.",
+                'link'    => '/dashboard',
+                'is_read' => false,
+                'at'      => now()->toDateTimeString(),
+            ]);
+
+            if ($athlete->user) {
+                MailService::squadAddedToAthlete($athlete->user, $squad->name, $clubName);
+            }
+        }
+
         return response()->json(['ok' => true]);
     }
 
     public function removeAthlete(Request $request, $id, $athleteId)
     {
+        if (!in_array($request->user()->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
         $squad = Squad::where('id', $id)->where('club_id', $request->user()->club_id)->firstOrFail();
         $squad->athletes()->detach($athleteId);
+        return response()->json(['ok' => true]);
+    }
+
+    // Athlete requests to join/transfer to a squad
+    public function requestSquadChange(Request $request, $id)
+    {
+        $data = $request->validate(['reason' => 'nullable|string|max:500']);
+        $user = $request->user();
+
+        $athlete = Athlete::where('user_id', $user->id)
+            ->where('invite_status', 'accepted')
+            ->where('is_active', true)
+            ->firstOrFail();
+
+        $squad = Squad::where('id', $id)->where('club_id', $athlete->club_id)->firstOrFail();
+
+        // Block duplicate pending requests for the same athlete + squad
+        $already = SquadRequest::where('athlete_id', $athlete->id)
+            ->where('squad_id', $id)
+            ->where('status', 'pending')
+            ->exists();
+        if ($already) {
+            return response()->json(['message' => 'You already have a pending request for this squad.'], 422);
+        }
+
+        $admins = User::where('club_id', $athlete->club_id)
+            ->whereIn('role', ['club_admin', 'coach'])
+            ->get();
+
+        SquadRequest::create([
+            'id'         => (string) Str::uuid(),
+            'club_id'    => $athlete->club_id,
+            'athlete_id' => $athlete->id,
+            'squad_id'   => $id,
+            'reason'     => $data['reason'] ?? null,
+            'status'     => 'pending',
+        ]);
+
+        $reason = !empty($data['reason']) ? ' — "' . $data['reason'] . '"' : '';
+        foreach ($admins as $admin) {
+            Notification::create([
+                'id'      => (string) Str::uuid(),
+                'user_id' => $admin->id,
+                'title'   => "🔄 Squad request: {$athlete->first_name} {$athlete->last_name}",
+                'body'    => "Wants to join: {$squad->name}{$reason}",
+                'link'    => '/squad',
+                'is_read' => false,
+                'at'      => now()->toDateTimeString(),
+            ]);
+        }
+
         return response()->json(['ok' => true]);
     }
 }

@@ -8,24 +8,41 @@ use App\Models\Event;
 use App\Models\EventRsvp;
 use App\Models\Athlete;
 use App\Models\Notification;
+use App\Models\Club;
+use App\Services\PlanService;
 
 class EventController extends Controller
 {
     public function index(Request $request)
     {
-        $clubId = $request->user()->resolveClubId();
+        $user   = $request->user();
+        $clubId = $user->resolveClubId();
         if (!$clubId) return response()->json([]);
 
-        $userId = $request->user()->id;
+        $userId = $user->id;
+
+        $query = Event::where('club_id', $clubId)
+            ->with([
+                'squad:id,name',
+                'rsvps' => fn($q) => $q->select('id','event_id','user_id','status'),
+            ])
+            ->orderBy('start_time', 'asc');
+
+        // Athletes see their squad's events + club-wide events.
+        // If not yet assigned to any squad, show all club events so new members aren't left blank.
+        if ($user->role === 'athlete') {
+            $athlete  = Athlete::where('user_id', $userId)->where('invite_status', 'accepted')->where('is_active', true)->first();
+            $squadIds = $athlete ? $athlete->squads()->pluck('squads.id')->toArray() : [];
+            if (!empty($squadIds)) {
+                $query->where(function ($q) use ($squadIds) {
+                    $q->whereNull('squad_id')->orWhereIn('squad_id', $squadIds);
+                });
+            }
+            // If athlete has no squad assignments yet, no additional filter — show all club events
+        }
 
         return response()->json(
-            Event::where('club_id', $clubId)
-                ->with([
-                    'squad:id,name',
-                    'rsvps' => fn($q) => $q->select('id','event_id','user_id','status'),
-                ])
-                ->orderBy('start_time', 'asc')
-                ->get()
+            $query->get()
                 ->map(function($e) use ($userId) {
                     $e->squad_name = $e->squad?->name;
                     unset($e->squad);
@@ -47,6 +64,11 @@ class EventController extends Controller
 
     public function store(Request $request)
     {
+        if (!in_array($request->user()->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
+        $club = Club::find($request->user()->club_id);
+        if ($err = PlanService::checkFeature($club, 'calendar')) return $err;
+
         $data = $request->validate([
             'title'        => 'required|string',
             'description'  => 'nullable|string',
@@ -59,7 +81,7 @@ class EventController extends Controller
             'repeat_until' => 'nullable|date',
         ]);
 
-        $clubId = $request->user()->club_id;
+        $clubId = $club->id;
 
         $recurrence  = $data['recurrence'] ?? 'none';
         $seriesId    = ($recurrence && $recurrence !== 'none') ? (string) Str::uuid() : null;
@@ -105,9 +127,12 @@ class EventController extends Controller
             if ($i === 0) $firstEventId = $event->id;
         }
 
-        // Notify all linked athletes — once per series
-        $athletes = Athlete::where('club_id', $clubId)
-            ->whereNotNull('user_id')->get();
+        // Notify relevant linked athletes — once per series
+        $athleteQuery = Athlete::where('club_id', $clubId)->whereNotNull('user_id');
+        if (!empty($data['squad_id'])) {
+            $athleteQuery->whereHas('squads', fn($q) => $q->where('squads.id', $data['squad_id']));
+        }
+        $athletes = $athleteQuery->get();
 
         $totalSessions = count($occurrences);
         $dateStr = date('D j M', strtotime($data['start_time']));
@@ -130,6 +155,8 @@ class EventController extends Controller
 
     public function update(Request $request, $id)
     {
+        if (!in_array($request->user()->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
         $data = $request->validate([
             'title'       => 'required|string',
             'description' => 'nullable|string',
@@ -175,6 +202,8 @@ class EventController extends Controller
 
     public function destroy(Request $request, $id)
     {
+        if (!in_array($request->user()->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
         $event = Event::where('id', $id)->where('club_id', $request->user()->club_id)->first();
         if (!$event) return response()->json(['error' => 'Not found'], 404);
 
@@ -198,14 +227,22 @@ class EventController extends Controller
             ->with('user:id,full_name,email')
             ->get();
 
+        // Pre-fetch avatars for all users in one query
+        $userIds = $rsvps->pluck('user_id')->filter()->unique()->values();
+        $avatars = \App\Models\Athlete::whereIn('user_id', $userIds)
+            ->whereNotNull('avatar_url')
+            ->get(['user_id', 'avatar_url'])
+            ->keyBy('user_id');
+
         $grouped = ['yes' => [], 'maybe' => [], 'no' => []];
         foreach ($rsvps as $r) {
             $status = $r->status;
             if (!isset($grouped[$status])) continue;
             $grouped[$status][] = [
-                'name'  => $r->user?->full_name ?? 'Unknown',
-                'email' => $r->user?->email ?? '',
-                'initials' => collect(explode(' ', $r->user?->full_name ?? '?'))
+                'name'       => $r->user?->full_name ?? 'Unknown',
+                'email'      => $r->user?->email ?? '',
+                'avatar_url' => $avatars[$r->user_id]?->avatar_url ?? null,
+                'initials'   => collect(explode(' ', $r->user?->full_name ?? '?'))
                     ->map(fn($w) => strtoupper($w[0] ?? ''))
                     ->implode(''),
             ];

@@ -1,0 +1,732 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Club;
+use App\Models\User;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+
+class MailService
+{
+    // ─── Private helpers ──────────────────────────────────────────────────────
+
+    private static function send(string $to, string $toName, string $subject, string $html): void
+    {
+        $key = config('services.resend.key');
+        if (empty($key)) {
+            Log::warning('[MailService] RESEND_API_KEY is not set — email skipped', compact('to', 'subject'));
+            return;
+        }
+
+        try {
+            $response = Http::withToken($key)->post('https://api.resend.com/emails', [
+                'from'    => config('mail.from.name') . ' <' . config('mail.from.address') . '>',
+                'to'      => ["{$toName} <{$to}>"],
+                'subject' => $subject,
+                'html'    => $html,
+            ]);
+
+            if ($response->failed()) {
+                Log::error('[MailService] Resend API error', [
+                    'to'      => $to,
+                    'subject' => $subject,
+                    'status'  => $response->status(),
+                    'body'    => $response->body(),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::error('[MailService] Failed to send email', [
+                'to'      => $to,
+                'subject' => $subject,
+                'error'   => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private static function layout(string $preheader, string $body): string
+    {
+        $year = date('Y');
+
+        return <<<HTML
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PathwayHQ</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <span style="display:none;max-height:0;overflow:hidden;">{$preheader}</span>
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3f4f6;padding:32px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#10b981;padding:24px 32px;">
+              <span style="font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.5px;">PathwayHQ</span>
+            </td>
+          </tr>
+          <!-- Body -->
+          <tr>
+            <td style="padding:32px;color:#1f2937;font-size:15px;line-height:1.6;">
+              {$body}
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:20px 32px;border-top:1px solid #e5e7eb;background-color:#f9fafb;color:#6b7280;font-size:12px;line-height:1.5;">
+              &copy; {$year} PathwayHQ &mdash; You received this because you're a member or manager on PathwayHQ.
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+HTML;
+    }
+
+    private static function button(string $label, string $url): string
+    {
+        return <<<HTML
+<p style="margin:24px 0 0;">
+  <a href="{$url}" style="display:inline-block;background-color:#10b981;color:#ffffff;font-weight:600;font-size:14px;padding:12px 24px;border-radius:6px;text-decoration:none;">{$label}</a>
+</p>
+HTML;
+    }
+
+    private static function appUrl(string $path = ''): string
+    {
+        return rtrim(config('app.url'), '/') . $path;
+    }
+
+    // ─── Public send methods ──────────────────────────────────────────────────
+
+    /**
+     * Notify manager(s) that someone wants to join their club.
+     */
+    public static function joinRequestToManagers(User $manager, User $applicant, Club $club): void
+    {
+        $key = config('services.resend.key');
+        if (empty($key)) return;
+
+        try {
+            $managerName    = $manager->full_name ?? 'there';
+            $applicantName  = $applicant->full_name ?? $applicant->email;
+            $applicantEmail = $applicant->email;
+            $clubName       = $club->name;
+            $subject        = "{$applicantName} wants to join {$clubName}";
+
+            $body = self::layout(
+                "New join request from {$applicantName}",
+                <<<HTML
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#111827;">Someone wants to join your club!</p>
+<p style="margin:0 0 16px;color:#4b5563;">Hi {$managerName},</p>
+<p style="margin:0 0 16px;color:#4b5563;">Great news — <strong>{$applicantName}</strong> has just submitted a request to join <strong>{$clubName}</strong>. They're keen to be part of your team and are waiting for your approval.</p>
+<table cellpadding="0" cellspacing="0" style="background-color:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:16px;margin-bottom:16px;width:100%;">
+  <tr><td style="padding:4px 8px;color:#6b7280;font-size:13px;width:80px;">Name</td><td style="padding:4px 8px;font-weight:600;color:#111827;">{$applicantName}</td></tr>
+  <tr><td style="padding:4px 8px;color:#6b7280;font-size:13px;">Email</td><td style="padding:4px 8px;color:#111827;">{$applicantEmail}</td></tr>
+</table>
+<p style="margin:0;color:#4b5563;">Head over to your dashboard to review and approve their request. Growing your club with motivated members is what it's all about!</p>
+HTML
+                . self::button('Review request', self::appUrl('/join-requests'))
+            );
+
+            self::send($manager->email, $manager->full_name ?? $manager->email, $subject, $body);
+        } catch (\Throwable $e) {
+            Log::error('[MailService] joinRequestToManagers failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Notify athlete that their join request was approved.
+     */
+    public static function joinRequestApproved(User $athlete, Club $club): void
+    {
+        $key = config('services.resend.key');
+        if (empty($key)) return;
+
+        try {
+            $athleteName = $athlete->full_name ? explode(' ', $athlete->full_name)[0] : 'there';
+            $clubName    = $club->name;
+            $subject     = "You're in! Welcome to {$clubName} 🎉";
+
+            $body = self::layout(
+                "Your request to join {$clubName} has been approved!",
+                <<<HTML
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#111827;">Welcome to the team!</p>
+<p style="margin:0 0 16px;color:#4b5563;">Hi {$athleteName},</p>
+<p style="margin:0 0 16px;color:#4b5563;">Your request to join <strong>{$clubName}</strong> has been approved — and we couldn't be more excited to have you on board! You're now officially part of the team.</p>
+<p style="margin:0 0 16px;color:#4b5563;">Here's to new beginnings, great training sessions, and unforgettable moments ahead. Your journey with <strong>{$clubName}</strong> starts right now.</p>
+<p style="margin:0 0 16px;color:#4b5563;">Log in to your dashboard to explore your profile, check for upcoming events, and connect with your club.</p>
+<p style="margin:0;color:#4b5563;">We're glad you're here. Let's make this season one to remember! 🏆</p>
+HTML
+                . self::button('Go to my dashboard', self::appUrl('/dashboard'))
+            );
+
+            self::send($athlete->email, $athlete->full_name ?? $athlete->email, $subject, $body);
+        } catch (\Throwable $e) {
+            Log::error('[MailService] joinRequestApproved failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Send a broadcast message from a manager to an athlete.
+     */
+    public static function broadcastToAthlete(User $athlete, string $senderName, string $title, string $body, ?string $link = null): void
+    {
+        $key = config('services.resend.key');
+        if (empty($key)) return;
+
+        try {
+            $athleteName    = $athlete->full_name ? explode(' ', $athlete->full_name)[0] : 'there';
+            $subject        = "Message from {$senderName}: {$title}";
+            $excerpt        = mb_substr(strip_tags($body), 0, 300);
+            $ctaUrl         = $link ? self::appUrl($link) : self::appUrl('/dashboard');
+            $escapedTitle   = htmlspecialchars($title, ENT_QUOTES, 'UTF-8');
+            $escapedSender  = htmlspecialchars($senderName, ENT_QUOTES, 'UTF-8');
+            $escapedExcerpt = htmlspecialchars($excerpt, ENT_QUOTES, 'UTF-8');
+
+            $html = self::layout(
+                "New message from {$senderName}",
+                <<<HTML
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#111827;">You've got a message!</p>
+<p style="margin:0 0 16px;color:#4b5563;">Hi {$athleteName},</p>
+<p style="margin:0 0 16px;color:#4b5563;"><strong>{$escapedSender}</strong> has sent you a message. Here's what they had to say:</p>
+<div style="margin:0 0 16px;background-color:#f0fdf4;border-left:4px solid #10b981;padding:16px 20px;border-radius:0 6px 6px 0;">
+  <p style="margin:0 0 8px;font-weight:600;color:#111827;">{$escapedTitle}</p>
+  <p style="margin:0;color:#374151;font-size:14px;line-height:1.7;">{$escapedExcerpt}</p>
+</div>
+<p style="margin:0;color:#4b5563;">Head to your dashboard to read the full message and stay up to date with everything happening at your club.</p>
+HTML
+                . self::button('View on dashboard', $ctaUrl)
+            );
+
+            self::send($athlete->email, $athlete->full_name ?? $athlete->email, $subject, $html);
+        } catch (\Throwable $e) {
+            Log::error('[MailService] broadcastToAthlete failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Notify an athlete about a new club announcement.
+     */
+    public static function announcementToAthlete(User $athlete, string $clubName, string $title, string $body): void
+    {
+        $key = config('services.resend.key');
+        if (empty($key)) return;
+
+        try {
+            $athleteName    = $athlete->full_name ? explode(' ', $athlete->full_name)[0] : 'there';
+            $subject        = "Announcement from {$clubName}: {$title}";
+            $excerpt        = mb_substr(strip_tags($body), 0, 300);
+            $escapedClub    = htmlspecialchars($clubName, ENT_QUOTES, 'UTF-8');
+            $escapedTitle   = htmlspecialchars($title, ENT_QUOTES, 'UTF-8');
+            $escapedExcerpt = htmlspecialchars($excerpt, ENT_QUOTES, 'UTF-8');
+
+            $html = self::layout(
+                "New announcement from {$clubName}",
+                <<<HTML
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#111827;">Club announcement</p>
+<p style="margin:0 0 16px;color:#4b5563;">Hi {$athleteName},</p>
+<p style="margin:0 0 16px;color:#4b5563;"><strong>{$escapedClub}</strong> just posted a new announcement. Here's the latest news from your club — don't miss it!</p>
+<div style="margin:0 0 16px;background-color:#f0fdf4;border-left:4px solid #10b981;padding:16px 20px;border-radius:0 6px 6px 0;">
+  <p style="margin:0 0 8px;font-weight:600;color:#111827;">{$escapedTitle}</p>
+  <p style="margin:0;color:#374151;font-size:14px;line-height:1.7;">{$escapedExcerpt}</p>
+</div>
+<p style="margin:0;color:#4b5563;">Stay informed and keep up with everything going on at your club. Click below to read the full announcement.</p>
+HTML
+                . self::button('Read announcement', self::appUrl('/announcements'))
+            );
+
+            self::send($athlete->email, $athlete->full_name ?? $athlete->email, $subject, $html);
+        } catch (\Throwable $e) {
+            Log::error('[MailService] announcementToAthlete failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Notify a club member about a new volunteering opportunity.
+     */
+    public static function volunteeringCreatedToMember(User $member, string $clubName, string $title, ?string $date, ?string $location): void
+    {
+        $key = config('services.resend.key');
+        if (empty($key)) return;
+
+        try {
+            $memberName   = $member->full_name ? explode(' ', $member->full_name)[0] : 'there';
+            $subject      = "Volunteer opportunity: {$title}";
+            $escapedClub  = htmlspecialchars($clubName, ENT_QUOTES, 'UTF-8');
+            $escapedTitle = htmlspecialchars($title, ENT_QUOTES, 'UTF-8');
+
+            $detailRows = '';
+            if ($date) {
+                $dateFormatted = date('D j M Y', strtotime($date));
+                $detailRows .= "<tr><td style='padding:5px 8px;color:#6b7280;font-size:13px;width:80px;'>Date</td><td style='padding:5px 8px;font-weight:600;color:#111827;'>{$dateFormatted}</td></tr>";
+            }
+            if ($location) {
+                $escapedLocation = htmlspecialchars($location, ENT_QUOTES, 'UTF-8');
+                $detailRows .= "<tr><td style='padding:5px 8px;color:#6b7280;font-size:13px;'>Location</td><td style='padding:5px 8px;font-weight:600;color:#111827;'>{$escapedLocation}</td></tr>";
+            }
+
+            $detailTable = $detailRows
+                ? "<table cellpadding='0' cellspacing='0' style='background-color:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px 8px;margin:0 0 16px;width:100%;'>{$detailRows}</table>"
+                : '';
+
+            $html = self::layout(
+                "New volunteering opportunity from {$clubName}",
+                <<<HTML
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#111827;">Make a difference!</p>
+<p style="margin:0 0 16px;color:#4b5563;">Hi {$memberName},</p>
+<p style="margin:0 0 16px;color:#4b5563;"><strong>{$escapedClub}</strong> has a new volunteering opportunity and would love your help. Volunteering is a fantastic way to give back to your club, meet other members, and make a real impact.</p>
+<div style="margin:0 0 16px;background-color:#f0fdf4;border-left:4px solid #10b981;padding:16px 20px;border-radius:0 6px 6px 0;">
+  <p style="margin:0 0 12px;font-weight:600;font-size:16px;color:#111827;">{$escapedTitle}</p>
+  {$detailTable}
+</div>
+<p style="margin:0;color:#4b5563;">Every hand counts — sign up today and be a part of something bigger than the game!</p>
+HTML
+                . self::button('Sign up to volunteer', self::appUrl('/volunteering'))
+            );
+
+            self::send($member->email, $member->full_name ?? $member->email, $subject, $html);
+        } catch (\Throwable $e) {
+            Log::error('[MailService] volunteeringCreatedToMember failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Notify a manager that a volunteer signed up.
+     */
+    public static function volunteeringSignupToManager(User $manager, User $volunteer, string $volunteeringTitle, ?string $date): void
+    {
+        $key = config('services.resend.key');
+        if (empty($key)) return;
+
+        try {
+            $managerName    = $manager->full_name ? explode(' ', $manager->full_name)[0] : 'there';
+            $volunteerName  = $volunteer->full_name ?? $volunteer->email;
+            $volunteerEmail = $volunteer->email;
+            $subject        = "{$volunteerName} signed up to volunteer";
+            $escapedTitle   = htmlspecialchars($volunteeringTitle, ENT_QUOTES, 'UTF-8');
+            $escapedName    = htmlspecialchars($volunteerName, ENT_QUOTES, 'UTF-8');
+
+            $dateRow = '';
+            if ($date) {
+                $dateFormatted = date('D j M Y', strtotime($date));
+                $dateRow = "<tr><td style='padding:5px 8px;color:#6b7280;font-size:13px;width:80px;'>Date</td><td style='padding:5px 8px;font-weight:600;color:#111827;'>{$dateFormatted}</td></tr>";
+            }
+
+            $html = self::layout(
+                "{$volunteerName} signed up for {$volunteeringTitle}",
+                <<<HTML
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#111827;">A new volunteer has signed up!</p>
+<p style="margin:0 0 16px;color:#4b5563;">Hi {$managerName},</p>
+<p style="margin:0 0 16px;color:#4b5563;">Great news! <strong>{$escapedName}</strong> has put their hand up to volunteer for <strong>&ldquo;{$escapedTitle}&rdquo;</strong>. It's wonderful to see members stepping up and supporting the club — please take a moment to appreciate them!</p>
+<table cellpadding="0" cellspacing="0" style="background-color:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px 8px;margin-bottom:16px;width:100%;">
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;width:80px;">Name</td><td style="padding:5px 8px;font-weight:600;color:#111827;">{$escapedName}</td></tr>
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;">Email</td><td style="padding:5px 8px;color:#111827;">{$volunteerEmail}</td></tr>
+  {$dateRow}
+</table>
+<p style="margin:0;color:#4b5563;">Head to your volunteering page to manage sign-ups and keep everything running smoothly on the day.</p>
+HTML
+                . self::button('View volunteering', self::appUrl('/volunteering'))
+            );
+
+            self::send($manager->email, $manager->full_name ?? $manager->email, $subject, $html);
+        } catch (\Throwable $e) {
+            Log::error('[MailService] volunteeringSignupToManager failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Notify an athlete they've been invited to register for a season.
+     */
+    public static function seasonInviteToAthlete(User $athlete, string $clubName, string $seasonName, int $feeCents): void
+    {
+        $key = config('services.resend.key');
+        if (empty($key)) return;
+
+        try {
+            $athleteName    = $athlete->full_name ? explode(' ', $athlete->full_name)[0] : 'there';
+            $subject        = "Season registration: {$seasonName}";
+            $feeDollars     = number_format($feeCents / 100, 2);
+            $escapedClub    = htmlspecialchars($clubName, ENT_QUOTES, 'UTF-8');
+            $escapedSeason  = htmlspecialchars($seasonName, ENT_QUOTES, 'UTF-8');
+
+            $html = self::layout(
+                "You've been invited to register for {$seasonName}",
+                <<<HTML
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#111827;">Your season is about to begin!</p>
+<p style="margin:0 0 16px;color:#4b5563;">Hi {$athleteName},</p>
+<p style="margin:0 0 16px;color:#4b5563;">Exciting times ahead — <strong>{$escapedClub}</strong> has invited you to register for the upcoming season. This is your chance to lock in your spot and get ready for another great year of competition.</p>
+<table cellpadding="0" cellspacing="0" style="background-color:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px 8px;margin-bottom:16px;width:100%;">
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;width:80px;">Season</td><td style="padding:5px 8px;font-weight:600;color:#111827;">{$escapedSeason}</td></tr>
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;">Club</td><td style="padding:5px 8px;font-weight:600;color:#111827;">{$escapedClub}</td></tr>
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;">Registration fee</td><td style="padding:5px 8px;font-weight:700;font-size:16px;color:#10b981;">\${$feeDollars} AUD</td></tr>
+</table>
+<p style="margin:0;color:#4b5563;">Don't miss out — complete your registration now and secure your place in the team. We can't wait to see you out there!</p>
+HTML
+                . self::button('Register now', self::appUrl('/my-registrations'))
+            );
+
+            self::send($athlete->email, $athlete->full_name ?? $athlete->email, $subject, $html);
+        } catch (\Throwable $e) {
+            Log::error('[MailService] seasonInviteToAthlete failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Notify a manager that an athlete chose to pay at the club.
+     */
+    public static function seasonRsvpToManager(User $manager, User $athlete, string $seasonName): void
+    {
+        $key = config('services.resend.key');
+        if (empty($key)) return;
+
+        try {
+            $managerName   = $manager->full_name ? explode(' ', $manager->full_name)[0] : 'there';
+            $athleteName   = $athlete->full_name ?? $athlete->email;
+            $athleteEmail  = $athlete->email;
+            $subject       = "Action needed: {$athleteName} will pay at club for {$seasonName}";
+            $escapedName   = htmlspecialchars($athleteName, ENT_QUOTES, 'UTF-8');
+            $escapedSeason = htmlspecialchars($seasonName, ENT_QUOTES, 'UTF-8');
+
+            $html = self::layout(
+                "{$athleteName} selected pay at club for {$seasonName}",
+                <<<HTML
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#111827;">Payment to collect at club</p>
+<p style="margin:0 0 16px;color:#4b5563;">Hi {$managerName},</p>
+<p style="margin:0 0 16px;color:#4b5563;"><strong>{$escapedName}</strong> has confirmed their registration for <strong>{$escapedSeason}</strong> and has chosen to <strong>pay at the club</strong> in person.</p>
+<table cellpadding="0" cellspacing="0" style="background-color:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px 8px;margin-bottom:16px;width:100%;">
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;width:80px;">Name</td><td style="padding:5px 8px;font-weight:600;color:#111827;">{$escapedName}</td></tr>
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;">Email</td><td style="padding:5px 8px;color:#111827;">{$athleteEmail}</td></tr>
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;">Season</td><td style="padding:5px 8px;font-weight:600;color:#111827;">{$escapedSeason}</td></tr>
+</table>
+<p style="margin:0 0 16px;color:#4b5563;">Once you've collected their payment, remember to mark their registration as paid in the system to keep your records up to date.</p>
+<p style="margin:0;color:#4b5563;">Thanks for keeping things running smoothly — your athletes appreciate it!</p>
+HTML
+                . self::button('View season registrations', self::appUrl('/seasons'))
+            );
+
+            self::send($manager->email, $manager->full_name ?? $manager->email, $subject, $html);
+        } catch (\Throwable $e) {
+            Log::error('[MailService] seasonRsvpToManager failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Notify an athlete they have been added to a squad.
+     */
+    public static function squadAddedToAthlete(User $athlete, string $squadName, string $clubName): void
+    {
+        $key = config('services.resend.key');
+        if (empty($key)) return;
+
+        try {
+            $athleteName   = $athlete->full_name ? explode(' ', $athlete->full_name)[0] : 'there';
+            $subject       = "You've been added to {$squadName}";
+            $escapedSquad  = htmlspecialchars($squadName, ENT_QUOTES, 'UTF-8');
+            $escapedClub   = htmlspecialchars($clubName, ENT_QUOTES, 'UTF-8');
+
+            $html = self::layout(
+                "You're now part of the {$squadName} squad",
+                <<<HTML
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#111827;">You've been added to a squad!</p>
+<p style="margin:0 0 16px;color:#4b5563;">Hi {$athleteName},</p>
+<p style="margin:0 0 16px;color:#4b5563;">Great news — <strong>{$escapedClub}</strong> has added you to the <strong>{$escapedSquad}</strong> squad. You're officially part of the group!</p>
+<p style="margin:0 0 16px;color:#4b5563;">Your coach will be in touch with training schedules, sessions, and any upcoming events for your squad. Keep an eye on your dashboard for updates.</p>
+<p style="margin:0;color:#4b5563;">Time to train hard and make your squad proud. See you out there!</p>
+HTML
+                . self::button('View my dashboard', self::appUrl('/dashboard'))
+            );
+
+            self::send($athlete->email, $athlete->full_name ?? $athlete->email, $subject, $html);
+        } catch (\Throwable $e) {
+            Log::error('[MailService] squadAddedToAthlete failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Notify manager that an athlete declined a season registration invite.
+     */
+    public static function seasonRejectedToManager(User $manager, User $athlete, string $seasonName): void
+    {
+        $key = config('services.resend.key');
+        if (empty($key)) return;
+
+        try {
+            $managerName   = $manager->full_name ? explode(' ', $manager->full_name)[0] : 'there';
+            $athleteName   = $athlete->full_name ?? $athlete->email;
+            $athleteEmail  = $athlete->email;
+            $subject       = "{$athleteName} declined the registration for {$seasonName}";
+            $escapedName   = htmlspecialchars($athleteName, ENT_QUOTES, 'UTF-8');
+            $escapedSeason = htmlspecialchars($seasonName, ENT_QUOTES, 'UTF-8');
+
+            $html = self::layout(
+                "{$athleteName} declined their registration invite",
+                <<<HTML
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#111827;">Registration declined</p>
+<p style="margin:0 0 16px;color:#4b5563;">Hi {$managerName},</p>
+<p style="margin:0 0 16px;color:#4b5563;"><strong>{$escapedName}</strong> has declined their registration invite for <strong>{$escapedSeason}</strong>. Their spot has been freed up.</p>
+<table cellpadding="0" cellspacing="0" style="background-color:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:8px 8px;margin-bottom:16px;width:100%;">
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;width:80px;">Athlete</td><td style="padding:5px 8px;font-weight:600;color:#111827;">{$escapedName}</td></tr>
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;">Email</td><td style="padding:5px 8px;color:#111827;">{$athleteEmail}</td></tr>
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;">Season</td><td style="padding:5px 8px;font-weight:600;color:#111827;">{$escapedSeason}</td></tr>
+</table>
+<p style="margin:0;color:#4b5563;">You can reach out to them directly or invite another athlete in their place.</p>
+HTML
+                . self::button('View season registrations', self::appUrl('/seasons'))
+            );
+
+            self::send($manager->email, $manager->full_name ?? $manager->email, $subject, $html);
+        } catch (\Throwable $e) {
+            Log::error('[MailService] seasonRejectedToManager failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Notify athlete that the manager revoked their season registration invite.
+     */
+    public static function seasonRevokedToAthlete(User $athlete, string $clubName, string $seasonName): void
+    {
+        $key = config('services.resend.key');
+        if (empty($key)) return;
+
+        try {
+            $athleteName   = $athlete->full_name ? explode(' ', $athlete->full_name)[0] : 'there';
+            $subject       = "Your registration invite for {$seasonName} has been withdrawn";
+            $escapedClub   = htmlspecialchars($clubName, ENT_QUOTES, 'UTF-8');
+            $escapedSeason = htmlspecialchars($seasonName, ENT_QUOTES, 'UTF-8');
+
+            $html = self::layout(
+                "Registration invite for {$seasonName} withdrawn",
+                <<<HTML
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#111827;">Registration invite withdrawn</p>
+<p style="margin:0 0 16px;color:#4b5563;">Hi {$athleteName},</p>
+<p style="margin:0 0 16px;color:#4b5563;"><strong>{$escapedClub}</strong> has withdrawn your registration invite for <strong>{$escapedSeason}</strong>.</p>
+<p style="margin:0;color:#4b5563;">If you think this was a mistake or have any questions, please reach out to your club manager directly.</p>
+HTML
+                . self::button('View my registrations', self::appUrl('/my-registrations'))
+            );
+
+            self::send($athlete->email, $athlete->full_name ?? $athlete->email, $subject, $html);
+        } catch (\Throwable $e) {
+            Log::error('[MailService] seasonRevokedToAthlete failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Notify manager that an athlete paid online by card.
+     */
+    public static function seasonPaidOnlineToManager(User $manager, User $athlete, string $seasonName): void
+    {
+        $key = config('services.resend.key');
+        if (empty($key)) return;
+
+        try {
+            $managerName   = $manager->full_name ? explode(' ', $manager->full_name)[0] : 'there';
+            $athleteName   = $athlete->full_name ?? $athlete->email;
+            $athleteEmail  = $athlete->email;
+            $subject       = "💳 {$athleteName} paid online for {$seasonName}";
+            $escapedName   = htmlspecialchars($athleteName, ENT_QUOTES, 'UTF-8');
+            $escapedSeason = htmlspecialchars($seasonName, ENT_QUOTES, 'UTF-8');
+
+            $html = self::layout(
+                "{$athleteName} completed online payment for {$seasonName}",
+                <<<HTML
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#111827;">Online payment received!</p>
+<p style="margin:0 0 16px;color:#4b5563;">Hi {$managerName},</p>
+<p style="margin:0 0 16px;color:#4b5563;">Great news — <strong>{$escapedName}</strong> has completed their online card payment for <strong>{$escapedSeason}</strong>. Their registration is now confirmed.</p>
+<table cellpadding="0" cellspacing="0" style="background-color:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px 8px;margin-bottom:16px;width:100%;">
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;width:80px;">Athlete</td><td style="padding:5px 8px;font-weight:600;color:#111827;">{$escapedName}</td></tr>
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;">Email</td><td style="padding:5px 8px;color:#111827;">{$athleteEmail}</td></tr>
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;">Season</td><td style="padding:5px 8px;font-weight:600;color:#111827;">{$escapedSeason}</td></tr>
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;">Payment</td><td style="padding:5px 8px;font-weight:600;color:#10b981;">Online card ✓</td></tr>
+</table>
+<p style="margin:0;color:#4b5563;">No further action needed — their registration is fully confirmed in the system.</p>
+HTML
+                . self::button('View season registrations', self::appUrl('/seasons'))
+            );
+
+            self::send($manager->email, $manager->full_name ?? $manager->email, $subject, $html);
+        } catch (\Throwable $e) {
+            Log::error('[MailService] seasonPaidOnlineToManager failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    public static function welcomeCoach(string $email, string $fullName, string $clubName, string $tempPassword): void
+    {
+        try {
+            $name     = htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8');
+            $club     = htmlspecialchars($clubName, ENT_QUOTES, 'UTF-8');
+            $password = htmlspecialchars($tempPassword, ENT_QUOTES, 'UTF-8');
+            $loginUrl = self::appUrl('/login');
+
+            $html = self::layout(
+                "You've been added as a coach at {$club}",
+                <<<HTML
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#111827;">Welcome to {$club}!</p>
+<p style="margin:0 0 16px;color:#4b5563;">Hi {$name},</p>
+<p style="margin:0 0 16px;color:#4b5563;">You've been added as a <strong>coach</strong> at <strong>{$club}</strong> on PathwayHQ. Here are your login details:</p>
+<table cellpadding="0" cellspacing="0" style="background-color:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px;margin-bottom:16px;width:100%;">
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;width:100px;">Email</td><td style="padding:5px 8px;font-weight:600;color:#111827;">{$email}</td></tr>
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;">Password</td><td style="padding:5px 8px;font-weight:600;color:#111827;font-family:monospace;">{$password}</td></tr>
+</table>
+<p style="margin:0 0 16px;color:#4b5563;">Please change your password after your first login.</p>
+HTML
+                . self::button('Log in to PathwayHQ', $loginUrl)
+            );
+
+            self::send($email, $fullName, "Welcome to {$clubName} — your PathwayHQ login", $html);
+        } catch (\Throwable $e) {
+            Log::error('[MailService] welcomeCoach failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    public static function welcomeParent(string $email, string $fullName, string $athleteName, string $tempPassword): void
+    {
+        try {
+            $name     = htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8');
+            $athlete  = htmlspecialchars($athleteName, ENT_QUOTES, 'UTF-8');
+            $password = htmlspecialchars($tempPassword, ENT_QUOTES, 'UTF-8');
+            $loginUrl = self::appUrl('/login');
+
+            $html = self::layout(
+                "You've been linked as a parent/guardian for {$athlete}",
+                <<<HTML
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#111827;">You're linked on PathwayHQ!</p>
+<p style="margin:0 0 16px;color:#4b5563;">Hi {$name},</p>
+<p style="margin:0 0 16px;color:#4b5563;">You've been added as a <strong>parent/guardian</strong> for <strong>{$athlete}</strong> on PathwayHQ. You can follow their development pathway, milestones, and upcoming events.</p>
+<p style="margin:0 0 16px;color:#4b5563;">Here are your login details:</p>
+<table cellpadding="0" cellspacing="0" style="background-color:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px;margin-bottom:16px;width:100%;">
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;width:100px;">Email</td><td style="padding:5px 8px;font-weight:600;color:#111827;">{$email}</td></tr>
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;">Password</td><td style="padding:5px 8px;font-weight:600;color:#111827;font-family:monospace;">{$password}</td></tr>
+</table>
+<p style="margin:0 0 16px;color:#4b5563;">Please change your password after your first login.</p>
+HTML
+                . self::button('Log in to PathwayHQ', $loginUrl)
+            );
+
+            self::send($email, $fullName, "Your PathwayHQ login — follow {$athleteName}'s pathway", $html);
+        } catch (\Throwable $e) {
+            Log::error('[MailService] welcomeParent failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    public static function welcomeClubAdmin(string $email, string $fullName, string $clubName, string $tempPassword): void
+    {
+        try {
+            $name     = htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8');
+            $club     = htmlspecialchars($clubName, ENT_QUOTES, 'UTF-8');
+            $password = htmlspecialchars($tempPassword, ENT_QUOTES, 'UTF-8');
+            $loginUrl = self::appUrl('/login');
+
+            $html = self::layout(
+                "Your club {$club} is now live on PathwayHQ",
+                <<<HTML
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#111827;">Your club is live on PathwayHQ! 🎉</p>
+<p style="margin:0 0 16px;color:#4b5563;">Hi {$name},</p>
+<p style="margin:0 0 16px;color:#4b5563;">Your claim for <strong>{$club}</strong> has been approved. Your club manager account is ready — here are your login details:</p>
+<table cellpadding="0" cellspacing="0" style="background-color:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px;margin-bottom:16px;width:100%;">
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;width:100px;">Email</td><td style="padding:5px 8px;font-weight:600;color:#111827;">{$email}</td></tr>
+  <tr><td style="padding:5px 8px;color:#6b7280;font-size:13px;">Password</td><td style="padding:5px 8px;font-weight:600;color:#111827;font-family:monospace;">{$password}</td></tr>
+</table>
+<p style="margin:0 0 16px;color:#4b5563;">Please change your password after your first login. From your dashboard you can add athletes, create squads, manage seasons, and more.</p>
+HTML
+                . self::button('Log in to PathwayHQ', $loginUrl)
+            );
+
+            self::send($email, $fullName, "Welcome to PathwayHQ — {$clubName} is live!", $html);
+        } catch (\Throwable $e) {
+            Log::error('[MailService] welcomeClubAdmin failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Invite a brand-new user (no account yet) to claim their athlete profile.
+     */
+    public static function athleteInviteNew(string $email, string $firstName, string $lastName, string $clubName, string $token): void
+    {
+        try {
+            $name        = htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8');
+            $club        = htmlspecialchars($clubName, ENT_QUOTES, 'UTF-8');
+            $claimUrl    = self::appUrl('/claim/' . $token);
+            $escapedUrl  = htmlspecialchars($claimUrl, ENT_QUOTES, 'UTF-8');
+            $fullName    = trim($firstName . ' ' . $lastName);
+            $subject     = "You've been added to {$clubName} on PathwayHQ";
+
+            $html = self::layout(
+                "Claim your athlete profile at {$clubName}",
+                <<<HTML
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#111827;">You've been added to {$club}!</p>
+<p style="margin:0 0 16px;color:#4b5563;">Hi {$name},</p>
+<p style="margin:0 0 16px;color:#4b5563;"><strong>{$club}</strong> has created an athlete profile for you on PathwayHQ — the platform they use to manage athlete development, training calendars, milestones, and more.</p>
+<p style="margin:0 0 16px;color:#4b5563;">Click the button below to create your free account and claim your profile. Once claimed, you'll be able to see your development pathway, upcoming sessions, and any milestones your coaches log for you.</p>
+HTML
+                . self::button('Claim my athlete profile →', $claimUrl)
+                . <<<HTML
+<p style="margin:16px 0 0;font-size:13px;color:#9ca3af;">If the button doesn't work, copy and paste this link into your browser:<br/><a href="{$escapedUrl}" style="color:#10b981;">{$escapedUrl}</a></p>
+<p style="margin:8px 0 0;font-size:13px;color:#9ca3af;">If you weren't expecting this email, you can safely ignore it. No account will be created without your action.</p>
+HTML
+            );
+
+            self::send($email, $fullName, $subject, $html);
+        } catch (\Throwable $e) {
+            Log::error('[MailService] athleteInviteNew failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Notify an existing PathwayHQ user that a club wants to add them as an athlete.
+     */
+    public static function athleteInviteExisting(User $user, string $clubName): void
+    {
+        try {
+            $name    = htmlspecialchars($user->full_name ? explode(' ', $user->full_name)[0] : 'there', ENT_QUOTES, 'UTF-8');
+            $club    = htmlspecialchars($clubName, ENT_QUOTES, 'UTF-8');
+            $subject = "{$clubName} wants to add you as an athlete";
+
+            $html = self::layout(
+                "{$clubName} wants to add you to their roster",
+                <<<HTML
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#111827;">You've been invited to join a club!</p>
+<p style="margin:0 0 16px;color:#4b5563;">Hi {$name},</p>
+<p style="margin:0 0 16px;color:#4b5563;"><strong>{$club}</strong> has sent you an invitation to join their roster on PathwayHQ as an athlete.</p>
+<p style="margin:0 0 16px;color:#4b5563;">Log in to your dashboard to accept or decline — once accepted, you'll be able to see your development pathway, upcoming sessions, and milestones your coaches log for you.</p>
+<p style="margin:0;color:#4b5563;">If you weren't expecting this, you can safely decline the invitation from your dashboard.</p>
+HTML
+                . self::button('View my dashboard', self::appUrl('/dashboard'))
+            );
+
+            self::send($user->email, $user->full_name ?? $user->email, $subject, $html);
+        } catch (\Throwable $e) {
+            Log::error('[MailService] athleteInviteExisting failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    public static function passwordReset(User $user, string $resetUrl): void
+    {
+        try {
+            $name = htmlspecialchars($user->full_name ?? $user->email, ENT_QUOTES, 'UTF-8');
+            $html = self::layout(
+                'Reset your PathwayHQ password',
+                <<<HTML
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#111827;">Reset your password</p>
+<p style="margin:0 0 16px;color:#4b5563;">Hi {$name},</p>
+<p style="margin:0 0 16px;color:#4b5563;">We received a request to reset the password on your PathwayHQ account. Click the button below to choose a new password.</p>
+HTML
+                . self::button('Reset my password', $resetUrl)
+                . <<<HTML
+<p style="margin:16px 0 0;font-size:13px;color:#9ca3af;">This link expires in 60 minutes. If you didn't request a password reset you can safely ignore this email — your password will not be changed.</p>
+HTML
+            );
+
+            self::send($user->email, $user->full_name ?? $user->email, 'Reset your PathwayHQ password', $html);
+        } catch (\Throwable $e) {
+            Log::error('[MailService] passwordReset failed', ['error' => $e->getMessage()]);
+        }
+    }
+}

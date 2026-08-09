@@ -1,33 +1,125 @@
-import { useState, useEffect } from 'react'
-import { Link, useParams } from 'react-router-dom'
-<<<<<<< Updated upstream
-import { Zap, MapPin, Users, Trophy, ArrowLeft, ArrowRight, Globe, Mail, Star, Award, Medal } from 'lucide-react'
-import api from '../../lib/api'
-import { SPORTS, FTEM_PHASES } from '../../lib/constants'
-
-function trophyTier(phase) {
-  if (phase === 'M')              return { icon: '🥇', glow: 'shadow-amber-500/30',  border: 'border-amber-500/40',  bg: 'bg-gradient-to-br from-amber-500/15 to-yellow-500/10',  badge: 'bg-amber-500/20 text-amber-300 border-amber-500/30', label: 'Mastery' }
-  if (phase === 'E1' || phase === 'E2') return { icon: '🥈', glow: 'shadow-slate-300/20',  border: 'border-slate-400/30',  bg: 'bg-gradient-to-br from-slate-400/10 to-slate-500/5',   badge: 'bg-slate-400/20 text-slate-200 border-slate-400/30', label: 'Elite'   }
-  if (phase?.startsWith('T'))    return { icon: '🥉', glow: 'shadow-orange-500/20',  border: 'border-orange-500/30', bg: 'bg-gradient-to-br from-orange-500/10 to-amber-700/5',   badge: 'bg-orange-500/20 text-orange-300 border-orange-500/30', label: 'Talent' }
-  return                                { icon: '🏅', glow: 'shadow-emerald-500/20', border: 'border-emerald-500/20',bg: 'bg-gradient-to-br from-emerald-500/10 to-teal-500/5',    badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30', label: 'Foundation' }
-}
-
-function fmtDate(d) {
-  return new Date(d).toLocaleDateString('en-AU', { month: 'short', year: 'numeric' })
-=======
+import { useState, useEffect, useRef } from 'react'
+import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Zap, MapPin, Users, Trophy, ArrowLeft, ArrowRight,
   Globe, Mail, Phone, Calendar, Clock, Megaphone,
   Instagram, Facebook, Twitter, ChevronDown, ChevronUp,
+  ShieldCheck, X, Loader2, UserPlus, CheckCircle2,
 } from 'lucide-react'
 import api from '../../lib/api'
+import { useAuth } from '../../contexts/AuthContext'
 import { SPORTS, FTEM_PHASES } from '../../lib/constants'
 
-// ─── helpers ─────────────────────────────────────────────────────────────────
-function fmtDate(dt) {
-  if (!dt) return ''
-  return new Date(dt).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })
+function ClaimModal({ club, onClose }) {
+  const [form, setForm]       = useState({ name: '', email: '', phone: '', role_at_club: '', message: '' })
+  const [saving, setSaving]   = useState(false)
+  const [done, setDone]       = useState(false)
+  const [error, setError]     = useState('')
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setSaving(true)
+    setError('')
+    try {
+      await api.post(`/clubs/public/${club.slug}/claim`, form)
+      setDone(true)
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Something went wrong. Please try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-3xl bg-slate-900 border border-white/10 shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+              <ShieldCheck className="h-5 w-5 text-emerald-400" />
+            </div>
+            <div>
+              <h2 className="font-black text-white text-base">Claim {club.name}</h2>
+              <p className="text-xs text-slate-400">Pending admin verification</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {done ? (
+          <div className="px-6 py-10 text-center">
+            <div className="text-4xl mb-4">🎉</div>
+            <h3 className="text-lg font-black text-white mb-2">Request submitted!</h3>
+            <p className="text-sm text-slate-400 leading-relaxed">
+              We'll review your claim and be in touch at <span className="text-emerald-400 font-semibold">{form.email}</span> shortly.
+            </p>
+            <button onClick={onClose} className="mt-6 rounded-xl bg-emerald-500 hover:bg-emerald-400 px-6 py-2.5 text-sm font-bold text-white transition-colors">
+              Done
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className="text-xs font-semibold text-slate-400 mb-1 block">Full name *</label>
+                <input required value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                  className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30"
+                  placeholder="Your name" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-400 mb-1 block">Email *</label>
+                <input required type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
+                  className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30"
+                  placeholder="you@club.com.au" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-400 mb-1 block">Phone</label>
+                <input value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))}
+                  className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30"
+                  placeholder="04xx xxx xxx" />
+              </div>
+              <div className="col-span-2">
+                <label className="text-xs font-semibold text-slate-400 mb-1 block">Your role at the club</label>
+                <input value={form.role_at_club} onChange={e => setForm(p => ({ ...p, role_at_club: e.target.value }))}
+                  className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30"
+                  placeholder="e.g. Club Secretary, Head Coach, President" />
+              </div>
+              <div className="col-span-2">
+                <label className="text-xs font-semibold text-slate-400 mb-1 block">Why are you claiming this profile?</label>
+                <textarea value={form.message} onChange={e => setForm(p => ({ ...p, message: e.target.value }))}
+                  rows={3} placeholder="Tell us a bit about yourself and your club…"
+                  className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 resize-none" />
+              </div>
+            </div>
+
+            {error && <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{error}</p>}
+
+            <div className="flex gap-3 pt-1">
+              <button type="button" onClick={onClose}
+                className="flex-1 rounded-xl border border-white/10 py-3 text-sm font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition-colors">
+                Cancel
+              </button>
+              <button type="submit" disabled={saving}
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-60 py-3 text-sm font-bold text-white transition-colors">
+                {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</> : 'Submit claim'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  )
 }
+
+function trophyTier(phase) {
+  if (phase === 'M')                   return { icon: '🥇', border: 'border-amber-500/40',  bg: 'bg-amber-500/10',   badge: 'bg-amber-500/20 text-amber-300 border-amber-500/30'   }
+  if (phase === 'E1' || phase === 'E2') return { icon: '🥈', border: 'border-slate-400/30',  bg: 'bg-slate-400/10',   badge: 'bg-slate-400/20 text-slate-200 border-slate-400/30'   }
+  if (phase?.startsWith('T'))          return { icon: '🥉', border: 'border-orange-500/30', bg: 'bg-orange-500/8',   badge: 'bg-orange-500/20 text-orange-300 border-orange-500/30' }
+  return                                      { icon: '🏅', border: 'border-emerald-500/20',bg: 'bg-emerald-500/8',  badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' }
+}
+
 function fmtTime(dt) {
   if (!dt) return ''
   return new Date(dt).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })
@@ -39,6 +131,7 @@ const EVENT_COLORS = {
   camp:     'bg-purple-500',
   other:    'bg-slate-400',
 }
+
 const ANNOUNCE_CAT = {
   match:    { emoji: '⚽', color: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300' },
   training: { emoji: '💪', color: 'bg-blue-500/10 border-blue-500/20 text-blue-300' },
@@ -48,41 +141,150 @@ const ANNOUNCE_CAT = {
   general:  { emoji: '📢', color: 'bg-slate-500/10 border-slate-500/20 text-slate-300' },
 }
 
-// Truncated body card for announcements
 function AnnouncePeek({ a }) {
   const [open, setOpen] = useState(false)
-  const cat = ANNOUNCE_CAT[a.category] || ANNOUNCE_CAT.general
+  const cat   = ANNOUNCE_CAT[a.category] || ANNOUNCE_CAT.general
   const emoji = a.emoji || cat.emoji
-  const long = a.body && a.body.length > 200
+  const long  = a.body && a.body.length > 200
 
   return (
-    <div className={`rounded-2xl border p-5 ${cat.color} bg-white/5`}>
-      <div className="flex items-start gap-3">
-        <span className="text-2xl shrink-0 mt-0.5">{emoji}</span>
-        <div className="flex-1 min-w-0">
-          <p className="font-bold text-white leading-snug">{a.title}</p>
-          {a.body && (
-            <p className="text-sm text-slate-400 mt-2 leading-relaxed whitespace-pre-line">
-              {long && !open ? a.body.slice(0, 200).trimEnd() + '…' : a.body}
-            </p>
-          )}
-          {long && (
-            <button onClick={() => setOpen(v => !v)}
-              className="mt-2 flex items-center gap-1 text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition-colors">
-              {open ? <><ChevronUp className="h-3.5 w-3.5" />Show less</> : <><ChevronDown className="h-3.5 w-3.5" />Read more</>}
-            </button>
-          )}
+    <div className={`rounded-2xl border overflow-hidden ${cat.color} bg-white/5`}>
+      {/* Hero image */}
+      {a.image_url && (
+        <img src={a.image_url} alt="" className="w-full object-contain" />
+      )}
+      <div className="p-5">
+        <div className="flex items-start gap-3">
+          <span className="text-2xl shrink-0 mt-0.5">{emoji}</span>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-white leading-snug">{a.title}</p>
+            {a.body && (
+              <p className="text-sm text-slate-400 mt-2 leading-relaxed whitespace-pre-line">
+                {long && !open ? a.body.slice(0, 200).trimEnd() + '…' : a.body}
+              </p>
+            )}
+            {long && (
+              <button onClick={() => setOpen(v => !v)}
+                className="mt-2 flex items-center gap-1 text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition-colors">
+                {open ? <><ChevronUp className="h-3.5 w-3.5" />Show less</> : <><ChevronDown className="h-3.5 w-3.5" />Read more</>}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
   )
->>>>>>> Stashed changes
+}
+
+function JoinRequestModal({ club, onClose }) {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const [message, setMessage] = useState('')
+  const [saving,  setSaving]  = useState(false)
+  const [done,    setDone]    = useState(false)
+  const [error,   setError]   = useState('')
+
+  function goAuth(modal) {
+    sessionStorage.setItem('pendingJoin', club.slug)
+    navigate(`/?modal=${modal}`)
+  }
+
+  if (!user) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+        <div className="w-full max-w-sm rounded-2xl bg-slate-900 border border-white/10 shadow-2xl p-8 text-center">
+          <UserPlus className="h-10 w-10 text-emerald-400 mx-auto mb-3" />
+          <h2 className="font-black text-white text-lg mb-2">Sign in to request</h2>
+          <p className="text-slate-400 text-sm mb-5">Create an account or sign in to request to join {club.name}.</p>
+          <div className="flex gap-3">
+            <button onClick={onClose} className="flex-1 rounded-xl border border-white/10 py-3 text-sm font-semibold text-slate-400 hover:text-white transition-colors">Cancel</button>
+            <button onClick={() => goAuth('signup')} className="flex-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 py-3 text-sm font-bold text-white transition-colors">Create account</button>
+          </div>
+          <p className="mt-3 text-xs text-slate-600">
+            Already have an account?{' '}
+            <button onClick={() => goAuth('login')} className="text-slate-400 hover:text-white underline transition-colors">Sign in</button>
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setSaving(true)
+    setError('')
+    try {
+      await api.post(`/clubs/public/${club.slug}/join-request`, { message })
+      setDone(true)
+    } catch (err) {
+      setError(err?.response?.data?.message ?? 'Something went wrong.')
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-3xl bg-slate-900 border border-white/10 shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 border border-blue-500/20">
+              <UserPlus className="h-5 w-5 text-blue-400" />
+            </div>
+            <div>
+              <h2 className="font-black text-white text-base">Request to join</h2>
+              <p className="text-xs text-slate-400">{club.name}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        {done ? (
+          <div className="px-6 py-10 text-center">
+            <div className="text-4xl mb-4">🙌</div>
+            <h3 className="text-lg font-black text-white mb-2">Request sent!</h3>
+            <p className="text-sm text-slate-400 leading-relaxed">The club manager will review your request and get back to you.</p>
+            <button onClick={onClose} className="mt-6 rounded-xl bg-emerald-500 hover:bg-emerald-400 px-6 py-2.5 text-sm font-bold text-white transition-colors">Done</button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+            <div className="flex items-center gap-3 rounded-xl bg-white/5 border border-white/10 px-4 py-3">
+              <div className="h-9 w-9 rounded-full bg-blue-500/20 flex items-center justify-center text-sm font-black text-blue-400 shrink-0">
+                {user.full_name?.[0]?.toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-white truncate">{user.full_name}</p>
+                <p className="text-xs text-slate-400 truncate">{user.email}</p>
+              </div>
+              <span className="shrink-0 text-[10px] font-bold text-slate-500 bg-white/5 rounded-full px-2 py-0.5 border border-white/10">Sending as</span>
+            </div>
+            <textarea value={message} onChange={e => setMessage(e.target.value)} rows={3}
+              placeholder="Introduce yourself, your experience, position..."
+              className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 resize-none" />
+            {error && <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{error}</p>}
+            <div className="flex gap-3">
+              <button type="button" onClick={onClose} className="flex-1 rounded-xl border border-white/10 py-3 text-sm font-semibold text-slate-400 hover:text-white transition-colors">Cancel</button>
+              <button type="submit" disabled={saving} className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-blue-500 hover:bg-blue-400 disabled:opacity-60 py-3 text-sm font-bold text-white transition-colors">
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+                Send request
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  )
 }
 
 export default function ClubProfile() {
   const { slug } = useParams()
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const { user } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const joinIntentHandled = useRef(false)
+  const [data,       setData]      = useState(null)
+  const [loading,    setLoading]   = useState(true)
+  const [showClaim,  setShowClaim] = useState(false)
+  const [showJoin,   setShowJoin]  = useState(false)
+  const [joinStatus, setJoinStatus]= useState(null) // null|pending|approved|rejected|member
 
   useEffect(() => {
     api.get(`/clubs/public/${slug}`)
@@ -91,19 +293,29 @@ export default function ClubProfile() {
       .finally(() => setLoading(false))
   }, [slug])
 
+  useEffect(() => {
+    if (!user || !slug) return
+    api.get(`/clubs/public/${slug}/my-join-status`)
+      .then(r => setJoinStatus(r.data.status))
+      .catch(() => {})
+  }, [user, slug])
+
+  // Auto-open join modal when returning from login with ?join=1
+  useEffect(() => {
+    if (joinIntentHandled.current) return
+    if (searchParams.get('join') === '1' && user && data) {
+      joinIntentHandled.current = true
+      setShowJoin(true)
+      setSearchParams({}, { replace: true })
+    }
+  }, [user, data])
+
   if (loading) return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center">
       <div className="w-8 h-8 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
     </div>
   )
 
-<<<<<<< Updated upstream
-  const { club, athletes, milestones } = data
-  const sportMeta  = SPORTS.find(s => s.value === club.sport)
-  const ftemDist   = (athletes ?? []).reduce((acc, a) => { acc[a.ftem_phase] = (acc[a.ftem_phase] || 0) + 1; return acc }, {})
-  const eliteCount = (athletes ?? []).filter(a => a.ftem_phase?.startsWith('E') || a.ftem_phase === 'M').length
-  const phases     = Object.keys(ftemDist).length
-=======
   if (!data) return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-4 text-white px-4">
       <div className="text-4xl">🏟️</div>
@@ -115,22 +327,22 @@ export default function ClubProfile() {
     </div>
   )
 
-  const { club, athletes, ftemDist, milestones, events, announcements } = data
+  const { club, athletes, ftemDist, milestones, events, announcements, clubTrophies, managerFirstName } = data
   const sportMeta   = SPORTS.find(s => s.value === club.sport)
   const athleteList = athletes ?? []
   const ftem        = ftemDist ?? {}
+  const phases      = Object.keys(ftem).length
   const hasCover    = !!club.cover_image_url
   const hasLogo     = !!club.logo_url
-  const hasSocials  = club.social_instagram || club.social_facebook || club.social_twitter
   const hasEvents   = events && events.length > 0
   const hasMile     = milestones && milestones.length > 0
   const hasAnnounce = announcements && announcements.length > 0
->>>>>>> Stashed changes
+  const hasTrophies = clubTrophies && clubTrophies.length > 0
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
 
-      {/* ── Nav ── */}
+      {/* Nav */}
       <nav className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/95 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
           <Link to="/" className="flex items-center gap-2.5">
@@ -141,70 +353,26 @@ export default function ClubProfile() {
           </Link>
           <div className="flex items-center gap-3">
             <Link to="/clubs" className="hidden sm:flex items-center gap-1 text-sm font-medium text-slate-400 hover:text-white transition-colors">
-<<<<<<< Updated upstream
-              <ArrowLeft className="h-3.5 w-3.5" /> All clubs
-            </Link>
-            <Link to="/login"  className="hidden sm:block text-sm font-medium text-slate-400 hover:text-white transition-colors">Sign in</Link>
-            <Link to="/signup" className="rounded-lg bg-emerald-500 hover:bg-emerald-400 px-4 py-2 text-sm font-semibold transition-all shadow-lg shadow-emerald-500/25 active:scale-95">
-=======
               <ArrowLeft className="h-4 w-4" /> All clubs
             </Link>
-            <Link to="/login"  className="hidden sm:block text-sm font-medium text-slate-400 hover:text-white transition-colors">Sign in</Link>
-            <Link to="/signup" className="rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 px-4 py-2 text-sm font-bold transition-all shadow-lg shadow-emerald-500/25">
->>>>>>> Stashed changes
-              Get started free
-            </Link>
+            {user ? (
+              <Link to="/dashboard" className="rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 px-4 py-2 text-sm font-bold transition-all shadow-lg shadow-emerald-500/25">
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link to="/?modal=login"  className="hidden sm:block text-sm font-medium text-slate-400 hover:text-white transition-colors">Sign in</Link>
+                <Link to="/?modal=signup" className="rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 px-4 py-2 text-sm font-bold transition-all shadow-lg shadow-emerald-500/25">
+                  Get started free
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </nav>
 
-<<<<<<< Updated upstream
-      {/* Hero Banner */}
-      <section className="relative overflow-hidden border-b border-white/5">
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute inset-0 opacity-[0.025]" style={{ backgroundImage: 'repeating-linear-gradient(45deg,white 0px,white 1px,transparent 1px,transparent 60px)' }} />
-          <div className="absolute top-0 left-0 h-[400px] w-[600px] rounded-full bg-emerald-600/15 blur-[120px]" />
-          <div className="absolute bottom-0 right-0 h-[300px] w-[400px] rounded-full bg-blue-600/10 blur-[100px]" />
-        </div>
-        <div className="relative mx-auto max-w-5xl px-4 sm:px-6 py-12 sm:py-16">
-          <Link to="/clubs" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-300 transition-colors mb-8">
-            <ArrowLeft className="h-4 w-4" /> All clubs
-          </Link>
-
-          <div className="flex flex-col sm:flex-row items-start gap-6">
-            {/* Club badge */}
-            <div className="flex h-20 w-20 sm:h-24 sm:w-24 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-br from-white/10 to-white/5 border border-white/15 text-4xl sm:text-5xl shadow-2xl">
-              {sportMeta?.emoji ?? '🏆'}
-            </div>
-
-            <div className="flex-1 min-w-0">
-              {/* Public profile badge */}
-              <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 text-xs font-bold text-emerald-400">
-                <Star className="h-3 w-3" /> Official Club Profile
-              </div>
-
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight">{club.name}</h1>
-
-              <div className="mt-3 flex flex-wrap items-center gap-2 sm:gap-3">
-                {sportMeta && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/5 border border-white/10 px-3 py-1 text-sm font-semibold text-slate-200">
-                    {sportMeta.emoji} {sportMeta.label}
-                  </span>
-                )}
-                {club.city && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/5 border border-white/10 px-3 py-1 text-sm text-slate-400">
-                    <MapPin className="h-3.5 w-3.5 text-slate-500" />
-                    {club.city}{club.state ? `, ${club.state}` : ''}
-                  </span>
-                )}
-                {club.website && (
-                  <a href={club.website} target="_blank" rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-full bg-white/5 border border-white/10 px-3 py-1 text-sm text-emerald-400 hover:text-emerald-300 transition-colors">
-                    <Globe className="h-3.5 w-3.5" /> Website
-=======
-      {/* ── Hero ── */}
+      {/* Hero */}
       <section className="relative overflow-hidden">
-        {/* Cover image or gradient */}
         {hasCover ? (
           <div className="absolute inset-0 h-72 sm:h-80">
             <img src={club.cover_image_url} alt="Club cover" className="w-full h-full object-cover object-center" />
@@ -224,12 +392,13 @@ export default function ClubProfile() {
           </Link>
 
           <div className="flex flex-col sm:flex-row items-start gap-5 sm:gap-6">
-            {/* Logo / emoji */}
+            {/* Logo / sport emoji */}
             <div className={`flex h-20 w-20 sm:h-24 sm:w-24 shrink-0 items-center justify-center rounded-3xl border-2 border-white/20 shadow-2xl text-4xl sm:text-5xl overflow-hidden ${hasCover ? 'bg-slate-900/80 backdrop-blur-sm' : 'bg-white/5'}`}>
-              {hasLogo
-                ? <img src={club.logo_url} alt={club.name} className="w-full h-full object-cover rounded-3xl" onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex' }} />
-                : null}
-              <span className={hasLogo ? 'hidden' : ''}>{sportMeta?.emoji ?? '🏆'}</span>
+              {hasLogo && (
+                <img src={club.logo_url} alt={club.name} className="w-full h-full object-cover rounded-3xl"
+                  onError={e => { e.target.style.display = 'none' }} />
+              )}
+              {!hasLogo && <span>{sportMeta?.emoji ?? '🏆'}</span>}
             </div>
 
             {/* Title block */}
@@ -246,7 +415,9 @@ export default function ClubProfile() {
                   </span>
                 )}
               </div>
+
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight">{club.name}</h1>
+
               <div className="mt-3 flex flex-wrap items-center gap-3 text-slate-400 text-sm">
                 {club.city && (
                   <span className="flex items-center gap-1.5">
@@ -260,23 +431,29 @@ export default function ClubProfile() {
                     {athleteList.length} athlete{athleteList.length !== 1 ? 's' : ''}
                   </span>
                 )}
+                {club.is_claimed && managerFirstName && (
+                  <span className="flex items-center gap-1.5 text-emerald-400 text-xs font-semibold">
+                    <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+                    Managed by {managerFirstName}
+                  </span>
+                )}
+                {!club.is_claimed && (
+                  <span className="flex items-center gap-1.5 text-amber-400 text-xs font-semibold">
+                    Unclaimed profile
+                  </span>
+                )}
               </div>
 
-              {/* Contact & social row */}
-              <div className="mt-4 flex flex-wrap gap-3">
+              {/* Contact & social */}
+              <div className="mt-4 flex flex-wrap gap-4">
                 {club.website && (
                   <a href={club.website} target="_blank" rel="noreferrer"
                     className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-400 hover:text-emerald-300 transition-colors">
                     <Globe className="h-4 w-4" /> Website
->>>>>>> Stashed changes
                   </a>
                 )}
                 {club.contact_email && (
                   <a href={`mailto:${club.contact_email}`}
-<<<<<<< Updated upstream
-                    className="inline-flex items-center gap-1.5 rounded-full bg-white/5 border border-white/10 px-3 py-1 text-sm text-slate-400 hover:text-white transition-colors">
-                    <Mail className="h-3.5 w-3.5" /> Contact
-=======
                     className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors">
                     <Mail className="h-4 w-4" /> Email
                   </a>
@@ -303,7 +480,6 @@ export default function ClubProfile() {
                   <a href={club.social_twitter} target="_blank" rel="noreferrer"
                     className="inline-flex items-center gap-1.5 text-sm text-sky-400 hover:text-sky-300 transition-colors">
                     <Twitter className="h-4 w-4" /> Twitter/X
->>>>>>> Stashed changes
                   </a>
                 )}
               </div>
@@ -311,101 +487,52 @@ export default function ClubProfile() {
               {club.description && (
                 <p className="mt-4 text-slate-400 leading-relaxed max-w-2xl text-sm sm:text-base">{club.description}</p>
               )}
-            </div>
-          </div>
 
-<<<<<<< Updated upstream
-          {/* Key stats row */}
-          <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[
-              { value: athletes?.length ?? 0, label: 'Athletes', icon: Users,  color: 'text-emerald-400' },
-              { value: milestones?.length ?? 0, label: 'Achievements', icon: Trophy, color: 'text-amber-400' },
-              { value: phases,                  label: 'Dev. phases',  icon: Award,  color: 'text-blue-400'    },
-              { value: eliteCount,              label: 'Elite athletes', icon: Medal, color: 'text-purple-400' },
-            ].map(s => (
-              <div key={s.label} className="rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-4 text-center">
-                <s.icon className={`h-4 w-4 mx-auto mb-1 ${s.color}`} />
-                <div className="text-2xl font-black text-white">{s.value}</div>
-                <div className="text-xs text-slate-500 mt-0.5">{s.label}</div>
-              </div>
-            ))}
+              {club.is_claimed && (
+                <div className="mt-5 pt-5 border-t border-white/10 flex flex-wrap items-center gap-3">
+                  {joinStatus === 'member' && (
+                    <span className="inline-flex items-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-4 py-2.5 text-sm font-bold text-emerald-400">
+                      <CheckCircle2 className="h-4 w-4" /> You're on the roster
+                    </span>
+                  )}
+                  {joinStatus === 'pending' && (
+                    <span className="inline-flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-2.5 text-sm font-bold text-amber-400">
+                      <Clock className="h-4 w-4" /> Request pending review
+                    </span>
+                  )}
+                  {joinStatus === 'approved' && (
+                    <span className="inline-flex items-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-4 py-2.5 text-sm font-bold text-emerald-400">
+                      <CheckCircle2 className="h-4 w-4" /> Request approved
+                    </span>
+                  )}
+                  {joinStatus === 'rejected' && (
+                    <span className="inline-flex items-center gap-2 rounded-xl bg-slate-500/10 border border-slate-500/20 px-4 py-2.5 text-sm font-semibold text-slate-500">
+                      Request not accepted · contact the club directly
+                    </span>
+                  )}
+                  {!joinStatus && (
+                    <button onClick={() => setShowJoin(true)}
+                      className="inline-flex items-center gap-2 rounded-xl bg-blue-500 hover:bg-blue-400 active:scale-95 px-5 py-2.5 text-sm font-bold text-white transition-all shadow-lg shadow-blue-500/25">
+                      <UserPlus className="h-4 w-4" /> Request to join
+                    </button>
+                  )}
+                  {!joinStatus && !user && (
+                    <p className="text-xs text-slate-500">You'll need to sign in first.</p>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </section>
 
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 py-10 space-y-8">
-
-        {/* ── Trophy Cabinet ── */}
-        <section>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20">
-              <Trophy className="h-5 w-5 text-amber-400" />
-            </div>
-            <div>
-              <h2 className="text-xl font-black text-white">Trophy Cabinet</h2>
-              <p className="text-xs text-slate-500">Celebrated athlete achievements</p>
-            </div>
-          </div>
-
-          {milestones?.length > 0 ? (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {milestones.map(m => {
-                const tier = trophyTier(m.ftem_phase)
-                return (
-                  <div key={m.id}
-                    className={`rounded-2xl border ${tier.border} ${tier.bg} p-5 shadow-lg ${tier.glow} transition-all hover:-translate-y-0.5 hover:shadow-xl`}>
-                    <div className="flex items-start justify-between mb-3">
-                      <span className="text-2xl">{tier.icon}</span>
-                      <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold ${tier.badge}`}>
-                        {m.ftem_phase}
-                      </span>
-                    </div>
-                    <p className="font-bold text-white leading-snug text-sm">{m.title}</p>
-                    <div className="mt-3 flex items-center justify-between">
-                      {m.athlete_name && (
-                        <span className="text-xs text-slate-400 font-medium">{m.athlete_name}</span>
-                      )}
-                      <span className="text-xs text-slate-500 ml-auto">{fmtDate(m.achieved_at)}</span>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-10 text-center">
-              <div className="text-4xl mb-3">🏆</div>
-              <p className="font-semibold text-slate-400">No achievements shared yet</p>
-              <p className="text-sm text-slate-600 mt-1">Club admins can share milestones from their dashboard</p>
-            </div>
-          )}
-        </section>
-
-        {/* ── Athlete Development Pathway ── */}
-        {Object.keys(ftemDist).length > 0 && (
-          <section>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 border border-blue-500/20">
-                <Award className="h-5 w-5 text-blue-400" />
-              </div>
-              <div>
-                <h2 className="text-xl font-black text-white">Development Pathway</h2>
-                <p className="text-xs text-slate-500">How our athletes are tracking on the FTEM framework</p>
-=======
-          {/* Description */}
-          {club.description && (
-            <p className="mt-6 text-slate-400 leading-relaxed max-w-2xl text-[15px]">{club.description}</p>
-          )}
-        </div>
-      </section>
-
-      {/* ── Body ── */}
+      {/* Body */}
       <div className="mx-auto max-w-6xl px-4 sm:px-6 pb-16">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-          {/* ── Left sidebar ── */}
+          {/* Sidebar */}
           <div className="space-y-5 order-2 lg:order-1">
 
-            {/* Club stats */}
             {athleteList.length > 0 && (
               <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-5">
                 <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Club stats</h2>
@@ -414,45 +541,29 @@ export default function ClubProfile() {
                     <span className="text-slate-500 text-sm">Total athletes</span>
                     <span className="font-black text-white text-2xl">{athleteList.length}</span>
                   </div>
-                  {Object.keys(ftem).length > 0 && (
+                  {phases > 0 && (
                     <div className="flex justify-between items-center">
                       <span className="text-slate-500 text-sm">Dev. phases</span>
-                      <span className="font-black text-white text-2xl">{Object.keys(ftem).length}</span>
+                      <span className="font-black text-white text-2xl">{phases}</span>
+                    </div>
+                  )}
+                  {hasTrophies && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500 text-sm">Club trophies</span>
+                      <span className="font-black text-white text-2xl">{clubTrophies.length}</span>
                     </div>
                   )}
                   {hasMile && (
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-500 text-sm">Achievements</span>
+                      <span className="text-slate-500 text-sm">Milestones</span>
                       <span className="font-black text-white text-2xl">{milestones.length}</span>
                     </div>
                   )}
                 </div>
->>>>>>> Stashed changes
               </div>
             )}
 
-<<<<<<< Updated upstream
-            <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-6">
-              <div className="grid sm:grid-cols-2 gap-4">
-                {Object.keys(FTEM_PHASES).map(phase => {
-                  const count = ftemDist[phase] ?? 0
-                  if (!count) return null
-                  const pct  = Math.round((count / (athletes?.length ?? 1)) * 100)
-                  const meta = FTEM_PHASES[phase]
-                  return (
-                    <div key={phase} className="flex items-center gap-3">
-                      <span className={`inline-flex w-10 shrink-0 justify-center rounded-lg px-1 py-1 text-xs font-black border ${meta.color}`}>{phase}</span>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs text-slate-400 font-medium">{meta.label}</span>
-                          <span className="text-xs font-bold text-white">{count} <span className="text-slate-500 font-normal">athlete{count !== 1 ? 's' : ''}</span></span>
-                        </div>
-                        <div className="h-2 rounded-full bg-white/5 overflow-hidden">
-                          <div className="h-2 rounded-full bg-emerald-500 transition-all duration-700" style={{ width: `${pct}%` }} />
-                        </div>
-=======
-            {/* FTEM distribution */}
-            {Object.keys(ftem).length > 0 && (
+            {phases > 0 && (
               <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-5">
                 <h2 className="mb-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Development pathway</h2>
                 <div className="space-y-2.5">
@@ -475,24 +586,58 @@ export default function ClubProfile() {
               </div>
             )}
 
-            {/* Join CTA — sidebar on desktop */}
             <div className="hidden lg:block rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-6 text-center">
               <div className="text-3xl mb-3">🏟️</div>
               <h3 className="text-base font-black text-white mb-2">Join {club.name}</h3>
               <p className="text-xs text-slate-400 mb-4 leading-relaxed">
                 Ask your coach to set up your athlete profile and start tracking your development.
               </p>
-              <Link to="/signup"
+              <Link to="/?modal=signup"
                 className="block w-full rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 py-3 text-sm font-bold transition-all shadow-lg shadow-emerald-500/25 text-center">
                 Create athlete account
               </Link>
             </div>
+
+            {club.is_claimed && (
+              <div className="hidden lg:block rounded-2xl border border-blue-500/20 bg-blue-500/5 p-5 text-center">
+                <UserPlus className="h-6 w-6 text-blue-400 mx-auto mb-2" />
+                <h3 className="text-sm font-bold text-slate-300 mb-1">Want to play for {club.name}?</h3>
+                <p className="text-xs text-slate-500 mb-3 leading-relaxed">Send a join request and the manager will be in touch.</p>
+                {joinStatus === 'member' ? (
+                  <p className="text-xs font-bold text-emerald-400">✓ You're in the roster</p>
+                ) : joinStatus === 'pending' ? (
+                  <p className="text-xs font-bold text-amber-400">⏳ Request pending review</p>
+                ) : joinStatus === 'approved' ? (
+                  <p className="text-xs font-bold text-emerald-400">✓ Request approved</p>
+                ) : joinStatus === 'rejected' ? (
+                  <p className="text-xs text-slate-500">Request not accepted. Contact the club directly.</p>
+                ) : (
+                  <button onClick={() => setShowJoin(true)}
+                    className="w-full rounded-xl bg-blue-500 hover:bg-blue-400 active:scale-95 py-2.5 text-sm font-bold text-white transition-all">
+                    Request to join →
+                  </button>
+                )}
+              </div>
+            )}
+
+            {!club.is_claimed && (
+              <div className="hidden lg:block rounded-2xl border border-white/5 bg-white/[0.02] p-5 text-center">
+                <ShieldCheck className="h-7 w-7 text-slate-500 mx-auto mb-2" />
+                <h3 className="text-sm font-bold text-slate-300 mb-1">Are you from this club?</h3>
+                <p className="text-xs text-slate-500 mb-3 leading-relaxed">
+                  Claim this profile to manage your club's presence on PathwayHQ.
+                </p>
+                <button onClick={() => setShowClaim(true)}
+                  className="w-full rounded-xl border border-white/10 hover:border-emerald-500/30 hover:bg-emerald-500/5 py-2.5 text-sm font-bold text-slate-300 hover:text-emerald-400 transition-all">
+                  Claim this club →
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* ── Main content ── */}
+          {/* Main content */}
           <div className="lg:col-span-2 space-y-6 order-1 lg:order-2">
 
-            {/* Upcoming events */}
             {hasEvents && (
               <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-5">
                 <h2 className="mb-4 flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
@@ -501,7 +646,6 @@ export default function ClubProfile() {
                 <div className="space-y-3">
                   {events.map((ev, i) => (
                     <div key={ev.id} className={`flex items-center gap-4 rounded-xl p-3.5 border border-white/5 ${i === 0 ? 'bg-purple-500/10 border-purple-500/20' : 'bg-white/[0.02]'}`}>
-                      {/* Date block */}
                       <div className={`flex flex-col items-center justify-center h-12 w-12 rounded-xl shrink-0 ${i === 0 ? 'bg-purple-500' : 'bg-white/10'}`}>
                         <span className={`text-sm font-black leading-none ${i === 0 ? 'text-white' : 'text-slate-300'}`}>
                           {new Date(ev.start_time).getDate()}
@@ -514,10 +658,15 @@ export default function ClubProfile() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="text-sm font-bold text-white truncate">{ev.title}</p>
                           <span className={`shrink-0 h-1.5 w-1.5 rounded-full ${EVENT_COLORS[ev.event_type] ?? 'bg-slate-400'}`} />
+                          {ev.squad_name && (
+                            <span className="text-[10px] font-semibold bg-white/10 text-slate-300 rounded-full px-2 py-0.5 shrink-0">{ev.squad_name}</span>
+                          )}
                         </div>
                         <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                           <span className="text-xs text-slate-500 flex items-center gap-1">
-                            <Clock className="h-3 w-3" /> {fmtTime(ev.start_time)}
+                            <Clock className="h-3 w-3" />
+                            {fmtTime(ev.start_time)}
+                            {ev.end_time && <> – {fmtTime(ev.end_time)}</>}
                           </span>
                           {ev.location && (
                             <span className="text-xs text-slate-500 flex items-center gap-1">
@@ -533,7 +682,6 @@ export default function ClubProfile() {
               </div>
             )}
 
-            {/* Announcements */}
             {hasAnnounce && (
               <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-5">
                 <h2 className="mb-4 flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
@@ -545,54 +693,99 @@ export default function ClubProfile() {
               </div>
             )}
 
-            {/* Recent milestones */}
+            {hasTrophies && (
+              <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-5">
+                <h2 className="mb-4 flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  <Trophy className="h-4 w-4 text-amber-400" /> Club trophy cabinet
+                </h2>
+                {(() => {
+                  const CAT_META = {
+                    competition: { emoji: '🏆', label: 'Competition' },
+                    award:       { emoji: '⭐', label: 'Award' },
+                    sponsorship: { emoji: '🤝', label: 'Sponsorship' },
+                    facility:    { emoji: '🏗️', label: 'Facility' },
+                    milestone:   { emoji: '🎯', label: 'Milestone' },
+                    other:       { emoji: '📌', label: 'Other' },
+                  }
+                  return (
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      {clubTrophies.map(t => {
+                        const meta = CAT_META[t.category] || CAT_META.other
+                        return (
+                          <div key={t.id} className="rounded-xl border border-white/8 bg-white/[0.04] overflow-hidden flex flex-col">
+                            {t.image_url ? (
+                              <div className="relative h-48 bg-slate-900 flex items-center justify-center">
+                                <img src={t.image_url} alt={t.title}
+                                  className="max-h-48 w-full object-contain"
+                                  onError={e => { e.target.parentElement.style.display = 'none' }} />
+                                <span className="absolute top-2 left-2 rounded-full bg-black/50 backdrop-blur-sm px-2 py-0.5 text-[10px] font-bold text-white border border-white/10">
+                                  {meta.emoji} {meta.label}
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="h-20 flex items-center justify-center bg-gradient-to-br from-amber-500/10 to-emerald-500/5 border-b border-white/5">
+                                <span className="text-4xl">{meta.emoji}</span>
+                              </div>
+                            )}
+                            <div className="p-4 flex flex-col gap-1 flex-1">
+                              {!t.image_url && (
+                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{meta.label}</span>
+                              )}
+                              <p className="text-sm font-bold text-white leading-snug">{t.title}</p>
+                              {t.description && (
+                                <p className="text-xs text-slate-400 leading-relaxed line-clamp-2">{t.description}</p>
+                              )}
+                              {t.achieved_at && (
+                                <p className="text-[11px] text-slate-500 mt-auto pt-2">
+                                  {new Date(t.achieved_at).toLocaleDateString('en-AU', { month: 'long', year: 'numeric' })}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )
+                })()}
+              </div>
+            )}
+
             {hasMile && (
               <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-5">
                 <h2 className="mb-4 flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                  <Trophy className="h-4 w-4 text-amber-400" /> Recent achievements
+                  <Trophy className="h-4 w-4 text-emerald-400" /> Athlete milestones
                 </h2>
                 <div className="grid sm:grid-cols-2 gap-3">
-                  {milestones.map(m => (
-                    <div key={m.id} className="rounded-xl bg-amber-500/5 border border-amber-500/10 p-4 flex items-start gap-3">
-                      <div className="h-9 w-9 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0">
-                        <Trophy className="h-4 w-4 text-amber-400" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-white leading-snug line-clamp-2">{m.title}</p>
-                        <div className="mt-1.5 flex items-center gap-2">
-                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-black ${FTEM_PHASES[m.ftem_phase]?.color ?? 'bg-slate-700 text-slate-300'}`}>
-                            {m.ftem_phase}
-                          </span>
-                          <span className="text-[11px] text-slate-500">
-                            {new Date(m.achieved_at).toLocaleDateString('en-AU', { month: 'short', year: 'numeric' })}
-                          </span>
+                  {milestones.map(m => {
+                    const t = trophyTier(m.ftem_phase)
+                    return (
+                      <div key={m.id} className={`rounded-xl border ${t.border} ${t.bg} p-4 flex items-start gap-3`}>
+                        <span className="text-2xl shrink-0 mt-0.5">{t.icon}</span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-white leading-snug line-clamp-2">{m.title}</p>
+                          {m.athlete_name && (
+                            <p className="text-xs text-slate-400 mt-0.5">{m.athlete_name}</p>
+                          )}
+                          <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                            <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-black ${t.badge}`}>
+                              {m.ftem_phase}
+                            </span>
+                            <span className="text-[11px] text-slate-500">
+                              {new Date(m.achieved_at).toLocaleDateString('en-AU', { month: 'short', year: 'numeric' })}
+                            </span>
+                          </div>
                         </div>
->>>>>>> Stashed changes
                       </div>
-                    </div>
-                  )
-                })}
+                    )
+                  })}
+                </div>
+                <p className="mt-4 text-xs text-slate-600 text-right">
+                  {athleteList.length} active athlete{athleteList.length !== 1 ? 's' : ''} across {phases} development phase{phases !== 1 ? 's' : ''}
+                </p>
               </div>
-              <p className="mt-4 text-xs text-slate-600 text-right">{athletes?.length ?? 0} active athletes across {phases} development phase{phases !== 1 ? 's' : ''}</p>
-            </div>
-          </section>
-        )}
+            )}
 
-<<<<<<< Updated upstream
-        {/* ── Join CTA ── */}
-        <section>
-          <div className="rounded-3xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 to-teal-500/5 p-8 sm:p-10 text-center relative overflow-hidden">
-            <div className="pointer-events-none absolute inset-0">
-              <div className="absolute top-0 right-0 h-48 w-48 rounded-full bg-emerald-500/10 blur-[60px]" />
-            </div>
-            <div className="relative">
-              <div className="text-3xl mb-4">🏆</div>
-              <h2 className="text-2xl sm:text-3xl font-black text-white mb-3">Join {club.name}</h2>
-              <p className="text-slate-400 text-sm sm:text-base mb-6 max-w-md mx-auto">
-                Ask your coach to add you to the squad and start building your pathway — every milestone, every achievement, all in one place.
-=======
-            {/* Empty state when nothing public */}
-            {!hasEvents && !hasAnnounce && !hasMile && athleteList.length === 0 && (
+            {!hasEvents && !hasAnnounce && !hasMile && !hasTrophies && athleteList.length === 0 && (
               <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-10 text-center">
                 <div className="text-4xl mb-4">🏟️</div>
                 <p className="font-bold text-slate-400 text-base">Profile coming soon</p>
@@ -600,15 +793,13 @@ export default function ClubProfile() {
               </div>
             )}
 
-            {/* Mobile Join CTA */}
             <div className="lg:hidden rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-8 text-center">
               <h3 className="text-xl font-black text-white mb-2">Join {club.name}</h3>
               <p className="text-sm text-slate-400 mb-6">
                 Ask your coach to set up your athlete profile and start tracking your development.
->>>>>>> Stashed changes
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Link to="/signup"
+                <Link to="/?modal=signup"
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 px-6 py-3.5 text-sm font-bold transition-all shadow-lg shadow-emerald-500/25">
                   Create athlete account <ArrowRight className="h-4 w-4" />
                 </Link>
@@ -617,35 +808,45 @@ export default function ClubProfile() {
                   Browse all clubs
                 </Link>
               </div>
+              {club.is_claimed && joinStatus === null && (
+                <button onClick={() => setShowJoin(true)}
+                  className="w-full mt-3 inline-flex items-center justify-center gap-2 rounded-xl border border-blue-500/20 bg-blue-500/10 hover:bg-blue-500/20 active:scale-95 px-6 py-3.5 text-sm font-bold text-blue-400 transition-all">
+                  <UserPlus className="h-4 w-4" /> Request to join {club.name}
+                </button>
+              )}
+              {club.is_claimed && joinStatus === 'pending' && (
+                <p className="mt-3 text-sm font-semibold text-amber-400 text-center">⏳ Your join request is pending review</p>
+              )}
+              {club.is_claimed && (joinStatus === 'approved' || joinStatus === 'member') && (
+                <p className="mt-3 text-sm font-semibold text-emerald-400 text-center">✓ You're on the roster</p>
+              )}
+              {!club.is_claimed && (
+                <button onClick={() => setShowClaim(true)}
+                  className="mt-4 w-full rounded-xl border border-white/10 hover:border-emerald-500/30 py-3 text-sm font-semibold text-slate-400 hover:text-emerald-400 transition-all">
+                  <ShieldCheck className="h-4 w-4 inline mr-1.5" />Are you from this club? Claim it →
+                </button>
+              )}
             </div>
           </div>
-        </section>
+        </div>
       </div>
 
-<<<<<<< Updated upstream
+      {showClaim && <ClaimModal club={club} onClose={() => setShowClaim(false)} />}
+      {showJoin  && <JoinRequestModal club={club} onClose={() => { setShowJoin(false); if (user) api.get(`/clubs/public/${club.slug}/my-join-status`).then(r => setJoinStatus(r.data.status)).catch(() => {}) }} />}
+
       {/* Footer */}
-      <footer className="border-t border-white/5 px-4 sm:px-6 py-8 mt-4">
-        <div className="mx-auto max-w-5xl flex flex-col sm:flex-row items-center justify-between gap-4">
-=======
-      {/* ── Footer ── */}
       <footer className="border-t border-white/5 px-4 sm:px-6 py-8">
         <div className="mx-auto max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-4">
->>>>>>> Stashed changes
           <Link to="/" className="flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-600">
               <Zap className="h-4 w-4 text-white" />
             </div>
             <span className="text-sm font-bold text-slate-400">PathwayHQ</span>
           </Link>
-<<<<<<< Updated upstream
-          <p className="text-xs text-slate-600">Proudly powered by PathwayHQ · The home of Australian sports development</p>
-          <Link to="/clubs" className="text-sm text-slate-500 hover:text-slate-300 transition-colors">← All clubs</Link>
-=======
           <div className="flex items-center gap-4 text-sm text-slate-600">
-            <Link to="/clubs" className="hover:text-slate-300 transition-colors">← All clubs</Link>
+            <Link to="/clubs"  className="hover:text-slate-300 transition-colors">← All clubs</Link>
             <Link to="/signup" className="hover:text-slate-300 transition-colors">Create your club</Link>
           </div>
->>>>>>> Stashed changes
         </div>
       </footer>
     </div>

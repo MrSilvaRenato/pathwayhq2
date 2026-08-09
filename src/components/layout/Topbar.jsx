@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
-import { useLocation, Link } from 'react-router-dom'
-import { ChevronRight, Bell, Menu } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { useLocation, useNavigate, Link } from 'react-router-dom'
+import { ChevronRight, Bell, Menu, X, Megaphone, ExternalLink } from 'lucide-react'
 import api from '../../lib/api'
 import { useSidebar } from '../../contexts/SidebarContext'
 
@@ -11,12 +12,73 @@ const LABELS = {
   athlete: 'My Dashboard', parent: 'My Child', 'site-admin': 'Site Admin',
 }
 
+function BroadcastModal({ notification, onClose }) {
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center sm:p-4 bg-black/50"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl flex flex-col"
+        style={{ maxHeight: '85vh' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 py-4 bg-emerald-500 rounded-t-2xl shrink-0">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20 shrink-0">
+            <Megaphone className="h-5 w-5 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-semibold text-emerald-100 uppercase tracking-wider">Platform Announcement</p>
+            <h2 className="text-base font-bold text-white leading-snug">{notification.title}</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-full text-white/70 hover:text-white hover:bg-white/20 transition-colors shrink-0"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="px-5 py-5 overflow-y-auto flex-1">
+          <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{notification.body}</p>
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 pb-6 pt-3 shrink-0 border-t border-slate-100">
+          {notification.link && (
+            <a
+              href={notification.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white py-2.5 text-sm font-bold transition-colors mb-3"
+              onClick={onClose}
+            >
+              <ExternalLink className="h-4 w-4" /> Learn more
+            </a>
+          )}
+          <button
+            onClick={onClose}
+            className="w-full text-sm text-slate-400 hover:text-slate-600 font-semibold transition-colors py-1"
+          >
+            Dismiss
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 export default function Topbar() {
   const { pathname } = useLocation()
+  const navigate = useNavigate()
   const { setOpen: setSidebarOpen } = useSidebar()
   const segments = pathname.split('/').filter(Boolean)
   const [notifications, setNotifications] = useState([])
   const [open, setOpen] = useState(false)
+  const [broadcastModal, setBroadcastModal] = useState(null)
   const ref = useRef(null)
 
   const unread = notifications.filter(n => !n.is_read).length
@@ -31,14 +93,27 @@ export default function Topbar() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  async function markRead(id) {
-    setNotifications(p => p.map(n => n.id === id ? { ...n, is_read: true } : n))
-    await api.put(`/notifications/${id}/read`)
+  function handleNotificationClick(n) {
+    setNotifications(p => p.map(x => x.id === n.id ? { ...x, is_read: true } : x))
+    api.put(`/notifications/${n.id}/read`).catch(() => {})
+    if (n.type === 'broadcast') {
+      setOpen(false)
+      setBroadcastModal(n)
+    } else {
+      setOpen(false)
+      if (n.link) navigate(n.link)
+    }
   }
 
   async function markAllRead() {
     setNotifications(p => p.map(n => ({ ...n, is_read: true })))
     await api.put('/notifications/read-all')
+  }
+
+  async function clearAll() {
+    setNotifications([])
+    setOpen(false)
+    await api.delete('/notifications').catch(() => {})
   }
 
   const crumbs = segments.map((seg, i) => {
@@ -52,7 +127,7 @@ export default function Topbar() {
 
   return (
     <div className="sticky top-0 z-20 flex h-12 items-center gap-2 border-b border-slate-100 bg-white/95 backdrop-blur-sm px-3 lg:px-6">
-      {/* Mobile menu button — opens sidebar overlay */}
+      {/* Mobile menu button */}
       <button
         onClick={() => setSidebarOpen(true)}
         className="lg:hidden flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors shrink-0"
@@ -61,7 +136,7 @@ export default function Topbar() {
         <Menu className="h-4 w-4" />
       </button>
 
-      {/* Breadcrumb — hidden on mobile, replaced by page title */}
+      {/* Breadcrumb — hidden on mobile */}
       <nav className="hidden sm:flex items-center gap-1 text-sm min-w-0 flex-1">
         {crumbs.map((crumb, i) => (
           <span key={crumb.href} className="flex items-center gap-1 min-w-0">
@@ -79,7 +154,7 @@ export default function Topbar() {
         ))}
       </nav>
 
-      {/* Mobile page title — centered */}
+      {/* Mobile page title */}
       <span className="sm:hidden flex-1 text-center text-sm font-semibold text-slate-800 truncate">
         {pageTitle}
       </span>
@@ -98,14 +173,21 @@ export default function Topbar() {
         </button>
 
         {open && (
-          <div className="absolute right-0 top-10 w-80 rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden animate-fade-in z-50">
+          <div className="absolute right-0 top-10 w-80 max-w-[calc(100vw-1rem)] rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden animate-fade-in z-50">
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
               <h3 className="text-sm font-bold text-slate-800">Notifications</h3>
-              {unread > 0 && (
-                <button onClick={markAllRead} className="text-xs text-emerald-600 hover:text-emerald-500 font-semibold transition-colors">
-                  Mark all read
-                </button>
-              )}
+              <div className="flex items-center gap-3">
+                {unread > 0 && (
+                  <button onClick={markAllRead} className="text-xs text-emerald-600 hover:text-emerald-500 font-semibold transition-colors">
+                    Mark all read
+                  </button>
+                )}
+                {notifications.length > 0 && (
+                  <button onClick={clearAll} className="text-xs text-slate-400 hover:text-red-500 font-semibold transition-colors">
+                    Clear all
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="max-h-80 overflow-y-auto">
@@ -117,11 +199,11 @@ export default function Topbar() {
                 notifications.map(n => (
                   <div
                     key={n.id}
-                    onClick={() => markRead(n.id)}
-                    className={`flex items-start gap-3 px-4 py-3 border-b border-slate-50 cursor-pointer hover:bg-slate-50 transition-colors ${!n.is_read ? 'bg-emerald-50/50' : ''}`}>
+                    onClick={() => handleNotificationClick(n)}
+                    className={`flex items-start gap-3 px-4 py-3 border-b border-slate-50 transition-colors cursor-pointer hover:bg-slate-50 ${!n.is_read ? 'bg-emerald-50/50' : ''}`}>
                     <div className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${!n.is_read ? 'bg-emerald-500' : 'bg-transparent'}`} />
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm leading-snug ${!n.is_read ? 'font-semibold text-slate-800' : 'font-medium text-slate-600'}`}>
+                      <p className={`text-sm leading-snug line-clamp-2 ${!n.is_read ? 'font-semibold text-slate-800' : 'font-medium text-slate-600'}`}>
                         {n.title}
                       </p>
                       {n.body && <p className="text-xs text-slate-400 mt-0.5 leading-relaxed line-clamp-2">{n.body}</p>}
@@ -133,6 +215,10 @@ export default function Topbar() {
           </div>
         )}
       </div>
+
+      {broadcastModal && (
+        <BroadcastModal notification={broadcastModal} onClose={() => setBroadcastModal(null)} />
+      )}
     </div>
   )
 }

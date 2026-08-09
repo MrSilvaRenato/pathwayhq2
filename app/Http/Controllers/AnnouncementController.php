@@ -7,6 +7,10 @@ use Illuminate\Support\Str;
 use App\Models\Announcement;
 use App\Models\Athlete;
 use App\Models\Notification;
+use App\Models\Club;
+use App\Services\PlanService;
+use App\Models\User;
+use App\Services\MailService;
 
 class AnnouncementController extends Controller
 {
@@ -48,6 +52,11 @@ class AnnouncementController extends Controller
 
     public function store(Request $request)
     {
+        if (!in_array($request->user()->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
+        $club = Club::find($request->user()->resolveClubId());
+        if ($err = PlanService::checkAnnouncementLimit($club)) return $err;
+
         $data = $request->validate([
             'title'     => 'required|string|max:200',
             'body'      => 'required|string',
@@ -57,7 +66,7 @@ class AnnouncementController extends Controller
             'pinned'    => 'boolean',
         ]);
 
-        $clubId = $request->user()->resolveClubId();
+        $clubId = $club->id;
 
         $columns  = \Schema::getColumnListing('announcements');
         $newCols  = in_array('posted_at', $columns);
@@ -91,6 +100,9 @@ class AnnouncementController extends Controller
         ];
         $notifEmoji = $data['emoji'] ?? $categoryEmojis[$data['category'] ?? 'general'] ?? '📢';
 
+        $club = Club::find($clubId);
+        $clubName = $club?->name ?? 'Your club';
+
         foreach ($athletes as $athlete) {
             Notification::create([
                 'id'      => (string) Str::uuid(),
@@ -101,6 +113,8 @@ class AnnouncementController extends Controller
                 'is_read' => false,
                 'at'      => now()->toDateTimeString(),
             ]);
+            $athleteUser = User::find($athlete->user_id);
+            if ($athleteUser) MailService::announcementToAthlete($athleteUser, $clubName, $data['title'], $data['body']);
         }
 
         return response()->json($announcement, 201);
@@ -108,6 +122,8 @@ class AnnouncementController extends Controller
 
     public function update(Request $request, $id)
     {
+        if (!in_array($request->user()->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
         $data = $request->validate([
             'title'     => 'required|string|max:200',
             'body'      => 'required|string',
@@ -126,6 +142,8 @@ class AnnouncementController extends Controller
 
     public function destroy(Request $request, $id)
     {
+        if (!in_array($request->user()->role, ['club_admin', 'coach', 'site_admin'])) abort(403);
+
         Announcement::where('id', $id)
             ->where('club_id', $request->user()->resolveClubId())
             ->delete();

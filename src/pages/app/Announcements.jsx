@@ -7,6 +7,7 @@ import api from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import ImageUpload from '../../components/ImageUpload'
+import UpgradePrompt from '../../components/UpgradePrompt'
 
 // ─── Category config ─────────────────────────────────────────────────────────
 const CATEGORIES = {
@@ -463,6 +464,7 @@ export default function Announcements() {
   const [showModal, setShowModal] = useState(false)
   const [editItem, setEditItem]   = useState(null)
   const [filter, setFilter]       = useState('all')
+  const [upgrade, setUpgrade]     = useState(null)
 
   async function load() {
     try {
@@ -490,7 +492,14 @@ export default function Announcements() {
       setShowModal(false)
       setEditItem(null)
     } catch (err) {
-      toast.error(err.response?.data?.message ?? 'Failed to save')
+      const d = err?.response?.data
+      if (d?.upgrade_required) {
+        setShowModal(false)
+        setEditItem(null)
+        setUpgrade({ message: d.error ?? 'Upgrade to post more announcements.', requiredPlan: d.required_plan ?? 'pro' })
+      } else {
+        toast.error(d?.message ?? 'Failed to save')
+      }
       throw err
     }
   }
@@ -642,6 +651,15 @@ export default function Announcements() {
           } : null}
           onClose={() => { setShowModal(false); setEditItem(null) }}
           onSave={handleSave}
+        />
+      )}
+
+      {/* Upgrade prompt */}
+      {upgrade && (
+        <UpgradePrompt
+          message={upgrade.message}
+          requiredPlan={upgrade.requiredPlan}
+          onClose={() => setUpgrade(null)}
         />
       )}
     </div>
