@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Plus, X, Trophy, Search, ChevronDown, Loader2, Zap, Globe, Star, Building2 } from 'lucide-react'
+import { Plus, X, Trophy, Search, ChevronDown, Loader2, Zap, Globe, Star, Building2, Pencil, Lock } from 'lucide-react'
 import api from '../../lib/api'
 import { FTEM_PHASES } from '../../lib/constants'
 import { useAuth } from '../../contexts/AuthContext'
@@ -47,15 +47,267 @@ function categoryStyle(cat) {
 // ─── tier styling ────────────────────────────────────────────────────────────
 
 function tierStyle(phase) {
-  if (phase === 'M')                    return { emoji: '🥇', dot: 'bg-amber-400 ring-amber-300',   card: 'border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50',  badge: 'bg-amber-100 text-amber-700 border-amber-200',  icon: 'bg-amber-100 text-amber-600',  line: 'border-amber-300' }
-  if (phase === 'E1' || phase === 'E2') return { emoji: '🥈', dot: 'bg-slate-400 ring-slate-300',   card: 'border-slate-200 bg-gradient-to-br from-slate-50 to-gray-50',    badge: 'bg-slate-100 text-slate-600 border-slate-200',  icon: 'bg-slate-100 text-slate-500',  line: 'border-slate-300' }
-  if (phase?.startsWith('T'))           return { emoji: '🥉', dot: 'bg-orange-400 ring-orange-300', card: 'border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50', badge: 'bg-orange-100 text-orange-700 border-orange-200', icon: 'bg-orange-100 text-orange-600', line: 'border-orange-300' }
-  return                                       { emoji: '🏅', dot: 'bg-emerald-400 ring-emerald-300',card: 'border-emerald-100 bg-gradient-to-br from-emerald-50 to-teal-50', badge: 'bg-emerald-100 text-emerald-700 border-emerald-100', icon: 'bg-emerald-100 text-emerald-600', line: 'border-emerald-200' }
+  if (phase === 'M')                    return { emoji: '🥇', dot: 'bg-amber-400 ring-amber-300',   card: 'border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50',  badge: 'bg-amber-100 text-amber-700 border-amber-200',  icon: 'bg-amber-100 text-amber-600' }
+  if (phase === 'E1' || phase === 'E2') return { emoji: '🥈', dot: 'bg-slate-400 ring-slate-300',   card: 'border-slate-200 bg-gradient-to-br from-slate-50 to-gray-50',    badge: 'bg-slate-100 text-slate-600 border-slate-200',  icon: 'bg-slate-100 text-slate-500' }
+  if (phase?.startsWith('T'))           return { emoji: '🥉', dot: 'bg-orange-400 ring-orange-300', card: 'border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50', badge: 'bg-orange-100 text-orange-700 border-orange-200', icon: 'bg-orange-100 text-orange-600' }
+  return                                       { emoji: '🏅', dot: 'bg-emerald-400 ring-emerald-300',card: 'border-emerald-100 bg-gradient-to-br from-emerald-50 to-teal-50', badge: 'bg-emerald-100 text-emerald-700 border-emerald-100', icon: 'bg-emerald-100 text-emerald-600' }
+}
+
+// ─── Milestone form (shared between add + edit) ───────────────────────────────
+
+function MilestoneForm({ form, setForm, athletes, mode }) {
+  const selectedAthlete = useMemo(
+    () => athletes.find(a => String(a.id) === String(form.athlete_id)) ?? null,
+    [athletes, form.athlete_id],
+  )
+
+  function handleAthleteChange(e) {
+    const id = e.target.value
+    const athlete = athletes.find(a => String(a.id) === String(id)) ?? null
+    setForm(p => ({ ...p, athlete_id: id, ftem_phase: athlete?.ftem_phase ?? p.ftem_phase }))
+  }
+
+  const inputCls = 'w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white min-h-[44px]'
+
+  return (
+    <div className="space-y-4">
+      {/* Edit-once warning */}
+      {mode === 'edit' && (
+        <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-3">
+          <span className="text-lg shrink-0">⚠️</span>
+          <div>
+            <p className="text-xs font-bold text-amber-800">One-time edit</p>
+            <p className="text-xs text-amber-700 mt-0.5">Once saved, this milestone will be <strong>permanent</strong> and cannot be changed again.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Athlete */}
+      <div>
+        <label className="text-xs font-semibold text-slate-500 mb-1 block">Athlete</label>
+        <select
+          required
+          value={form.athlete_id}
+          onChange={handleAthleteChange}
+          className={inputCls}
+          disabled={mode === 'edit'}
+        >
+          <option value="">Select athlete…</option>
+          {athletes.map(a => (
+            <option key={a.id} value={a.id}>{a.first_name} {a.last_name}{a.squad_names ? ` — ${a.squad_names}` : ''}</option>
+          ))}
+        </select>
+        {selectedAthlete?.ftem_phase && (
+          <p className="mt-1 text-xs text-slate-400">Current phase: <span className="font-semibold text-slate-600">{selectedAthlete.ftem_phase} — {FTEM_PHASES[selectedAthlete.ftem_phase]?.label ?? selectedAthlete.ftem_phase}</span></p>
+        )}
+      </div>
+
+      {/* Category */}
+      <div>
+        <label className="text-xs font-semibold text-slate-500 mb-2 block">Category</label>
+        <div className="flex flex-wrap gap-2">
+          {[...PRESET_CATEGORIES, 'Others'].map(cat => {
+            const cs = categoryStyle(cat)
+            const active = form.category === cat
+            return (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setForm(p => ({ ...p, category: cat }))}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-semibold transition-all min-h-[40px] ${
+                  active
+                    ? `${cs.bg} ring-2 ring-offset-1 ring-emerald-400`
+                    : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
+                }`}
+              >
+                <span>{cs.emoji}</span>
+                <span>{cat}</span>
+              </button>
+            )
+          })}
+        </div>
+        {form.category === 'Others' && (
+          <input
+            value={form.customCategory}
+            onChange={e => setForm(p => ({ ...p, customCategory: e.target.value }))}
+            className={`${inputCls} mt-2`}
+            placeholder="Describe the category…"
+            maxLength={80}
+          />
+        )}
+      </div>
+
+      {/* Title */}
+      <div>
+        <label className="text-xs font-semibold text-slate-500 mb-1 block">Achievement title</label>
+        <input required value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} className={inputCls} placeholder="e.g. MVP Metro League Div 3 — 2024" />
+      </div>
+
+      {/* FTEM + Date */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs font-semibold text-slate-500 mb-1 block">FTEM Phase</label>
+          <select value={form.ftem_phase} onChange={e => setForm(p => ({ ...p, ftem_phase: e.target.value }))} className={inputCls}>
+            {Object.entries(FTEM_PHASES).map(([k, v]) => (
+              <option key={k} value={k}>{k} — {v.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-slate-500 mb-1 block">Date achieved</label>
+          <input type="date" required value={form.achieved_at} onChange={e => setForm(p => ({ ...p, achieved_at: e.target.value }))} className={inputCls} />
+        </div>
+      </div>
+
+      {/* Notes */}
+      <div>
+        <label className="text-xs font-semibold text-slate-500 mb-1 block">Notes (optional)</label>
+        <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} rows={2} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white" placeholder="What made this special?" />
+      </div>
+
+      {/* Public toggle */}
+      <label className="flex items-start gap-3 text-sm text-slate-600 cursor-pointer select-none min-h-[44px] rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+        <input type="checkbox" checked={form.is_shared_with_parent} onChange={e => setForm(p => ({ ...p, is_shared_with_parent: e.target.checked }))} className="rounded accent-emerald-500 h-4 w-4 mt-0.5 shrink-0" />
+        <div>
+          <span className="font-semibold text-slate-700">Show on public athlete profile</span>
+          <p className="text-xs text-slate-400 mt-0.5">Displays in the athlete's public trophy cabinet</p>
+        </div>
+      </label>
+    </div>
+  )
+}
+
+// ─── Shared modal shell ───────────────────────────────────────────────────────
+
+function MilestoneModal({ title, subtitle, submitLabel, onClose, onSubmit, saving, children }) {
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col justify-end md:items-center md:justify-center bg-black/40 backdrop-blur-sm">
+      <div className="w-full md:max-w-md md:rounded-2xl bg-white md:shadow-2xl rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-100 shrink-0">
+          <div>
+            <h2 className="text-lg font-black text-slate-900">{title}</h2>
+            <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>
+          </div>
+          <button onClick={onClose} className="h-11 w-11 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="overflow-y-auto flex-1 px-6 py-4">
+          <form onSubmit={onSubmit} className="space-y-0" id="milestone-form">
+            {children}
+          </form>
+        </div>
+        <div className="px-6 pb-6 pt-3 border-t border-slate-100 shrink-0 flex gap-3">
+          <button type="button" onClick={onClose} className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 min-h-[44px]">Cancel</button>
+          <button type="submit" form="milestone-form" disabled={saving} className="flex-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 py-3 text-sm font-bold text-white disabled:opacity-50 transition-colors min-h-[44px]">
+            {saving ? 'Saving…' : submitLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Add Modal ────────────────────────────────────────────────────────────────
+
+const BLANK_FORM = {
+  athlete_id: '', title: '', category: 'Awards', customCategory: '',
+  description: '', ftem_phase: 'F1', achieved_at: todayISO(), is_shared_with_parent: false,
+}
+
+function AddMilestoneModal({ athletes, onClose, onSaved, onUpgrade }) {
+  const toast = useToast()
+  const [form, setForm] = useState({ ...BLANK_FORM })
+  const [saving, setSaving] = useState(false)
+
+  const resolvedCategory = form.category === 'Others'
+    ? (form.customCategory.trim() || 'Others')
+    : form.category
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      await api.post('/milestones', {
+        athlete_id: form.athlete_id, title: form.title,
+        category: resolvedCategory || null,
+        description: form.description, ftem_phase: form.ftem_phase,
+        achieved_at: form.achieved_at, is_shared_with_parent: form.is_shared_with_parent,
+      })
+      toast.success('Achievement recorded!')
+      onSaved()
+    } catch (err) {
+      const d = err?.response?.data
+      if (d?.upgrade_required) { onClose(); onUpgrade?.({ message: d.error ?? 'Upgrade to record athlete milestones.', requiredPlan: d.required_plan ?? 'pro' }) }
+      else { toast.error('Failed to save.'); setSaving(false) }
+    }
+  }
+
+  return (
+    <MilestoneModal title="Record achievement" subtitle="Celebrate a milestone in their journey" submitLabel="Record achievement" onClose={onClose} onSubmit={handleSubmit} saving={saving}>
+      <MilestoneForm form={form} setForm={setForm} athletes={athletes} mode="add" />
+    </MilestoneModal>
+  )
+}
+
+// ─── Edit Modal ───────────────────────────────────────────────────────────────
+
+function EditMilestoneModal({ milestone, athletes, onClose, onSaved }) {
+  const toast = useToast()
+
+  function detectPreset(cat) {
+    if (!cat) return { category: 'Awards', customCategory: '' }
+    if (PRESET_CATEGORIES.includes(cat)) return { category: cat, customCategory: '' }
+    return { category: 'Others', customCategory: cat }
+  }
+
+  const { category, customCategory } = detectPreset(milestone.category)
+
+  const [form, setForm] = useState({
+    athlete_id:           String(milestone.athlete_id ?? ''),
+    title:                milestone.title ?? '',
+    category,
+    customCategory,
+    description:          milestone.description ?? '',
+    ftem_phase:           milestone.ftem_phase ?? 'F1',
+    achieved_at:          milestone.achieved_at?.slice(0, 10) ?? todayISO(),
+    is_shared_with_parent: !!milestone.is_shared_with_parent,
+  })
+  const [saving, setSaving] = useState(false)
+
+  const resolvedCategory = form.category === 'Others'
+    ? (form.customCategory.trim() || 'Others')
+    : form.category
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      await api.put(`/milestones/${milestone.id}`, {
+        athlete_id: form.athlete_id, title: form.title,
+        category: resolvedCategory || null,
+        description: form.description, ftem_phase: form.ftem_phase,
+        achieved_at: form.achieved_at, is_shared_with_parent: form.is_shared_with_parent,
+      })
+      toast.success('Milestone updated and now permanent.')
+      onSaved()
+    } catch (err) {
+      const msg = err?.response?.data?.message ?? 'Failed to update.'
+      toast.error(msg)
+      setSaving(false)
+    }
+  }
+
+  return (
+    <MilestoneModal title="Edit milestone" subtitle="One-time edit — cannot be undone" submitLabel="Save & lock permanently" onClose={onClose} onSubmit={handleSubmit} saving={saving}>
+      <MilestoneForm form={form} setForm={setForm} athletes={athletes} mode="edit" />
+    </MilestoneModal>
+  )
 }
 
 // ─── MilestoneCard ───────────────────────────────────────────────────────────
 
-function MilestoneCard({ m, isAdmin, onDelete, isLast }) {
+function MilestoneCard({ m, isAdmin, onDelete, onEdit, isLast }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const t = tierStyle(m.ftem_phase)
   const phaseLabel = FTEM_PHASES[m.ftem_phase]?.label ?? m.ftem_phase
@@ -74,24 +326,29 @@ function MilestoneCard({ m, isAdmin, onDelete, isLast }) {
         {/* Date strip */}
         <div className="flex items-center justify-between px-4 pt-3 pb-0">
           <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{fmtDate(m.achieved_at)}</span>
-          <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${t.badge}`} title={phaseLabel}>{phaseLabel}</span>
+          <div className="flex items-center gap-1.5">
+            {m.is_edited && (
+              <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-400 border border-slate-200">
+                <Lock className="h-2.5 w-2.5" /> Permanent
+              </span>
+            )}
+            <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${t.badge}`} title={phaseLabel}>{phaseLabel}</span>
+          </div>
         </div>
 
         <div className="px-4 pt-2.5 pb-4">
           <div className="flex items-start gap-3">
-            {/* Big trophy emoji */}
+            {/* Icon */}
             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shrink-0 shadow-sm ${t.icon}`}>
               {cat ? cat.emoji : t.emoji}
             </div>
 
             <div className="flex-1 min-w-0">
-              {/* Category badge */}
               {m.category && (
                 <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border mb-1.5 ${cat.bg}`}>
                   {m.category}
                 </span>
               )}
-
               <h3 className="font-black text-slate-900 text-base leading-snug">{m.title}</h3>
 
               {/* Athlete row (admin) */}
@@ -117,12 +374,10 @@ function MilestoneCard({ m, isAdmin, onDelete, isLast }) {
                 </div>
               )}
 
-              {/* Description */}
               {m.description && (
                 <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">{m.description}</p>
               )}
 
-              {/* Public tag (athlete view) */}
               {!isAdmin && m.is_shared_with_parent && (
                 <span className="inline-flex items-center gap-1 mt-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-semibold text-emerald-600">
                   <Globe className="h-3 w-3" /> Public
@@ -130,14 +385,26 @@ function MilestoneCard({ m, isAdmin, onDelete, isLast }) {
               )}
             </div>
 
-            {/* Delete (admin only) */}
+            {/* Admin actions */}
             {isAdmin && !confirmDelete && (
-              <button
-                onClick={() => setConfirmDelete(true)}
-                className="h-7 w-7 flex items-center justify-center text-slate-300 hover:text-red-400 hover:bg-red-50 rounded-lg transition-colors shrink-0"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
+              <div className="flex flex-col items-end gap-1.5 shrink-0">
+                {/* Edit — only if not yet edited */}
+                {!m.is_edited && (
+                  <button
+                    onClick={() => onEdit(m)}
+                    title="Edit once — becomes permanent after saving"
+                    className="h-7 px-2.5 flex items-center gap-1 rounded-lg text-[10px] font-semibold bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 transition-colors"
+                  >
+                    <Pencil className="h-3 w-3" /> Edit
+                  </button>
+                )}
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  className="h-7 w-7 flex items-center justify-center text-slate-300 hover:text-red-400 hover:bg-red-50 rounded-lg transition-colors"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
             )}
           </div>
 
@@ -157,7 +424,7 @@ function MilestoneCard({ m, isAdmin, onDelete, isLast }) {
 
 // ─── Year section ─────────────────────────────────────────────────────────────
 
-function YearGroup({ year, milestones, isAdmin, onDelete }) {
+function YearGroup({ year, milestones, isAdmin, onDelete, onEdit }) {
   return (
     <div>
       <div className="flex items-center gap-3 mb-4">
@@ -168,7 +435,6 @@ function YearGroup({ year, milestones, isAdmin, onDelete }) {
         </div>
         <div className="flex-1 h-px bg-slate-100" />
       </div>
-
       <div className="pl-2">
         {milestones.map((m, i) => (
           <MilestoneCard
@@ -176,176 +442,10 @@ function YearGroup({ year, milestones, isAdmin, onDelete }) {
             m={m}
             isAdmin={isAdmin}
             onDelete={onDelete}
+            onEdit={onEdit}
             isLast={i === milestones.length - 1}
           />
         ))}
-      </div>
-    </div>
-  )
-}
-
-// ─── Add Milestone Modal ──────────────────────────────────────────────────────
-
-const BLANK_FORM = {
-  athlete_id: '', title: '', category: 'Awards', customCategory: '',
-  description: '', ftem_phase: 'F1', achieved_at: todayISO(), is_shared_with_parent: false,
-}
-
-function AddMilestoneModal({ athletes, onClose, onSaved, onUpgrade }) {
-  const toast = useToast()
-  const [form, setForm] = useState({ ...BLANK_FORM })
-  const [saving, setSaving] = useState(false)
-
-  const selectedAthlete = useMemo(
-    () => athletes.find(a => String(a.id) === String(form.athlete_id)) ?? null,
-    [athletes, form.athlete_id],
-  )
-
-  function handleAthleteChange(e) {
-    const id = e.target.value
-    const athlete = athletes.find(a => String(a.id) === String(id)) ?? null
-    setForm(p => ({ ...p, athlete_id: id, ftem_phase: athlete?.ftem_phase ?? p.ftem_phase }))
-  }
-
-  const resolvedCategory = form.category === 'Others'
-    ? (form.customCategory.trim() || 'Others')
-    : form.category
-
-  async function handleSubmit(e) {
-    e.preventDefault()
-    setSaving(true)
-    try {
-      const payload = {
-        athlete_id:           form.athlete_id,
-        title:                form.title,
-        category:             resolvedCategory || null,
-        description:          form.description,
-        ftem_phase:           form.ftem_phase,
-        achieved_at:          form.achieved_at,
-        is_shared_with_parent: form.is_shared_with_parent,
-      }
-      await api.post('/milestones', payload)
-      toast.success('Achievement recorded!')
-      onSaved()
-    } catch (err) {
-      const d = err?.response?.data
-      if (d?.upgrade_required) { onClose(); onUpgrade?.({ message: d.error ?? 'Upgrade to record athlete milestones.', requiredPlan: d.required_plan ?? 'pro' }) }
-      else { toast.error('Failed to save.'); setSaving(false) }
-    }
-  }
-
-  const inputCls = 'w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white min-h-[44px]'
-
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end md:items-center md:justify-center bg-black/40 backdrop-blur-sm">
-      <div className="w-full md:max-w-md md:rounded-2xl bg-white md:shadow-2xl rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col">
-        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-100 shrink-0">
-          <div>
-            <h2 className="text-lg font-black text-slate-900">Record achievement</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Celebrate a milestone in their journey</p>
-          </div>
-          <button onClick={onClose} className="h-11 w-11 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="overflow-y-auto flex-1 px-6 py-4">
-          <form onSubmit={handleSubmit} className="space-y-4" id="add-milestone-form">
-
-            {/* Athlete */}
-            <div>
-              <label className="text-xs font-semibold text-slate-500 mb-1 block">Athlete</label>
-              <select required value={form.athlete_id} onChange={handleAthleteChange} className={inputCls}>
-                <option value="">Select athlete…</option>
-                {athletes.map(a => (
-                  <option key={a.id} value={a.id}>{a.first_name} {a.last_name}{a.squad_names ? ` — ${a.squad_names}` : ''}</option>
-                ))}
-              </select>
-              {selectedAthlete?.ftem_phase && (
-                <p className="mt-1 text-xs text-slate-400">Current phase: <span className="font-semibold text-slate-600">{selectedAthlete.ftem_phase} — {FTEM_PHASES[selectedAthlete.ftem_phase]?.label ?? selectedAthlete.ftem_phase}</span></p>
-              )}
-            </div>
-
-            {/* Category */}
-            <div>
-              <label className="text-xs font-semibold text-slate-500 mb-2 block">Category</label>
-              <div className="flex flex-wrap gap-2">
-                {[...PRESET_CATEGORIES, 'Others'].map(cat => {
-                  const cs = categoryStyle(cat)
-                  const active = form.category === cat
-                  return (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => setForm(p => ({ ...p, category: cat }))}
-                      className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-semibold transition-all min-h-[40px] ${
-                        active
-                          ? `${cs.bg} ring-2 ring-offset-1 ring-emerald-400`
-                          : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
-                      }`}
-                    >
-                      <span>{cs.emoji}</span>
-                      <span>{cat}</span>
-                    </button>
-                  )
-                })}
-              </div>
-              {form.category === 'Others' && (
-                <input
-                  value={form.customCategory}
-                  onChange={e => setForm(p => ({ ...p, customCategory: e.target.value }))}
-                  className={`${inputCls} mt-2`}
-                  placeholder="Describe the category…"
-                  maxLength={80}
-                />
-              )}
-            </div>
-
-            {/* Title */}
-            <div>
-              <label className="text-xs font-semibold text-slate-500 mb-1 block">Achievement title</label>
-              <input required value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} className={inputCls} placeholder="e.g. MVP Metro League Div 3 — 2024" />
-            </div>
-
-            {/* FTEM + Date */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-semibold text-slate-500 mb-1 block">FTEM Phase</label>
-                <select value={form.ftem_phase} onChange={e => setForm(p => ({ ...p, ftem_phase: e.target.value }))} className={inputCls}>
-                  {Object.entries(FTEM_PHASES).map(([k, v]) => (
-                    <option key={k} value={k}>{k} — {v.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-500 mb-1 block">Date achieved</label>
-                <input type="date" required value={form.achieved_at} onChange={e => setForm(p => ({ ...p, achieved_at: e.target.value }))} className={inputCls} />
-              </div>
-            </div>
-
-            {/* Notes */}
-            <div>
-              <label className="text-xs font-semibold text-slate-500 mb-1 block">Notes (optional)</label>
-              <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} rows={2} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white" placeholder="What made this special?" />
-            </div>
-
-            {/* Public toggle */}
-            <label className="flex items-start gap-3 text-sm text-slate-600 cursor-pointer select-none min-h-[44px] rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-              <input type="checkbox" checked={form.is_shared_with_parent} onChange={e => setForm(p => ({ ...p, is_shared_with_parent: e.target.checked }))} className="rounded accent-emerald-500 h-4 w-4 mt-0.5 shrink-0" />
-              <div>
-                <span className="font-semibold text-slate-700">Show on public athlete profile</span>
-                <p className="text-xs text-slate-400 mt-0.5">Displays in the athlete's public trophy cabinet</p>
-              </div>
-            </label>
-          </form>
-        </div>
-
-        <div className="px-6 pb-6 pt-3 border-t border-slate-100 shrink-0 flex gap-3">
-          <button type="button" onClick={onClose} className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 min-h-[44px]">Cancel</button>
-          <button type="submit" form="add-milestone-form" disabled={saving} className="flex-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 py-3 text-sm font-bold text-white disabled:opacity-50 transition-colors min-h-[44px]">
-            {saving ? 'Saving…' : 'Record achievement'}
-          </button>
-        </div>
       </div>
     </div>
   )
@@ -360,7 +460,8 @@ export default function Milestones() {
   const [items, setItems]         = useState([])
   const [athletes, setAthletes]   = useState([])
   const [loading, setLoading]     = useState(true)
-  const [showModal, setShowModal] = useState(false)
+  const [showAdd, setShowAdd]     = useState(false)
+  const [editing, setEditing]     = useState(null)   // milestone being edited
   const [upgrade, setUpgrade]     = useState(null)
 
   const [q, setQ]                         = useState('')
@@ -424,6 +525,11 @@ export default function Milestones() {
     }
   }
 
+  function handleEditSaved() {
+    setEditing(null)
+    fetchMilestones()
+  }
+
   const totalAthletes = athleteCount(items)
   const phaseCounts   = useMemo(() => {
     const c = {}
@@ -449,7 +555,7 @@ export default function Milestones() {
           </div>
           {isAdmin && (
             <button
-              onClick={() => setShowModal(true)}
+              onClick={() => setShowAdd(true)}
               className="hidden md:flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 px-4 py-2.5 text-sm font-bold text-white transition-colors shadow-lg shadow-emerald-500/20 shrink-0"
             >
               <Plus className="h-4 w-4" /> Record achievement
@@ -457,7 +563,7 @@ export default function Milestones() {
           )}
         </div>
 
-        {/* Phase summary pills — show full names */}
+        {/* Phase summary pills */}
         {items.length > 0 && (
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 md:mx-0 md:px-0 scrollbar-none">
             {['M','E2','E1','T2','T1','F2','F1'].filter(p => phaseCounts[p]).map(phase => {
@@ -523,7 +629,7 @@ export default function Milestones() {
                   {hasFilters ? 'Try adjusting your search or filters.' : "Start building your athletes' legacy."}
                 </p>
                 {!hasFilters && (
-                  <button onClick={() => setShowModal(true)} className="mt-5 inline-flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 px-5 py-3 text-sm font-bold text-white transition-all shadow-lg shadow-emerald-500/20 min-h-[44px]">
+                  <button onClick={() => setShowAdd(true)} className="mt-5 inline-flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 px-5 py-3 text-sm font-bold text-white transition-all shadow-lg shadow-emerald-500/20 min-h-[44px]">
                     <Plus className="h-4 w-4" /> Record first achievement
                   </button>
                 )}
@@ -547,6 +653,7 @@ export default function Milestones() {
                 milestones={milestones}
                 isAdmin={isAdmin}
                 onDelete={handleDelete}
+                onEdit={setEditing}
               />
             ))}
           </div>
@@ -556,7 +663,7 @@ export default function Milestones() {
       {/* Mobile FAB */}
       {isAdmin && (
         <button
-          onClick={() => setShowModal(true)}
+          onClick={() => setShowAdd(true)}
           style={{ bottom: 'calc(72px + env(safe-area-inset-bottom, 0px))' }}
           className="md:hidden fixed right-4 z-20 h-14 w-14 rounded-full bg-emerald-500 hover:bg-emerald-400 active:scale-95 shadow-xl shadow-emerald-500/30 flex items-center justify-center transition-all"
           aria-label="Record achievement"
@@ -565,12 +672,21 @@ export default function Milestones() {
         </button>
       )}
 
-      {showModal && (
+      {showAdd && (
         <AddMilestoneModal
           athletes={athletes}
-          onClose={() => setShowModal(false)}
-          onSaved={() => { setShowModal(false); fetchMilestones() }}
-          onUpgrade={up => { setShowModal(false); setUpgrade(up) }}
+          onClose={() => setShowAdd(false)}
+          onSaved={() => { setShowAdd(false); fetchMilestones() }}
+          onUpgrade={up => { setShowAdd(false); setUpgrade(up) }}
+        />
+      )}
+
+      {editing && (
+        <EditMilestoneModal
+          milestone={editing}
+          athletes={athletes}
+          onClose={() => setEditing(null)}
+          onSaved={handleEditSaved}
         />
       )}
 

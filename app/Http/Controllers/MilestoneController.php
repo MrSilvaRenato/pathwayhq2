@@ -103,6 +103,13 @@ class MilestoneController extends Controller
 
     public function update(Request $request, $id)
     {
+        $clubId    = $request->user()->resolveClubId();
+        $milestone = Milestone::where('id', $id)->where('club_id', $clubId)->firstOrFail();
+
+        if ($milestone->is_edited) {
+            return response()->json(['message' => 'This milestone has already been edited and is now permanent.'], 403);
+        }
+
         $data = $request->validate([
             'athlete_id'           => 'nullable|string',
             'title'                => 'required|string',
@@ -113,7 +120,7 @@ class MilestoneController extends Controller
             'is_shared_with_parent'=> 'boolean',
         ]);
 
-        Milestone::where('id', $id)->where('club_id', $request->user()->resolveClubId())->update($data);
+        $milestone->update(array_merge($data, ['is_edited' => true]));
         return response()->json(['ok' => true]);
     }
 

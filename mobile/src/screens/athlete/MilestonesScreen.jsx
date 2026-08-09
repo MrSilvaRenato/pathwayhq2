@@ -59,7 +59,7 @@ function FtemBadge({ phase }) {
 
 // ── MilestoneCard ─────────────────────────────────────────────────────────────
 
-function MilestoneCard({ m, isManager, onDelete }) {
+function MilestoneCard({ m, isManager, onDelete, onEdit }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   return (
@@ -96,11 +96,29 @@ function MilestoneCard({ m, isManager, onDelete }) {
         </View>
 
         <View style={s.cardRight}>
+          {m.is_edited && (
+            <View style={s.permanentChip}>
+              <Ionicons name="lock-closed" size={10} color="#94a3b8" />
+              <Text style={s.permanentChipText}>Permanent</Text>
+            </View>
+          )}
           <FtemBadge phase={m.ftem_phase} />
           {isManager && !confirmDelete && (
-            <TouchableOpacity onPress={() => setConfirmDelete(true)} style={s.deleteBtn} activeOpacity={0.7}>
-              <Ionicons name="close" size={14} color="#cbd5e1" />
-            </TouchableOpacity>
+            <View style={{ gap: 4 }}>
+              {!m.is_edited && (
+                <TouchableOpacity
+                  onPress={() => onEdit(m)}
+                  style={s.editBtn}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="pencil-outline" size={12} color="#818cf8" />
+                  <Text style={s.editBtnText}>Edit</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity onPress={() => setConfirmDelete(true)} style={s.deleteBtn} activeOpacity={0.7}>
+                <Ionicons name="close" size={14} color="#cbd5e1" />
+              </TouchableOpacity>
+            </View>
           )}
           {!isManager && m.is_shared_with_parent && (
             <View style={s.publicChip}>
@@ -380,6 +398,250 @@ function AddModal({ athletes, onClose, onSaved, onUpgrade }) {
   )
 }
 
+// ── Edit Modal ────────────────────────────────────────────────────────────────
+
+function EditModal({ milestone, athletes, onClose, onSaved }) {
+  const insets = useSafeAreaInsets()
+
+  function detectPreset(cat) {
+    if (!cat) return { category: 'Awards', customCategory: '' }
+    if (PRESET_CATEGORIES.includes(cat)) return { category: cat, customCategory: '' }
+    return { category: 'Others', customCategory: cat }
+  }
+
+  const { category, customCategory } = detectPreset(milestone.category)
+
+  const [form, setForm] = useState({
+    athlete_id:           String(milestone.athlete_id ?? ''),
+    title:                milestone.title ?? '',
+    category,
+    customCategory,
+    description:          milestone.description ?? '',
+    ftem_phase:           milestone.ftem_phase ?? 'F1',
+    achieved_at:          new Date(milestone.achieved_at ?? Date.now()),
+    is_shared_with_parent: !!milestone.is_shared_with_parent,
+  })
+  const [saving, setSaving] = useState(false)
+  const [showPhasePicker, setShowPhasePicker] = useState(false)
+  const [showDatePicker, setShowDatePicker]   = useState(false)
+
+  const resolvedCategory = form.category === 'Others'
+    ? (form.customCategory.trim() || 'Others')
+    : form.category
+
+  const athleteName = useMemo(() => {
+    const a = athletes.find(a => String(a.id) === form.athlete_id)
+    return a ? `${a.first_name} ${a.last_name}` : 'Unknown athlete'
+  }, [athletes, form.athlete_id])
+
+  async function handleSave() {
+    if (!form.title.trim()) {
+      Alert.alert('Required', 'Please enter a title.')
+      return
+    }
+    setSaving(true)
+    try {
+      await api.put(`/milestones/${milestone.id}`, {
+        athlete_id:            form.athlete_id,
+        title:                 form.title,
+        category:              resolvedCategory || null,
+        description:           form.description,
+        ftem_phase:            form.ftem_phase,
+        achieved_at:           form.achieved_at.toISOString().slice(0, 10),
+        is_shared_with_parent: form.is_shared_with_parent,
+      })
+      onSaved()
+    } catch (e) {
+      const msg = e?.response?.data?.message ?? 'Failed to update.'
+      Alert.alert('Error', msg)
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }} edges={['top', 'bottom']}>
+          <View style={s.modalHeader}>
+            <View>
+              <Text style={s.modalTitle}>Edit milestone</Text>
+              <Text style={[s.hint, { marginTop: 2 }]}>One-time only — becomes permanent after saving</Text>
+            </View>
+            <TouchableOpacity onPress={onClose} style={s.modalClose} activeOpacity={0.7}>
+              <Ionicons name="close" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={s.modalBody}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {/* One-time warning pill */}
+            <View style={s.editWarning}>
+              <Text style={{ fontSize: 18 }}>⚠️</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={s.editWarningTitle}>One-time edit</Text>
+                <Text style={s.editWarningDesc}>Once you save, this milestone will be <Text style={{ fontWeight: '800' }}>permanent</Text> and cannot be changed again.</Text>
+              </View>
+            </View>
+
+            {/* Athlete (read-only in edit) */}
+            <Text style={s.label}>Athlete</Text>
+            <View style={[s.pickerBtn, { backgroundColor: '#f8fafc' }]}>
+              <Text style={[s.pickerBtnText, { color: colors.textMuted }]}>{athleteName}</Text>
+              <Ionicons name="lock-closed-outline" size={14} color={colors.textMuted} />
+            </View>
+
+            {/* Category */}
+            <Text style={[s.label, { marginTop: spacing.md }]}>Category</Text>
+            <View style={s.categoryRow}>
+              {PRESET_CATEGORIES.map(cat => {
+                const active = form.category === cat
+                return (
+                  <TouchableOpacity
+                    key={cat}
+                    style={[s.categoryBtn, active && s.categoryBtnActive]}
+                    onPress={() => setForm(p => ({ ...p, category: cat }))}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={{ fontSize: 14 }}>{catEmoji(cat)}</Text>
+                    <Text style={[s.categoryBtnText, active && s.categoryBtnTextActive]}>{cat}</Text>
+                  </TouchableOpacity>
+                )
+              })}
+              <TouchableOpacity
+                style={[s.categoryBtn, form.category === 'Others' && s.categoryBtnActive]}
+                onPress={() => setForm(p => ({ ...p, category: 'Others' }))}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: 14 }}>✨</Text>
+                <Text style={[s.categoryBtnText, form.category === 'Others' && s.categoryBtnTextActive]}>Others</Text>
+              </TouchableOpacity>
+            </View>
+            {form.category === 'Others' && (
+              <TextInput
+                style={[s.input, { marginTop: spacing.sm }]}
+                value={form.customCategory}
+                onChangeText={v => setForm(p => ({ ...p, customCategory: v }))}
+                placeholder="Describe the category…"
+                placeholderTextColor={colors.textMuted}
+                maxLength={80}
+              />
+            )}
+
+            {/* Title */}
+            <Text style={[s.label, { marginTop: spacing.md }]}>Title</Text>
+            <TextInput
+              style={s.input}
+              value={form.title}
+              onChangeText={v => setForm(p => ({ ...p, title: v }))}
+              placeholder="Achievement title"
+              placeholderTextColor={colors.textMuted}
+            />
+
+            {/* FTEM + Date */}
+            <View style={s.twoCol}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.label}>FTEM Phase</Text>
+                <TouchableOpacity style={s.pickerBtn} onPress={() => setShowPhasePicker(true)} activeOpacity={0.7}>
+                  <Text style={s.pickerBtnText} numberOfLines={1}>{form.ftem_phase} — {ftemLabel(form.ftem_phase)}</Text>
+                  <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.label}>Date achieved</Text>
+                <TouchableOpacity style={s.pickerBtn} onPress={() => setShowDatePicker(true)} activeOpacity={0.7}>
+                  <Text style={s.pickerBtnText} numberOfLines={1}>{fmtDate(form.achieved_at.toISOString())}</Text>
+                  <Ionicons name="calendar-outline" size={16} color={colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Notes */}
+            <Text style={[s.label, { marginTop: spacing.md }]}>Notes (optional)</Text>
+            <TextInput
+              style={[s.input, s.textarea]}
+              value={form.description}
+              onChangeText={v => setForm(p => ({ ...p, description: v }))}
+              placeholder="What made this special?"
+              placeholderTextColor={colors.textMuted}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+            />
+
+            {/* Public toggle */}
+            <TouchableOpacity
+              style={s.toggleRow}
+              onPress={() => setForm(p => ({ ...p, is_shared_with_parent: !p.is_shared_with_parent }))}
+              activeOpacity={0.8}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={s.toggleLabel}>Show on public athlete profile</Text>
+                <Text style={s.toggleDesc}>Displays in the athlete's public trophy cabinet</Text>
+              </View>
+              <View style={[s.checkbox, form.is_shared_with_parent && s.checkboxOn]}>
+                {form.is_shared_with_parent && <Ionicons name="checkmark" size={14} color="#fff" />}
+              </View>
+            </TouchableOpacity>
+          </ScrollView>
+
+          <View style={s.modalFooter}>
+            <TouchableOpacity onPress={onClose} style={s.footerCancel} activeOpacity={0.8}>
+              <Text style={s.footerCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleSave} disabled={saving} style={[s.footerSaveLock, saving && { opacity: 0.5 }]} activeOpacity={0.8}>
+              <Ionicons name="lock-closed" size={14} color="#fff" />
+              <Text style={s.footerSaveText}>{saving ? 'Saving…' : 'Save & lock'}</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </KeyboardAvoidingView>
+
+      {/* Phase sheet */}
+      <Modal visible={showPhasePicker} transparent statusBarTranslucent animationType="slide" onRequestClose={() => setShowPhasePicker(false)}>
+        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setShowPhasePicker(false)} />
+        <View style={[s.sheet, { paddingBottom: insets.bottom || 16 }]}>
+          <View style={s.sheetHandle} />
+          <Text style={s.sheetTitle}>Select Phase</Text>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {Object.entries(FTEM_PHASES).map(([k, v]) => (
+              <TouchableOpacity
+                key={k}
+                style={[s.sheetItem, k === form.ftem_phase && s.sheetItemActive]}
+                onPress={() => { setForm(p => ({ ...p, ftem_phase: k })); setShowPhasePicker(false) }}
+                activeOpacity={0.7}
+              >
+                <View style={[s.phaseChip, { backgroundColor: v.bgColor }]}>
+                  <Text style={[s.phaseChipText, { color: v.textColor }]}>{k}</Text>
+                </View>
+                <Text style={[s.sheetItemText, k === form.ftem_phase && s.sheetItemTextActive]}>{v.label}</Text>
+                {k === form.ftem_phase && <Ionicons name="checkmark" size={18} color={colors.primary} />}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Date picker */}
+      {showDatePicker && (
+        <DateTimePicker
+          value={form.achieved_at}
+          mode="date"
+          display="default"
+          maximumDate={new Date()}
+          onChange={(e, d) => {
+            setShowDatePicker(false)
+            if (d) setForm(p => ({ ...p, achieved_at: d }))
+          }}
+        />
+      )}
+    </Modal>
+  )
+}
+
 // ── Main Screen ───────────────────────────────────────────────────────────────
 
 export default function MilestonesScreen() {
@@ -392,6 +654,7 @@ export default function MilestonesScreen() {
   const [loading, setLoading]       = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [showModal, setShowModal]   = useState(false)
+  const [editing, setEditing]       = useState(null)
   const [upgrade, setUpgrade]       = useState(null)
 
   const [q, setQ]                         = useState('')
@@ -587,6 +850,7 @@ export default function MilestonesScreen() {
               m={item.m}
               isManager={isManager}
               onDelete={handleDelete}
+              onEdit={setEditing}
             />
           )
         }}
@@ -653,6 +917,21 @@ export default function MilestonesScreen() {
         requiredPlan={upgrade?.requiredPlan ?? 'pro'}
         onClose={() => setUpgrade(null)}
       />
+
+      {/* Edit modal */}
+      {editing && (
+        <EditModal
+          milestone={editing}
+          athletes={athletes}
+          onClose={() => setEditing(null)}
+          onSaved={async () => {
+            setEditing(null)
+            setLoading(true)
+            await fetchAll()
+            setLoading(false)
+          }}
+        />
+      )}
 
       {/* Athlete filter sheet */}
       <Modal visible={showAthleteSheet} transparent statusBarTranslucent animationType="slide" onRequestClose={() => setShowAthleteSheet(false)}>
@@ -805,6 +1084,20 @@ const s = StyleSheet.create({
 
   deleteBtn: { width: 28, height: 28, justifyContent: 'center', alignItems: 'center' },
 
+  editBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6,
+    backgroundColor: '#eef2ff', borderWidth: 1, borderColor: '#c7d2fe',
+  },
+  editBtnText: { fontSize: 10, fontWeight: '700', color: '#818cf8' },
+
+  permanentChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    paddingHorizontal: 6, paddingVertical: 3, borderRadius: radius.full,
+    backgroundColor: '#f1f5f9', borderWidth: 1, borderColor: '#e2e8f0',
+  },
+  permanentChipText: { fontSize: 9, fontWeight: '600', color: '#94a3b8' },
+
   publicChip: {
     backgroundColor: '#f0fdf4', borderRadius: radius.full,
     borderWidth: 1, borderColor: '#bbf7d0',
@@ -884,6 +1177,18 @@ const s = StyleSheet.create({
     borderRadius: radius.lg, backgroundColor: colors.primary,
   },
   footerSaveText: { fontSize: font.sm, fontWeight: '700', color: '#fff' },
+  footerSaveLock: {
+    flex: 1, height: 48, justifyContent: 'center', alignItems: 'center', gap: 6,
+    borderRadius: radius.lg, backgroundColor: '#6366f1', flexDirection: 'row',
+  },
+
+  editWarning: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a',
+    borderRadius: radius.md, padding: 12, marginBottom: spacing.md,
+  },
+  editWarningTitle: { fontSize: font.sm, fontWeight: '800', color: '#92400e' },
+  editWarningDesc:  { fontSize: font.xs, color: '#a16207', marginTop: 2, lineHeight: 16 },
 
   label: { fontSize: font.xs, fontWeight: '600', color: colors.textSecondary, marginBottom: 6 },
   hint:  { fontSize: font.xs, color: colors.textMuted, marginTop: 4 },
