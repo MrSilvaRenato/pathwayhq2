@@ -34,6 +34,7 @@ import NotificationsScreen from '../screens/shared/NotificationsScreen'
 import AdminDashboardScreen from '../screens/shared/AdminDashboardScreen'
 import VolunteeringScreen from '../screens/shared/VolunteeringScreen'
 import ClubsScreen from '../screens/shared/ClubsScreen'
+import AthleteProfileScreen from '../screens/shared/AthleteProfileScreen'
 
 const Tab = createBottomTabNavigator()
 const Stack = createNativeStackNavigator()
@@ -83,12 +84,13 @@ function AthleteMoreStack() {
       <S.Screen name="AthleteMoreList" options={{ title: 'More' }}>
         {() => <AthleteMoreScreen />}
       </S.Screen>
+      <S.Screen name="AthleteProfile"      component={AthleteProfileScreen} options={{ title: 'Athlete Profile' }} />
       <S.Screen name="CalendarList"        component={CalendarScreen}       options={{ title: 'Calendar' }} />
-      <S.Screen name="VolunteeringScreen" component={VolunteeringScreen}   options={{ title: 'Volunteering' }} />
-      <S.Screen name="TrophyCabinetScreen" component={TrophyCabinetScreen} options={{ title: 'Trophy Cabinet' }} />
-      <S.Screen name="ClubsScreen"        component={ClubsScreen}          options={{ title: 'Search Clubs' }} />
-      <S.Screen name="NotificationsList"  component={NotificationsScreen}  options={{ title: 'Notifications' }} />
-      <S.Screen name="SettingsList"       component={SettingsScreen}        options={{ title: 'Settings' }} />
+      <S.Screen name="VolunteeringScreen"  component={VolunteeringScreen}   options={{ title: 'Volunteering' }} />
+      <S.Screen name="TrophyCabinetScreen" component={TrophyCabinetScreen}  options={{ title: 'Trophy Cabinet' }} />
+      <S.Screen name="ClubsScreen"         component={ClubsScreen}          options={{ title: 'Search Clubs' }} />
+      <S.Screen name="NotificationsList"   component={NotificationsScreen}  options={{ title: 'Notifications' }} />
+      <S.Screen name="SettingsList"        component={SettingsScreen}        options={{ title: 'Settings' }} />
     </S.Navigator>
   )
 }
@@ -109,6 +111,7 @@ function AthletesManagerStack() {
         component={AthleteDetailScreen}
         options={({ route }) => ({ title: route.params?.athlete?.name ?? 'Athlete' })}
       />
+      <S.Screen name="AthleteProfile" component={AthleteProfileScreen} options={{ title: 'Athlete Profile' }} />
     </S.Navigator>
   )
 }

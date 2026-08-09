@@ -59,7 +59,7 @@ export default function AthleteMoreScreen() {
         {!!athleteSlug && (
           <TouchableOpacity
             style={styles.profileCard}
-            onPress={() => Linking.openURL(`${WEB_BASE}/athlete/${athleteSlug}`)}
+            onPress={() => navigation.navigate('AthleteProfile', { isOwnProfile: true })}
             activeOpacity={0.8}
           >
             <View style={styles.profileCardIcon}>
@@ -69,7 +69,7 @@ export default function AthleteMoreScreen() {
               <Text style={styles.profileCardTitle}>View my public profile</Text>
               <Text style={styles.profileCardSlug}>/athlete/{athleteSlug}</Text>
             </View>
-            <Ionicons name="open-outline" size={16} color={colors.textMuted} />
+            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
           </TouchableOpacity>
         )}
 

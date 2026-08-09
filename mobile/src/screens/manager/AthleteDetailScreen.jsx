@@ -374,14 +374,24 @@ export default function AthleteDetailScreen({ route }) {
 
               {/* Admin actions */}
               {isAdmin ? (
-                <View style={s.adminActions}>
-                  <TouchableOpacity style={s.editBtn} onPress={startEdit} activeOpacity={0.8}>
-                    <Ionicons name="create-outline" size={15} color="#fff" />
-                    <Text style={s.editBtnText}>Edit athlete</Text>
+                <View style={{ gap: 10 }}>
+                  <TouchableOpacity
+                    style={s.profileBtn}
+                    onPress={() => navigation.navigate('AthleteProfile', { athleteId: id })}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="person-circle-outline" size={15} color={colors.primary} />
+                    <Text style={s.profileBtnText}>View profile page</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={s.deleteBtn} onPress={handleDelete} activeOpacity={0.8}>
-                    <Ionicons name="trash-outline" size={16} color="#ef4444" />
-                  </TouchableOpacity>
+                  <View style={s.adminActions}>
+                    <TouchableOpacity style={s.editBtn} onPress={startEdit} activeOpacity={0.8}>
+                      <Ionicons name="create-outline" size={15} color="#fff" />
+                      <Text style={s.editBtnText}>Edit athlete</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={s.deleteBtn} onPress={handleDelete} activeOpacity={0.8}>
+                      <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               ) : null}
             </>
@@ -493,6 +503,14 @@ const s = StyleSheet.create({
   notesBox: { backgroundColor: '#f8fafc', borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md },
   notesLabel: { fontSize: 10, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 },
   notesText:  { fontSize: font.sm, color: colors.textSecondary, lineHeight: 20 },
+
+  profileBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+    borderWidth: 1.5, borderColor: colors.primary,
+    borderRadius: radius.md, paddingVertical: 13,
+    backgroundColor: colors.primaryLight,
+  },
+  profileBtnText: { color: colors.primary, fontSize: font.sm, fontWeight: '700' },
 
   adminActions: { flexDirection: 'row', gap: 10 },
   editBtn: {
