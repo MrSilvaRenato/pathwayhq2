@@ -70,6 +70,7 @@ class MilestoneController extends Controller
         $data = $request->validate([
             'athlete_id'           => 'nullable|string',
             'title'                => 'required|string',
+            'category'             => 'nullable|string|max:100',
             'description'          => 'nullable|string',
             'ftem_phase'           => 'nullable|string',
             'achieved_at'          => 'nullable|date',
@@ -105,6 +106,7 @@ class MilestoneController extends Controller
         $data = $request->validate([
             'athlete_id'           => 'nullable|string',
             'title'                => 'required|string',
+            'category'             => 'nullable|string|max:100',
             'description'          => 'nullable|string',
             'ftem_phase'           => 'nullable|string',
             'achieved_at'          => 'nullable|date',
