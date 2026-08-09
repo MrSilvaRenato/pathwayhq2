@@ -16,6 +16,29 @@ class MilestoneController extends Controller
     {
         $user   = $request->user();
         $clubId = $user->resolveClubId();
+
+        // Athletes see their own milestones across all clubs, even when unaffiliated
+        if ($user->role === 'athlete') {
+            $athlete = \App\Models\Athlete::where('user_id', $user->id)
+                ->where('invite_status', 'accepted')
+                ->orderBy('is_active', 'desc')
+                ->first();
+
+            if (!$athlete) return response()->json([]);
+
+            $query = Milestone::where('athlete_id', $athlete->id)
+                ->with(['club:id,name,sport'])
+                ->orderBy('achieved_at', 'desc');
+
+            return response()->json(
+                $query->get()->map(function ($m) {
+                    $m->club_name = $m->club?->name;
+                    unset($m->club);
+                    return $m;
+                })
+            );
+        }
+
         if (!$clubId) return response()->json([]);
 
         $query = Milestone::where('club_id', $clubId)
@@ -24,16 +47,6 @@ class MilestoneController extends Controller
                 'club:id,name,sport',
             ])
             ->orderBy('achieved_at', 'desc');
-
-        // Athletes only see their own milestones
-        if ($user->role === 'athlete') {
-            $athlete = \App\Models\Athlete::where('user_id', $user->id)->where('invite_status', 'accepted')->where('is_active', true)->first();
-            if ($athlete) {
-                $query->where('athlete_id', $athlete->id);
-            } else {
-                return response()->json([]);
-            }
-        }
 
         return response()->json(
             $query->get()->map(function ($m) {

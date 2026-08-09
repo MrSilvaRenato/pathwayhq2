@@ -300,6 +300,7 @@ class AthleteController extends Controller
         }
 
         $athlete->squads()->detach();
+        \App\Models\SquadRequest::where('athlete_id', $athlete->id)->where('status', 'pending')->delete();
 
         if ($athlete->user_id) {
             // Athlete has an account — disassociate from club so they can join another.
@@ -344,6 +345,7 @@ class AthleteController extends Controller
         $oldClubId   = $athlete->club_id;
 
         $athlete->squads()->detach();
+        \App\Models\SquadRequest::where('athlete_id', $athlete->id)->where('status', 'pending')->delete();
         $athlete->update(['is_active' => false, 'club_id' => null]);
 
         $staff = User::where('club_id', $oldClubId)
