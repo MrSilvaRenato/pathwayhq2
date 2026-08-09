@@ -198,22 +198,41 @@ export default function AthleteProfile() {
               <p className="text-slate-400 text-sm">No achievements shared publicly yet.</p>
             </div>
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {milestones.map(m => {
+            <div className="space-y-3">
+              {milestones.map((m, i) => {
                 const t = trophyTier(m.ftem_phase)
                 return (
-                  <div key={m.id} className={`rounded-2xl border ${t.border} ${t.bg} p-5 shadow-lg ${t.glow} hover:-translate-y-0.5 transition-all`}>
-                    <div className="flex items-start justify-between mb-3">
-                      <span className="text-3xl">{t.icon}</span>
-                      <span className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${t.badge}`}>
-                        {m.ftem_phase}
-                      </span>
+                  <div key={m.id} className={`flex gap-4 group`}>
+                    {/* Timeline */}
+                    <div className="flex flex-col items-center shrink-0">
+                      <div className={`w-4 h-4 rounded-full ring-2 ring-offset-2 ring-offset-slate-950 shrink-0 mt-4 z-10 ${
+                        m.ftem_phase === 'M' ? 'bg-amber-400 ring-amber-300' :
+                        m.ftem_phase?.startsWith('E') ? 'bg-slate-300 ring-slate-400' :
+                        m.ftem_phase?.startsWith('T') ? 'bg-orange-400 ring-orange-300' : 'bg-emerald-400 ring-emerald-300'
+                      }`} />
+                      {i < milestones.length - 1 && <div className="w-px flex-1 mt-1 border-l-2 border-dashed border-white/10" />}
                     </div>
-                    <p className="font-bold text-white text-sm leading-snug mb-3">{m.title}</p>
-                    {m.description && (
-                      <p className="text-xs text-slate-400 leading-relaxed mb-3">{m.description}</p>
-                    )}
-                    <p className="text-xs text-slate-500">{fmtDate(m.achieved_at)}</p>
+
+                    {/* Card */}
+                    <div className={`flex-1 mb-3 rounded-2xl border ${t.border} ${t.bg} p-5 shadow-xl ${t.glow} hover:-translate-y-0.5 transition-all`}>
+                      <div className="flex items-start justify-between mb-3">
+                        <span className="text-4xl drop-shadow-lg">{t.icon}</span>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${t.badge}`}>{m.ftem_phase}</span>
+                          <span className="text-[11px] text-slate-500">{fmtDate(m.achieved_at)}</span>
+                        </div>
+                      </div>
+                      <p className="font-black text-white text-base leading-snug mb-2">{m.title}</p>
+                      {m.description && (
+                        <p className="text-xs text-slate-400 leading-relaxed mb-3">{m.description}</p>
+                      )}
+                      {m.club_name && (
+                        <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-white/5">
+                          <Star className="h-3 w-3 text-slate-500 shrink-0" />
+                          <span className="text-[11px] text-slate-500 font-medium">{m.club_name}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )
               })}

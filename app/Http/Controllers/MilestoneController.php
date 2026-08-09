@@ -19,7 +19,10 @@ class MilestoneController extends Controller
         if (!$clubId) return response()->json([]);
 
         $query = Milestone::where('club_id', $clubId)
-            ->with('athlete:id,first_name,last_name,ftem_phase,is_active,user_id')
+            ->with([
+                'athlete:id,first_name,last_name,ftem_phase,is_active,user_id,avatar_url',
+                'club:id,name,sport',
+            ])
             ->orderBy('achieved_at', 'desc');
 
         // Athletes only see their own milestones
@@ -34,11 +37,13 @@ class MilestoneController extends Controller
 
         return response()->json(
             $query->get()->map(function ($m) {
-                $m->first_name  = $m->athlete?->first_name;
-                $m->last_name   = $m->athlete?->last_name;
+                $m->first_name   = $m->athlete?->first_name;
+                $m->last_name    = $m->athlete?->last_name;
+                $m->avatar_url   = $m->athlete?->avatar_url;
                 $m->athlete_ftem = $m->athlete?->ftem_phase;
-                $m->is_claimed  = !is_null($m->athlete?->user_id);
-                unset($m->athlete);
+                $m->is_claimed   = !is_null($m->athlete?->user_id);
+                $m->club_name    = $m->club?->name;
+                unset($m->athlete, $m->club);
                 return $m;
             })
         );

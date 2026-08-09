@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Club;
 
 class Milestone extends Model
 {
@@ -14,4 +15,5 @@ class Milestone extends Model
     protected $casts = ['id'=>'string','club_id'=>'string','athlete_id'=>'string','is_shared_with_parent'=>'boolean'];
 
     public function athlete() { return $this->belongsTo(Athlete::class); }
+    public function club()    { return $this->belongsTo(Club::class); }
 }

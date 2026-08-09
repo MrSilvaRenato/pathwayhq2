@@ -507,10 +507,16 @@ class AthleteController extends Controller
 
         $milestones = Milestone::where('athlete_id', $athlete->id)
             ->where('is_shared_with_parent', true)
-            ->select('id', 'title', 'description', 'ftem_phase', 'achieved_at')
+            ->with('club:id,name')
+            ->select('id', 'club_id', 'title', 'description', 'ftem_phase', 'achieved_at')
             ->orderBy('achieved_at', 'desc')
             ->limit(20)
-            ->get();
+            ->get()
+            ->map(function ($m) {
+                $m->club_name = $m->club?->name;
+                unset($m->club, $m->club_id);
+                return $m;
+            });
 
         $dobYear = $athlete->dob ? (int) substr($athlete->dob, 0, 4) : null;
 
