@@ -145,6 +145,7 @@ class AthleteController extends Controller
             'sport'        => 'nullable|string',
             'gender'       => 'nullable|string',
             'ftem_phase'   => 'nullable|string',
+            'position'     => 'nullable|string|max:100',
             'notes'        => 'nullable|string',
             'phone'        => 'nullable|string|max:20',
             'squad_ids'    => 'nullable|array',
@@ -213,6 +214,7 @@ class AthleteController extends Controller
             'sport'         => $data['sport']  ?? 'soccer',
             'gender'        => $data['gender'] ?? 'male',
             'ftem_phase'    => $data['ftem_phase'] ?? 'F1',
+            'position'      => $data['position'] ?? null,
             'notes'         => $data['notes']  ?? null,
             'phone'         => $data['phone']  ?? null,
             'invite_email'  => $inviteEmail,
@@ -254,6 +256,7 @@ class AthleteController extends Controller
             'sport'        => 'nullable|string',
             'gender'       => 'nullable|string',
             'ftem_phase'   => 'nullable|string',
+            'position'     => 'nullable|string|max:100',
             'is_active'    => 'boolean',
             'is_public'    => 'boolean',
             'slug'         => "nullable|string|unique:athletes,slug,{$athlete->id}",
@@ -531,6 +534,7 @@ class AthleteController extends Controller
                 'sport'      => $athlete->sport,
                 'gender'     => $athlete->gender,
                 'ftem_phase' => $athlete->ftem_phase,
+                'position'   => $athlete->position,
                 'dob_year'   => $dobYear,
                 'slug'       => $athlete->slug,
                 'avatar_url' => $athlete->avatar_url,
@@ -587,6 +591,7 @@ class AthleteController extends Controller
             'is_public'  => 'boolean',
             'slug'       => "nullable|string|max:80|unique:athletes,slug,{$primary->id}",
             'avatar_url' => 'nullable|string|max:500',
+            'position'   => 'nullable|string|max:100',
         ]);
 
         // Update all active athlete records so avatar/visibility stays in sync

@@ -67,6 +67,7 @@ export default function Settings() {
   const [showPw,   setShowPw]   = useState(false)
   const [athleteProfile, setAthleteProfile] = useState(null)
   const [savingAthlete,  setSavingAthlete]  = useState(false)
+  const [athletePosition, setAthletePosition] = useState('')
   const [planInfo,  setPlanInfo]  = useState(null)
   const [connectStatus, setConnectStatus] = useState(null)
   const [loadingCheckout, setLoadingCheckout] = useState(null)
@@ -83,7 +84,10 @@ export default function Settings() {
     if (connect === 'refresh') toast.error('Connection expired — please try again.')
 
     if (user?.role === 'athlete') {
-      api.get('/athletes/me').then(r => setAthleteProfile(r.data)).catch(() => {})
+      api.get('/athletes/me').then(r => {
+        setAthleteProfile(r.data)
+        setAthletePosition(r.data?.position ?? '')
+      }).catch(() => {})
     }
     api.get('/club/plan').then(r => setPlanInfo(r.data)).catch(() => {})
     api.get('/connect/status').then(r => setConnectStatus(r.data)).catch(() => {})
@@ -308,6 +312,33 @@ export default function Settings() {
             <p className="text-xs text-slate-400 leading-relaxed">
               This is your choice. Club managers can view your details internally regardless of this setting, but cannot make your public profile visible without your consent.
             </p>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* ── Athlete details (position) ───────────────────────────── */}
+      {user?.role === 'athlete' && athleteProfile !== undefined && (
+        <SectionCard title="Athlete details">
+          <div className="mt-4 space-y-4">
+            <div>
+              <label className={labelCls}>Primary position</label>
+              <input
+                value={athletePosition}
+                onChange={e => setAthletePosition(e.target.value)}
+                className={inputCls}
+                placeholder="e.g. Striker, Goalkeeper, Centre-back…"
+                maxLength={100}
+              />
+              <p className="text-[11px] text-slate-400 mt-1.5">Shown on your public profile and visible to your club.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => saveAthleteProfile({ position: athletePosition })}
+              disabled={savingAthlete}
+              className="flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 px-5 py-2.5 text-sm font-bold text-white transition-all shadow-sm shadow-emerald-500/20">
+              <Save className="h-4 w-4" />
+              {savingAthlete ? 'Saving…' : 'Save details'}
+            </button>
           </div>
         </SectionCard>
       )}

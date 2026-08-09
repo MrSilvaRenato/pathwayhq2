@@ -132,6 +132,11 @@ export default function AthleteProfile() {
                     {sportMeta.emoji} {sportMeta.label}
                   </span>
                 )}
+                {athlete.position && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1.5 text-sm font-medium text-indigo-300">
+                    {athlete.position}
+                  </span>
+                )}
                 {athlete.gender && (
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-medium capitalize">
                     {athlete.gender}

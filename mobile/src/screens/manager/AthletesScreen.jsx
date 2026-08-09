@@ -72,6 +72,11 @@ function AthleteCard({ a, isAdmin, onPress, onDelete }) {
             <Text style={s.chipText}>{sport.emoji} {sport.label}</Text>
           </View>
         )}
+        {!!a.position && (
+          <View style={[s.chip, { backgroundColor: '#eef2ff' }]}>
+            <Text style={[s.chipText, { color: '#4338ca' }]}>{a.position}</Text>
+          </View>
+        )}
         {!!a.squad_names && (
           <View style={s.chip}>
             <Text style={s.chipText}>{a.squad_names}</Text>
@@ -135,7 +140,7 @@ function AthleteCard({ a, isAdmin, onPress, onDelete }) {
 
 const EMPTY_FORM = {
   first_name: '', last_name: '', dob: null,
-  gender: 'male', ftem_phase: 'F1', invite_email: '', phone: '',
+  gender: 'male', ftem_phase: 'F1', position: '', invite_email: '', phone: '',
 }
 
 function AddModal({ onClose, onSaved, onUpgrade }) {
@@ -329,6 +334,19 @@ function AddModal({ onClose, onSaved, onUpgrade }) {
                   <Ionicons name="chevron-down" size={15} color={colors.textMuted} />
                 </TouchableOpacity>
               </View>
+            </View>
+
+            {/* Position */}
+            <View style={{ marginTop: spacing.md }}>
+              <Text style={s.label}>Primary position <Text style={s.labelOptional}>(optional)</Text></Text>
+              <TextInput
+                style={s.input}
+                value={form.position}
+                onChangeText={v => setForm(p => ({ ...p, position: v }))}
+                placeholder="e.g. Striker, Goalkeeper, Centre-back…"
+                placeholderTextColor={colors.textMuted}
+                maxLength={100}
+              />
             </View>
           </ScrollView>
 

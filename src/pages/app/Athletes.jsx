@@ -6,7 +6,7 @@ import { FTEM_PHASES, SPORTS } from '../../lib/constants'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 
-const EMPTY_FORM = { first_name:'', last_name:'', dob:'', sport:'soccer', gender:'male', ftem_phase:'F1', notes:'', invite_email:'', phone:'' }
+const EMPTY_FORM = { first_name:'', last_name:'', dob:'', sport:'soccer', gender:'male', ftem_phase:'F1', position:'', notes:'', invite_email:'', phone:'' }
 
 function initials(a) {
   return `${a.first_name?.[0] ?? ''}${a.last_name?.[0] ?? ''}`.toUpperCase()
@@ -237,6 +237,11 @@ export default function Athletes() {
                         {sport.emoji} {sport.label}
                       </span>
                     )}
+                    {a.position && (
+                      <span className="inline-flex items-center rounded-lg bg-indigo-50 px-2 py-1 text-xs text-indigo-700 font-medium">
+                        {a.position}
+                      </span>
+                    )}
                     {a.squad_names && (
                       <span className="inline-flex items-center rounded-lg bg-slate-100 px-2 py-1 text-xs text-slate-600">
                         {a.squad_names}
@@ -300,6 +305,7 @@ export default function Athletes() {
                   <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Name</th>
                   <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Phase</th>
                   <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Sport</th>
+                  <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Position</th>
                   {isAdmin && <th className="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Contact</th>}
                   <th className="text-right px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Status</th>
                   <th className="text-right px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide"></th>
@@ -334,6 +340,11 @@ export default function Athletes() {
                         </span>
                       </td>
                       <td className="px-5 py-3.5 text-slate-500">{sport?.emoji} {sport?.label}</td>
+                      <td className="px-5 py-3.5">
+                        {a.position
+                          ? <span className="inline-flex rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700">{a.position}</span>
+                          : <span className="text-slate-300 text-xs">—</span>}
+                      </td>
                       {isAdmin && (
                         <td className="px-5 py-3.5">
                           <div className="space-y-0.5">
@@ -518,6 +529,18 @@ export default function Athletes() {
                       {Object.keys(FTEM_PHASES).map(k => <option key={k} value={k}>{k}</option>)}
                     </select>
                   </div>
+                </div>
+
+                {/* Position */}
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 mb-1 block">Primary position <span className="font-normal text-slate-400">(optional)</span></label>
+                  <input
+                    value={form.position}
+                    onChange={e => setForm(p => ({ ...p, position: e.target.value }))}
+                    className={inputCls}
+                    placeholder="e.g. Striker, Goalkeeper, Centre-back…"
+                    maxLength={100}
+                  />
                 </div>
 
                 {/* Actions */}

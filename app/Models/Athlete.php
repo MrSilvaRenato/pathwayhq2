@@ -13,7 +13,7 @@ class Athlete extends Model
 
     protected $fillable = [
         'id', 'club_id', 'user_id', 'first_name', 'last_name',
-        'dob', 'sport', 'gender', 'ftem_phase', 'is_active', 'notes',
+        'dob', 'sport', 'gender', 'ftem_phase', 'position', 'is_active', 'notes',
         'invite_email', 'invite_token', 'invite_status', 'phone',
         'slug', 'is_public', 'avatar_url',
     ];

@@ -134,6 +134,8 @@ export default function SettingsScreen() {
 
   // ── Athlete profile state (athletes only) ──────────────────────────────────
   const [athleteProfile, setAthleteProfile] = useState({ avatar_url: null })
+  const [athletePosition, setAthletePosition] = useState('')
+  const [savingPosition, setSavingPosition] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [confirmLeave,   setConfirmLeave]   = useState(false)
   const [leavingClub,    setLeavingClub]    = useState(false)
@@ -144,7 +146,11 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     if (isAthlete) {
-      api.get('/athletes/me').then(r => setAthleteProfile(r.data ?? {})).catch(() => {})
+      api.get('/athletes/me').then(r => {
+        const d = r.data ?? {}
+        setAthleteProfile(d)
+        setAthletePosition(d.position ?? '')
+      }).catch(() => {})
     }
   }, [isAthlete])
 
@@ -284,6 +290,18 @@ export default function SettingsScreen() {
       Alert.alert('Error', e?.response?.data?.message ?? 'Could not leave club. Please try again.')
     } finally {
       setLeavingClub(false)
+    }
+  }
+
+  async function handleSavePosition() {
+    setSavingPosition(true)
+    try {
+      await api.put('/athletes/me', { position: athletePosition.trim() })
+      setAthleteProfile(p => ({ ...p, position: athletePosition.trim() }))
+    } catch {
+      Alert.alert('Error', 'Could not save position. Please try again.')
+    } finally {
+      setSavingPosition(false)
     }
   }
 
@@ -443,6 +461,37 @@ export default function SettingsScreen() {
             )}
           </TouchableOpacity>
         </SectionCard>
+
+        {/* ── Athlete details (position) ────────────────────────────────── */}
+        {isAthlete && (
+          <SectionCard title="Athlete details">
+            <Text style={styles.label}>Primary position</Text>
+            <TextInput
+              style={styles.input}
+              value={athletePosition}
+              onChangeText={setAthletePosition}
+              placeholder="e.g. Striker, Goalkeeper, Centre-back…"
+              placeholderTextColor={colors.textMuted}
+              maxLength={100}
+              autoCorrect={false}
+            />
+            <Text style={styles.hint}>Shown on your public profile and visible to your club.</Text>
+            <TouchableOpacity
+              style={[styles.primaryBtn, savingPosition && styles.btnDisabled]}
+              onPress={handleSavePosition}
+              disabled={savingPosition}
+            >
+              {savingPosition ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <>
+                  <Ionicons name="save-outline" size={16} color="#fff" />
+                  <Text style={styles.primaryBtnText}>Save details</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </SectionCard>
+        )}
 
         {/* ── Public profile (athletes with a slug) ─────────────────────── */}
         {isAthlete && athleteProfile?.slug && (

@@ -117,6 +117,7 @@ export default function AthleteDetailScreen({ route }) {
       first_name: a.first_name ?? '',
       last_name:  a.last_name  ?? '',
       ftem_phase: a.ftem_phase ?? '',
+      position:   a.position   ?? '',
       is_active:  a.is_active  !== false,
       phone:      a.contact_phone ?? a.phone ?? '',
       notes:      a.notes ?? '',
@@ -226,6 +227,17 @@ export default function AthleteDetailScreen({ route }) {
               </View>
 
               <View style={s.field}>
+                <Text style={s.fieldLabel}>Primary position</Text>
+                <TextInput
+                  style={s.input}
+                  value={form.position}
+                  onChangeText={v => setForm(p => ({ ...p, position: v }))}
+                  placeholder="e.g. Striker, Goalkeeper…"
+                  placeholderTextColor={colors.textMuted}
+                />
+              </View>
+
+              <View style={s.field}>
                 <Text style={s.fieldLabel}>Contact phone</Text>
                 <View style={s.inputIconWrap}>
                   <Ionicons name="call-outline" size={15} color={colors.textMuted} style={s.inputIcon} />
@@ -302,6 +314,11 @@ export default function AthleteDetailScreen({ route }) {
                 {a.sport ? (
                   <View style={s.chip}>
                     <Text style={s.chipText}>{sportLabel(a.sport)}</Text>
+                  </View>
+                ) : null}
+                {a.position ? (
+                  <View style={[s.chip, { backgroundColor: '#eef2ff' }]}>
+                    <Text style={[s.chipText, { color: '#4338ca' }]}>{a.position}</Text>
                   </View>
                 ) : null}
                 {age !== null ? (
