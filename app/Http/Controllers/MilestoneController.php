@@ -129,8 +129,14 @@ class MilestoneController extends Controller
         return response()->json(
             Milestone::where('club_id', $request->user()->resolveClubId())
                 ->where('athlete_id', $id)
+                ->with(['club:id,name'])
                 ->orderBy('achieved_at', 'desc')
                 ->get()
+                ->map(function ($m) {
+                    $m->club_name = $m->club?->name;
+                    unset($m->club);
+                    return $m;
+                })
         );
     }
 

@@ -14,7 +14,8 @@ import Brisbane       from './pages/marketing/Brisbane2032'
 import AppLayout     from './components/layout/AppLayout'
 import Dashboard     from './pages/app/Dashboard'
 import Athletes      from './pages/app/Athletes'
-import AthleteDetail from './pages/app/AthleteDetail'
+import AthleteDetail      from './pages/app/AthleteDetail'
+import AthleteProfileView from './pages/app/AthleteProfileView'
 import Squads        from './pages/app/Squads'
 import Calendar      from './pages/app/Calendar'
 import Announcements from './pages/app/Announcements'
@@ -92,7 +93,8 @@ export default function App() {
 
             {/* Club managers and coaches only */}
             <Route path="athletes"     element={<RoleRoute roles={['club_admin','coach','site_admin']}><Athletes /></RoleRoute>} />
-            <Route path="athletes/:id" element={<RoleRoute roles={['club_admin','coach','site_admin']}><AthleteDetail /></RoleRoute>} />
+            <Route path="athletes/:id"         element={<RoleRoute roles={['club_admin','coach','site_admin']}><AthleteDetail /></RoleRoute>} />
+            <Route path="athletes/:id/profile" element={<RoleRoute roles={['club_admin','coach','site_admin']}><AthleteProfileView /></RoleRoute>} />
             <Route path="squad"        element={<RoleRoute roles={['club_admin','coach','site_admin']}><Squads /></RoleRoute>} />
             <Route path="calendar"     element={<Calendar />} />
             <Route path="analytics"    element={<RoleRoute roles={['club_admin','coach','site_admin']}><Analytics /></RoleRoute>} />
